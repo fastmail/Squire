@@ -1,6 +1,6 @@
 .PHONY: all build clean
 
-all: build
+all: build ui
 
 clean:
 	rm -rf build
