@@ -5,7 +5,21 @@ all: build
 clean:
 	rm -rf build
 
+ui: build/header.html build/ui.css build/fonts
+
 build: build/ie8.js build/squire.js build/document.html
+
+build/header.html: ui/header.html
+	mkdir -p $(@D)
+	cp $^ $@
+
+build/ui.css: ui/ui.css ui/font-awesome.min.css
+	mkdir -p $(@D)
+	cat $^ >$@
+
+build/fonts: ui/fonts
+	mkdir -p $(@D)
+	cp -r $^ $@
 
 build/ie8.js: source/ie8types.js source/ie8dom.js source/ie8range.js
 	mkdir -p $(@D)
