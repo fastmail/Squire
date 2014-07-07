@@ -2,30 +2,45 @@
 
 <head>
     <link href="Squire-UI.css" rel="stylesheet" type="text/css" type="text/css" rel="stylesheet" />
+    <link href="assets/drop/drop-theme-arrows.css" type="text/css" rel="stylesheet" />
+
     <link href="assets/font-awesome/font-awesome.min.css" type="text/css" rel="stylesheet" />
-    <link rel="stylesheet" href="assets/drop/drop-theme-arrows.css" />
-    <script src="assets/drop/drop.min.js" type="text/javascript"></script>
 </head>
 
 <body>
     <header class="menu" contenteditable="false">
         <div class="group">
-            <div id="bold" class="item"><i class="fa fa-bold"></i></div>
+            <div class="item"><i class="fa fa-bold"></i></div>
             <div class="item"><i class="fa fa-italic"></i></div>
             <div class="item"><i class="fa fa-underline"></i></div>
-            <div class="item"><i class="fa fa-font"></i></div>
+            <div id="font" class="item">
+                <i class="fa fa-font"></i>
+            </div>
         </div>
         <div class="group">
             <div class="item"><i class="fa fa-link"></i></div>
             <div class="item"><i class="fa fa-quote-right"></i></div>
             <div class="item"><i class="fa fa-list"></i></div>
-            <div class="item"><i class="fa fa-picture-o"></i></div>
+            <div class="item">
+                <i class="fa fa-picture-o"></i>
+            </div>
         </div>
         <div class="group">
             <div class="item"><i class="fa fa-undo"></i></div>
             <div class="item"><i class="fa fa-undo flip"></i></div>
         </div>
     </header>
+    <div class="templates hidden">
+        <div class="drop-font">
+            <i class="fa fa-chevron-up quit" onclick="this.parentNode.parentNode.removeChild(this.parentNode)"></i>
+            Text Size: <input type="number" min="12" max="72" step="6" value="12" name="font-size">
+            <br>
+            Font: <input type="text">
+
+        </div>
+    </div>
+
+    <script src="assets/drop/drop.min.js" type="text/javascript"></script>
     <script src="Squire-UI.js" type="text/javascript"></script>
 </body>
 

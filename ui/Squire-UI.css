@@ -39,3 +39,21 @@
     border-left:none;
 }
 
+.drop {
+    border: 1px solid #dbdbdb;
+    padding: 14px;
+    background: white;
+    box-shadow: 0 1px 0 rgba(255,255,255,0),0 0 10px rgba(0,0,0,0.1);
+    -webkit-border-radius: 4px;
+    margin-top: 5px;
+}
+
+.hidden {
+    display: none;
+}
+
+.quit {
+    float: right;
+    top:0;
+    right:0;
+}

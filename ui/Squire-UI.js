@@ -1,9 +1,13 @@
 (function() {
-    var drop;
+    var drop, quit;
+
     drop = new Drop({
-        target: document.querySelector('#bold'),
-        content: 'Welcome to the future!',
+        target: document.querySelector('#font'),
+        content: document.querySelector('.drop-font').innerHTML,
         position: 'bottom left',
         openOn: 'click'
     });
+
+
 })();
+
