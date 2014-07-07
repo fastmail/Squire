@@ -5,15 +5,19 @@ all: build
 clean:
 	rm -rf build
 
-ui: build/header.html build/ui.css build/assets
+ui: build/Squire-UI.html build/Squire-UI.css build/Squire-UI.js build/assets
 
 build: build/ie8.js build/squire.js build/document.html
 
-build/header.html: ui/header.html
+build/Squire-UI.html: ui/Squire-UI.html
 	mkdir -p $(@D)
 	cp $^ $@
 
-build/ui.css: ui/ui.css
+build/Squire-UI.css: ui/Squire-UI.css
+	mkdir -p $(@D)
+	cat $^ >$@
+
+build/Squire-UI.js: ui/Squire-UI.js
 	mkdir -p $(@D)
 	cat $^ >$@
 
