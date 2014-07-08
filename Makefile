@@ -5,25 +5,24 @@ all: build ui
 clean:
 	rm -rf build
 
-ui: build/Squire-UI.html build/Squire-UI.css build/Squire-UI.js build/assets
+ui: build/Squire-UI.html build/Squire-UI.css build/Squire-UI.js fonts
 
 build: build/ie8.js build/squire.js build/document.html
+
+fonts:
+	cp -r ui/assets/font-awesome build
 
 build/Squire-UI.html: ui/Squire-UI.html
 	mkdir -p $(@D)
 	cp $^ $@
 
-build/Squire-UI.css: ui/Squire-UI.css
+build/Squire-UI.css: ui/Squire-UI.css ui/assets/drop/drop-theme-arrows.css ui/assets/font-awesome/font-awesome.min.css
 	mkdir -p $(@D)
 	cat $^ >$@
 
-build/Squire-UI.js: ui/Squire-UI.js
+build/Squire-UI.js: build/squire-raw.js ui/assets/jQuery/jQuery.js ui/Squire-UI.js ui/assets/drop/drop.min.js 
 	mkdir -p $(@D)
 	cat $^ >$@
-
-build/assets: ui/assets
-	mkdir -p $(@D)
-	cp -r $^ $@
 
 build/ie8.js: source/ie8types.js source/ie8dom.js source/ie8range.js
 	mkdir -p $(@D)

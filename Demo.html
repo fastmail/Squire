@@ -7,10 +7,11 @@
     <!--[if IE 8]>
     <script type="text/javascript" src="build/ie8.js"></script>
     <![endif]-->
+    <link href="build/Squire-UI.css" rel="stylesheet" type="text/css" />
     <script src="build/Squire-UI.js" type="text/javascript"></script>
     <script>
-    window.addEventListener('load', function () {
-      var editor = new SquireUI({replace: 'textarea#foo'});
+    $(document).ready(function () {
+      UI = new SquireUI({replace: 'textarea#foo'});
     });
     </script>
 </head>
