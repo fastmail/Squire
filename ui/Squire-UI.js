@@ -48,17 +48,17 @@ $(document).ready(function () {
       });
     };
 
-    SquireUI.isBold = isPresent( 'B', ( />B\b/ ) );
-    SquireUI.isItalic = isPresent( 'I', ( />I\b/ ) );
-    SquireUI.isUnderlined = isPresent( 'U', ( />U\b/ ) );
-    SquireUI.isStriked = isPresent( 'S', ( />S\b/ ) );
+    SquireUI.isBold = function (editor) { isPresent( 'B', ( />B\b/ ), editor ) };
+    SquireUI.isItalic = function (editor) { isPresent( 'I', ( />I\b/ ) );
+    SquireUI.isUnderlined = function (editor) { isPresent( 'U', ( />U\b/ ) );
+    SquireUI.isStriked = function (editor) { isPresent( 'S', ( />S\b/ ) );
     SquireUI.isLink = isPresent( 'A', ( />A\b/ ) );
     SquireUI.isPresent = function () {
         editor.getPath()  
     }; 
 
     SquireUI.whenTextSelected = function () {
-        
+
     }
 
 
