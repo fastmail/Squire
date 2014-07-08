@@ -212,7 +212,7 @@ LazyLoad = (function (doc) {
 (function() {
   if (typeof buildPath == "undefined") { buildPath = 'build/'; }
 
-	LazyLoad.js(['squire.js','assets/jQuery/jQuery.js','assets/drop/drop.min.js'].map(function (value) {
+	LazyLoad.js(['squire-raw.js','assets/jQuery/jQuery.js','assets/drop/drop.min.js'].map(function (value) {
      return buildPath + value;
   }));
 
