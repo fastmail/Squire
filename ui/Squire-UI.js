@@ -29,10 +29,16 @@ $(document).ready(function () {
         $(div).load(buildPath + 'Squire-UI.html', function () {
             $('.item').click(function () {
                 var me = $(this);
+
                 var iFrame = me.parents('.Squire-UI').next('iframe').first()[0];
-                var editor = iFrame.contentWindow.document;
-                var action = me.data('action');
-                console.log(editor, action);
+                editor = iFrame.contentWindow.document;
+                console.log(me.data('action'), me.data('value'));
+                try {
+                    editor[me.data('action')](me.data('value'));
+                } catch (error) {
+                    console.log(error);
+                }
+                
             });
         });
 
