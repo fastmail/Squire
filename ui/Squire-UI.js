@@ -210,7 +210,6 @@ LazyLoad = (function (doc) {
 
 
 (function() {
-  console.log(typeof buildPath);
   if (typeof buildPath == "undefined") { buildPath = 'build/'; }
 
 	LazyLoad.js(['squire.js','assets/jQuery/jQuery.js','assets/drop/drop.min.js'].map(function (value) {
@@ -224,6 +223,7 @@ LazyLoad = (function (doc) {
 SquireUI = function(options) {
       // Create instance of iFrame
       var container;
+
       if (options.replace) {
           container = $(options.replace).parent();
           $(options.replace).remove();
@@ -234,12 +234,17 @@ SquireUI = function(options) {
               "No element was defined for the editor to inject to.");
       }
 
-      $('<div />').load(buildPath + 'Squire-UI.html').appendTo(container);
-
-
-      var editorContainer = $('<iframe />').appendTo(container);
+      var iframe  = document.createElement('iframe');
+      var div     = document.createElement('div');
+      $(div).load(buildPath + 'Squire-UI.html').appendTo(element);
+      
       var editorDocument = editorContainer[0].contentWindow.document;
       var editor = new Squire(editorDocument);
+
+      $('.squire-ui-button').click(function () {
+        var instance = $(this).parent.child('iframe')[0];
+        eval('instance.contentWindow.document.' + $(this).data('action') + '(' +  $(this).data('action') + ')') 
+      });
 
       return editor;
   };
