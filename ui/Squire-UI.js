@@ -8,6 +8,7 @@ function buildPathConCat(value) {
 
 
 $(document).ready(function () {
+
     SquireUI = function(options) {
         // Create instance of iFrame
         var container, editor;
@@ -26,7 +27,16 @@ $(document).ready(function () {
         var div = document.createElement('div');
         div.className = 'Squire-UI';
         
-        $(div).load(buildPath + 'Squire-UI.html', this.menuAction);
+        $(div).load(buildPath + 'Squire-UI.html', function() {
+			$('.item').click(function() {
+				var me = $(this);
+				var iFrame = me.parents('.Squire-UI').next('iframe').first()[0];
+				var editor = iFrame.contentWindow.editor;
+				console.log(SquireUI.isBold(editor));
+
+				editor[me.data('action')](me.data('value'));
+			});
+		});
 
         $(container).append(div);
         $(container).append(iframe);
@@ -35,31 +45,13 @@ $(document).ready(function () {
         return iframe.contentWindow.editor;
     };
 
-    SquireUI.menuAction = function() {
-      $('.item').click(function() {
-        var me = $(this);
-        var iFrame = me.parents('.Squire-UI').next('iframe').first()[0];
-        var editor = iFrame.contentWindow.editor;
-        try {
-          editor[me.data('action')](me.data('value'));
-        } catch (error) {
-          console.log(error);
-        }
-      });
+    SquireUI.isBold = function (editor) { return this.isPresent( 'B', ( />B\b/ ), editor ); };
+    SquireUI.isItalic = function (editor) { return isPresent( 'I', ( />I\b/ ), editor ); };
+    SquireUI.isUnderlined = function (editor) { return isPresent( 'U', ( />U\b/ ), editor); };
+    SquireUI.isStriked = function (editor) { return isPresent( 'S', ( />S\b/ ), editor ); };
+    SquireUI.isLink = function (editor) { return isPresent( 'A', ( />A\b/ ), editor ); };
+    SquireUI.isPresent = function (format, validation, editor) {
+        var path = editor.getPath();
+		return validation.test(path);
     };
-
-    SquireUI.isBold = function (editor) { isPresent( 'B', ( />B\b/ ), editor ) };
-    SquireUI.isItalic = function (editor) { isPresent( 'I', ( />I\b/ ) );
-    SquireUI.isUnderlined = function (editor) { isPresent( 'U', ( />U\b/ ) );
-    SquireUI.isStriked = function (editor) { isPresent( 'S', ( />S\b/ ) );
-    SquireUI.isLink = isPresent( 'A', ( />A\b/ ) );
-    SquireUI.isPresent = function () {
-        editor.getPath()  
-    }; 
-
-    SquireUI.whenTextSelected = function () {
-
-    }
-
-
 });

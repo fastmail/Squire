@@ -7,7 +7,7 @@ clean:
 
 ui: build/Squire-UI.html build/Squire-UI.css build/Squire-UI.js fonts
 
-build: build/ie8.js build/squire.js build/document.html
+build: build/ie8.js build/squire.js build/document.html ui
 
 fonts:
 	cp -r ui/assets/font-awesome build
