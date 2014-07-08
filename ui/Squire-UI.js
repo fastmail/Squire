@@ -34,7 +34,7 @@ $(document).ready(function () {
 				var iFrame 	= me.parents('.Squire-UI').next('iframe').first()[0];
 				var editor 	= iFrame.contentWindow.editor;
 				var test 	= (me.data('action') == ('bold' | 'italic' | 'underline' | 'link'));
- 
+ 				//create a helper function to deal with the whole problem in a very small way.
 				if (test && s.isBold(editor)) { editor.removeBold() };
 				me.data('action') == 'italic' && s.isItalic(editor)) editor.removeItalic();
 				me.data('action') == 'underline' && s.isUnderlined(editor)) editor.removeUnderline();
@@ -54,7 +54,6 @@ $(document).ready(function () {
     SquireUI.isBold			= function (editor) { return (this.isPresent( 'B', ( />B\b/ ), editor )); };
     SquireUI.isItalic		= function (editor) { return (isPresent( 'I', ( />I\b/ ), editor )); };
     SquireUI.isUnderlined	= function (editor) { return (isPresent( 'U', ( />U\b/ ), editor)); };
-    SquireUI.isStriked		= function (editor) { return (isPresent( 'S', ( />S\b/ ), editor )); };
     SquireUI.isLink			= function (editor) { return (isPresent( 'A', ( />A\b/ ), editor )); };
     SquireUI.isPresent		= function (format, validation, editor) {
         var path = editor.getPath();
