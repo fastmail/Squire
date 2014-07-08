@@ -26,29 +26,40 @@ $(document).ready(function () {
         var div = document.createElement('div');
         div.className = 'Squire-UI';
         
-        $(div).load(buildPath + 'Squire-UI.html', function () {
-            $('.item').click(function () {
-                var me = $(this);
-
-                var iFrame = me.parents('.Squire-UI').next('iframe').first()[0];
-                editor = iFrame.contentWindow.document;
-                console.log(me.data('action'), me.data('value'));
-                try {
-                    editor[me.data('action')](me.data('value'));
-                } catch (error) {
-                    console.log(error);
-                }
-                
-            });
-        });
+        $(div).load(buildPath + 'Squire-UI.html', this.menuAction);
 
         $(container).append(div);
         $(container).append(iframe);
 
-        editor = new Squire(iframe.contentWindow.document);
-        return editor;
+        iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
+        return iframe.contentWindow.editor;
     };
 
-    
+    SquireUI.menuAction = function() {
+      $('.item').click(function() {
+        var me = $(this);
+        var iFrame = me.parents('.Squire-UI').next('iframe').first()[0];
+        var editor = iFrame.contentWindow.editor;
+        try {
+          editor[me.data('action')](me.data('value'));
+        } catch (error) {
+          console.log(error);
+        }
+      });
+    };
+
+    SquireUI.isBold = isPresent( 'B', ( />B\b/ ) );
+    SquireUI.isItalic = isPresent( 'I', ( />I\b/ ) );
+    SquireUI.isUnderlined = isPresent( 'U', ( />U\b/ ) );
+    SquireUI.isStriked = isPresent( 'S', ( />S\b/ ) );
+    SquireUI.isLink = isPresent( 'A', ( />A\b/ ) );
+    SquireUI.isPresent = function () {
+        editor.getPath()  
+    }; 
+
+    SquireUI.whenTextSelected = function () {
+        
+    }
+
 
 });
