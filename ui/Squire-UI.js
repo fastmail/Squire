@@ -222,7 +222,7 @@ LazyLoad = (function (doc) {
 	
 SquireUI = function(options) {
       // Create instance of iFrame
-      var container;
+      var container, editor;
 
       if (options.replace) {
           container = $(options.replace).parent();
@@ -236,14 +236,16 @@ SquireUI = function(options) {
 
       var iframe  = document.createElement('iframe');
       var div     = document.createElement('div');
-      $(div).load(buildPath + 'Squire-UI.html').appendTo(element);
+      $(div).load(buildPath + 'Squire-UI.html');
       
-      var editorDocument = editorContainer[0].contentWindow.document;
-      var editor = new Squire(editorDocument);
+      $(container).append(div);
+      $(container).append(iframe);
+      
+      editor = new Squire ($(container).children('iframe').first()[0].contentWindow.document);
 
-      $('.squire-ui-button').click(function () {
-        var instance = $(this).parent.child('iframe')[0];
-        eval('instance.contentWindow.document.' + $(this).data('action') + '(' +  $(this).data('action') + ')') 
+      $('i').click(function () {
+        var instance = $(this).parent().children('iframe').first();
+        console.log(instance);
       });
 
       return editor;

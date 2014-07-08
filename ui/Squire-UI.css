@@ -7,6 +7,10 @@ body {
     text-shadow: 0 1px 0 white;
   }
   
+iframe {
+    width:100%;
+}
+  
 .menu .item {
     color:#000;
     float:left;
@@ -31,7 +35,6 @@ body {
 }
 
 .menu {
-    text-align:center;
     -webkit-touch-callout:none;
     -webkit-user-select:none;
     -khtml-user-select:none;
