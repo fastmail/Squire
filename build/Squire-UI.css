@@ -46,7 +46,39 @@ iframe {
     transform:rotateY(180deg)
 }
 
+.btn {
+    background: #516066;
+    display: block;
+    position: relative;
+    padding: 10px 15px;
+    margin-top: 10px;
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+    overflow: hidden;
+    letter-spacing: 1px;
+    border-radius: 4px;
+}
 
+input[type=text] {
+    background-color: #fff;
+    vertical-align: middle;
+    max-width: 100%;
+    border: 1px solid #a8afb2;
+    border-color: #a8afb2 #d4d7d9 #d4d7d9;
+    color: #516066;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    -webkit-transition: border linear 150ms;
+    -moz-transition: border linear 150ms;
+    -o-transition: border linear 150ms;
+    transition: border linear 150ms;
+    font-size: 14px;
+    padding: 5px;
+    width: 100%;
+}
 
 .menu .group .item:hover, .menu .item:first-child:hover {
 	border-left: 3px #55ACEE solid;
@@ -74,6 +106,7 @@ iframe {
     float: right;
     top:0;
     right:0;
+    margin-bottom: 5px;
 }
 
   .drop-element, .drop-element:after, .drop-element:before, .drop-element *, .drop-element *:after, .drop-element *:before {

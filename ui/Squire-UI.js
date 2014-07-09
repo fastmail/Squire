@@ -37,19 +37,36 @@ $(document).ready(function() {
         element.drop = new Drop({
           target: element,
           content: content,
-          position: 'bottom left',
+          position: 'bottom center',
           openOn: 'click'
         });
+
+        element.drop.iframe = iframe;
 
         element.drop.on('open', function () {
           $('.quit').click(function () {
             $(this).parent().parent().removeClass('drop-open');
           });
+          _iframe = this.iframe;
+          
+          $('.sumbitImageURL').click(function () {
+            editor = _iframe.contentWindow.editor;
+            url = $(this).parent().children('#imageUrl').first()[0];
+            editor.insertImage(url.value);
+            $(this).parent().parent().removeClass('drop-open');
+          });
+
+          $('.sumbitLink').click(function () {
+            editor = _iframe.contentWindow.editor;
+            url = $(this).parent().children('#url').first()[0];
+            editor.makeLink(url.value);
+            $(this).parent().parent().removeClass('drop-open');
+          });
         });
       }
 
-      createDrop($('#makeLink').first()[0], "Hello World");
-      createDrop($('#insertImage').first()[0], "Hello World");
+      createDrop($('#makeLink').first()[0], $('#drop-link').first().html());
+      createDrop($('#insertImage').first()[0], $('#drop-image').first().html());
       createDrop($('#selectFont').first()[0], $('#drop-font').first().html());
       
 
@@ -88,7 +105,7 @@ $(document).ready(function() {
           if (test.testOrderedList) editor.removeList();
           if (test.testQuote) editor.decreaseQuoteLevel();
         } else if (test.isNotValue('makeLink') | test.isNotValue('insertImage') | test.isNotValue('selectFont')) {
-          // do nothing
+          // do nothing these are dropdowns.
         } else {
           editor[$(this).data('action')]();
         }
@@ -100,6 +117,13 @@ $(document).ready(function() {
     iframe.contentWindow.editor.setHTML(
       "<div><b>Bold</b><br></div><div><i>Italics</i><br></div><div><u>Underline</u><br></div><ol><li><div>List<br></div></li><li><div>List<br></div></li><li><div>List<br></div></li></ol><blockquote>Quote<br></blockquote><div><br></div><div>Heading 1<br></div><div>Heading 2<br></div><div>Image<br></div><div>Link</div><div><br></div>"
     );
+    iframe.addEventListener('load', function() {
+      iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
+      iframe.contentWindow.editor.setHTML(
+        "<div><b>Bold</b><br></div><div><i>Italics</i><br></div><div><u>Underline</u><br></div><ol><li><div>List<br></div></li><li><div>List<br></div></li><li><div>List<br></div></li></ol><blockquote>Quote<br></blockquote><div><br></div><div>Heading 1<br></div><div>Heading 2<br></div><div>Image<br></div><div>Link</div><div><br></div>"
+      );
+    });
+    
     return iframe.contentWindow.editor;
   };
 });
