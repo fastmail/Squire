@@ -40,8 +40,11 @@ $(document).ready(function () {
 
         $(container).append(div);
         $(container).append(iframe);
+        
+        iframe.addEventListener('load', function () {
+            iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
+        });
 
-        iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
         return iframe.contentWindow.editor;
     };
 

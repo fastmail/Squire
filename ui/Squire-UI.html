@@ -1,46 +1,34 @@
 <div class="menu" contenteditable="false">
     <div class="group">
-      <div class="item fa fa-bold" data-action="bold" data-value=""></div>
-
-      <div class="item fa fa-italic" data-action="italic" data-value="" ></div>
-
-      <div class="item fa fa-underline" data-action="underline" data-value=""
-      ></div>
-
-      <div class="item fa fa-font" data-action="" data-value="" id="font"
-      ></div>
+        <div data-action="bold" data-value="" class="item"><i class="fa fa-bold"></i></div>
+        <div data-action="italic" data-value="" class="item"><i  class="fa fa-italic"></i></div>
+        <div data-action="underline" data-value="" class="item"><i class="fa fa-underline"></i></div>
+        <div data-action="" data-value=""  id="font" class="item">
+            <i class="fa fa-font"></i>
+        </div>
     </div>
-
     <div class="group">
-      <div class="item fa fa-link" data-action="link" data-value="" style=
-      "font-style: italic"></div>
-
-      <div class="item fa fa-quote-right" data-action="quote" data-value=""
-      ></div>
-
-      <div class="item fa fa-list" data-action="list" data-value="" ></div>
-
-      <div class="item fa fa-picture-o" data-action="image" data-value=""
-      ></div>
+        <div data-action="link" data-value=""class="item"><i class="fa fa-link"></i></div>
+        <div data-action="quote" data-value="" class="item"><i class="fa fa-quote-right"></i></div>
+        <div data-action="list" data-value="" class="item"><i class="fa fa-list"></i></div>
+        <div data-action="image" data-value="" class="item">
+            <i class="fa fa-picture-o"></i>
+        </div>
     </div>
-
     <div class="group">
-      <div class="item fa fa-link" data-action="link" data-value="" style=
-      "font-style: italic"></div>
-
-      <div class="item fa fa-quote-right" data-action="quote" data-value=""
-      ></div>
+        <div data-action="link" data-value=""class="item"><i class="fa fa-link"></i></div>
+        <div data-action="quote" data-value="" class="item"><i class="fa fa-quote-right"></i></div>
     </div>
-
     <div class="group">
-      <div class="item fa fa-undo" data-action="undo" data-value=""></div>
-
-      <div class="item fa fa-undo flip" data-action="redo" data-value="" ></div>
+        <div data-action="undo" data-value="" class="item"><i class="fa fa-undo"></i></div>
+        <div data-action="redo" data-value="" class="item"><i class="fa fa-undo flip"></i></div>
     </div>
-  </div>
-
-  <div class="templates hidden drop-font">
-    <i class="fa fa-chevron-up quit"></i> Text Size: <input max="72" min="12"
-    name="font-size" step="6" type="number" value="12"><br>
-    Font: <input type="text">
-  </div>
+</div>
+<div class="templates hidden">
+    <div class="drop-font">
+        <i class="fa fa-chevron-up quit"></i>
+        Text Size: <input type="number" min="12" max="72" step="6" value="12" name="font-size">
+        <br>
+        Font: <input type="text">
+    </div>
+</div>
