@@ -3,14 +3,14 @@
         <div data-action="bold" data-value="" class="item"><i class="fa fa-bold"></i></div>
         <div data-action="italic" data-value="" class="item"><i  class="fa fa-italic"></i></div>
         <div data-action="underline" data-value="" class="item"><i class="fa fa-underline"></i></div>
-        <div data-action="" data-value=""  id="font" class="item">
+        <div id="selectFont" data-action="selectFont" data-value="" class="item">
             <i class="fa fa-font"></i>
         </div>
     </div>
     <div class="group">
-        <div data-action="makeLink" data-value=""class="item"><i class="fa fa-link"></i></div>
+        <div id="makeLink"data-action="makeLink" data-value=""class="item"><i class="fa fa-link"></i></div>
         <div data-action="makeOrderedList" data-value="" class="item"><i class="fa fa-list"></i></div>
-        <div data-action="image" data-value="" class="item">
+        <div id="insertImage" data-action="insertImage" data-value="" class="item">
             <i class="fa fa-picture-o"></i>
         </div>
         <div data-action="increaseQuoteLevel" data-value="" class="item"><i class="fa fa-quote-right"></i></div>
@@ -22,7 +22,7 @@
     </div>
 </div>
 <div class="templates hidden">
-    <div class="drop-font">
+    <div id="drop-font">
         <i class="fa fa-chevron-up quit"></i>
         Text Size: <input type="number" min="12" max="72" step="6" value="12" name="font-size">
         <br>

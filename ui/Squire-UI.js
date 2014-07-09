@@ -32,12 +32,36 @@ $(document).ready(function() {
     var div = document.createElement('div');
     div.className = 'Squire-UI';
     $(div).load(buildPath + 'Squire-UI.html', function() {
+
+      function createDrop(element, content) {
+        element.drop = new Drop({
+          target: element,
+          content: content,
+          position: 'bottom left',
+          openOn: 'click'
+        });
+
+        element.drop.on('open', function () {
+          $('.quit').click(function () {
+            $(this).parent().parent().removeClass('drop-open');
+          });
+        });
+      }
+
+      createDrop($('#makeLink').first()[0], "Hello World");
+      createDrop($('#insertImage').first()[0], "Hello World");
+      createDrop($('#selectFont').first()[0], $('#drop-font').first().html());
+      
+
       $('.item').click(function() {
         var iframe = $(this).parents('.Squire-UI').next('iframe').first()[0];
         var editor = iframe.contentWindow.editor;
         var action = $(this).data('action');
         
+        if (editor.getSelectedText() === '' && action != 'insertImage') return 0;
+
         test = {
+          value: $(this).data('action'),
           testBold: editor.testPresenceinSelection('bold',
             action, 'B', (/>B\b/)),
           testItalic: editor.testPresenceinSelection('italic',
@@ -50,8 +74,11 @@ $(document).ready(function() {
             action, 'A', (/>A\b/)),
           testQuote: editor.testPresenceinSelection(
             'increaseQuoteLevel', action, 'blockquote', (
-              />blockquote\b/))
+              />blockquote\b/)),
+          isNotValue: function (a) {return (a == action && this.value !== ''); }
         };
+
+        
         
         if (test.testBold | test.testItalic | test.testUnderline | test.testOrderedList | test.testLink | test.testQuote) {
           if (test.testBold) editor.removeBold();
@@ -60,6 +87,8 @@ $(document).ready(function() {
           if (test.testLink) editor.removeLink();
           if (test.testOrderedList) editor.removeList();
           if (test.testQuote) editor.decreaseQuoteLevel();
+        } else if (test.isNotValue('makeLink') | test.isNotValue('insertImage') | test.isNotValue('selectFont')) {
+          // do nothing
         } else {
           editor[$(this).data('action')]();
         }
