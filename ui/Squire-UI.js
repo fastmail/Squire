@@ -31,44 +31,50 @@ $(document).ready(function() {
     var iframe = document.createElement('iframe');
     var div = document.createElement('div');
     div.className = 'Squire-UI';
+    iframe.height = options.height;
+
+
     $(div).load(buildPath + 'Squire-UI.html', function() {
+      this.linkDrop = new Drop({
+        target: $('#makeLink').first()[0],
+        content: $('#drop-link').html(),
+        position: 'bottom center',
+        openOn: 'click'
+      });
 
-      function createDrop(element, content) {
-        element.drop = new Drop({
-          target: element,
-          content: content,
-          position: 'bottom center',
-          openOn: 'click'
+      this.linkDrop.on('open', function () {
+        $('.quit').click(function () {
+          $(this).parent().parent().removeClass('drop-open');
         });
 
-        element.drop.iframe = iframe;
-
-        element.drop.on('open', function () {
-          $('.quit').click(function () {
-            $(this).parent().parent().removeClass('drop-open');
-          });
-          _iframe = this.iframe;
-          
-          $('.sumbitImageURL').click(function () {
-            editor = _iframe.contentWindow.editor;
-            url = $(this).parent().children('#imageUrl').first()[0];
-            editor.insertImage(url.value);
-            $(this).parent().parent().removeClass('drop-open');
-          });
-
-          $('.sumbitLink').click(function () {
-            editor = _iframe.contentWindow.editor;
-            url = $(this).parent().children('#url').first()[0];
-            editor.makeLink(url.value);
-            $(this).parent().parent().removeClass('drop-open');
-          });
+        $('.submitLink').click(function () {
+          editor = iframe.contentWindow.editor;
+          url = $(this).parent().children('#url').first()[0];
+          editor.makeLink(url.value);
+          $(this).parent().parent().removeClass('drop-open');
         });
-      }
+      });
 
-      createDrop($('#makeLink').first()[0], $('#drop-link').first().html());
-      createDrop($('#insertImage').first()[0], $('#drop-image').first().html());
-      createDrop($('#selectFont').first()[0], $('#drop-font').first().html());
-      
+      this.imageDrop = new Drop({
+        target: $('#insertImage').first()[0],
+        content: $('#drop-image').html(),
+        position: 'bottom center',
+        openOn: 'click'
+      });
+
+      this.imageDrop.on('open', function () {
+        $('.quit').click(function () {
+          $(this).parent().parent().removeClass('drop-open');
+        });
+
+        $('.sumbitImageURL').click(function () {
+          editor = iframe.contentWindow.editor;
+          url = $(this).parent().children('#imageUrl').first()[0];
+          editor.insertImage(url.value);
+          $(this).parent().parent().removeClass('drop-open');
+          console.log(editor);
+        });
+      });
 
       $('.item').click(function() {
         var iframe = $(this).parents('.Squire-UI').next('iframe').first()[0];
@@ -114,14 +120,8 @@ $(document).ready(function() {
     $(container).append(div);
     $(container).append(iframe);
     iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
-    iframe.contentWindow.editor.setHTML(
-      "<div><b>Bold</b><br></div><div><i>Italics</i><br></div><div><u>Underline</u><br></div><ol><li><div>List<br></div></li><li><div>List<br></div></li><li><div>List<br></div></li></ol><blockquote>Quote<br></blockquote><div><br></div><div>Heading 1<br></div><div>Heading 2<br></div><div>Image<br></div><div>Link</div><div><br></div>"
-    );
     iframe.addEventListener('load', function() {
       iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
-      iframe.contentWindow.editor.setHTML(
-        "<div><b>Bold</b><br></div><div><i>Italics</i><br></div><div><u>Underline</u><br></div><ol><li><div>List<br></div></li><li><div>List<br></div></li><li><div>List<br></div></li></ol><blockquote>Quote<br></blockquote><div><br></div><div>Heading 1<br></div><div>Heading 2<br></div><div>Image<br></div><div>Link</div><div><br></div>"
-      );
     });
     
     return iframe.contentWindow.editor;
