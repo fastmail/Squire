@@ -66,7 +66,7 @@ $(document).ready(function() {
         $('.quit').unbind().click(function () {
           $(this).parent().parent().removeClass('drop-open');
         });
-
+        
         $('.sumbitImageURL').unbind().click(function () {
           console.log("Passed through .sumbitImageURL");
           editor = iframe.contentWindow.editor;
@@ -75,6 +75,24 @@ $(document).ready(function() {
           $(this).parent().parent().removeClass('drop-open');
           $(this).parent().children('#imageUrl').attr('value', '');
         });
+
+      });
+
+      this.fontDrop = new Drop({
+        target: $('#selectFont').first()[0],
+        content: $('#drop-font').html(),
+        position: 'bottom center',
+        openOn: 'click'
+      });
+
+      this.fontDrop.on('open', function () {
+        $('.quit').unbind().click(function () {
+          $(this).parent().parent().removeClass('drop-open');
+        });
+        
+        $('.sumbitImageURL').unbind().click(function () {
+       
+        });
       });
 
       $('.item').click(function() {
@@ -82,8 +100,6 @@ $(document).ready(function() {
         var editor = iframe.contentWindow.editor;
         var action = $(this).data('action');
         
-        if (editor.getSelectedText() === '' && action != 'insertImage') return 0;
-
         test = {
           value: $(this).data('action'),
           testBold: editor.testPresenceinSelection('bold',
@@ -114,8 +130,8 @@ $(document).ready(function() {
         } else if (test.isNotValue('makeLink') | test.isNotValue('insertImage') | test.isNotValue('selectFont')) {
           // do nothing these are dropdowns.
         } else {
-          console.log($(this).data('action'));
-          editor[$(this).data('action')]();
+          if (editor.getSelectedText() === '' && (action == 'insertImage' || action == 'makeOrderedList' || action == 'increaseQuoteLevel') == false) return;
+          editor[action]();
         }
       });
     });

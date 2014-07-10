@@ -23,21 +23,32 @@
 </div>
 <div class="templates hidden">
     <div id="drop-font">
-        <i class="fa fa-chevron-up quit"></i>
+        <strong>Insert Link</strong>
+        <i class="fa fa-chevron-up quit"></i><br>
         Text Size: <input type="number" min="12" max="72" step="6" value="12" name="font-size">
         <br>
-        Font: <input type="text">
+        Font: 
+        <select>
+            <option data-fonts="georgia, serif">Georgia</option>
+            <option data-fonts="arial, sans-serif">Arial</option>
+            <option data-fonts="helvetica, arial, sans-serif">Helvetica</option>
+            <option data-fonts="menlo, consolas, courier new, monospace">Monospace</option>
+            <option data-fonts="\"Times New Roman\", times, serif">Times New Roman</option>
+            <option data-fonts="tahoma, sans-serif">Tahoma</option>
+            <option data-fonts="\"Trebuchet MS\", sans-serif ">Trebuchet MS</option>
+            <option data-fonts="verdana, sans-serif">Verdana</option>
+        </select>
     </div>
     <div id="drop-link">
-        <label>Insert Link</label>
+        <strong>Insert Link</strong>
         <i class="fa fa-chevron-up quit"></i>
-        <input value="http://" type="text" id="url" />
+        <input placeholder="Link URL" type="text" id="url" />
         <div class="btn submitLink">Insert</div>
     </div>
     <div id="drop-image">
-        <label>Insert Image</label>
+        <strong>Insert Image</strong>
         <i class="fa fa-chevron-up quit"></i>
-        <input value="http://" placeholder="Image URL" type="text" id="imageUrl" />
+        <input placeholder="Image URL" type="text" id="imageUrl" />
         <div class="btn sumbitImageURL">Insert</div>
     </div>
 </div>
