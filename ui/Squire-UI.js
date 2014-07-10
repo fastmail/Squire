@@ -52,6 +52,7 @@ $(document).ready(function() {
           url = $(this).parent().children('#url').first()[0];
           editor.makeLink(url.value);
           $(this).parent().parent().removeClass('drop-open');
+          $(this).parent().children('#url').attr('value', '');
         });
       });
 
@@ -63,16 +64,17 @@ $(document).ready(function() {
       });
 
       this.imageDrop.on('open', function () {
-        $('.quit').click(function () {
+        $('.quit').unbind().click(function () {
           $(this).parent().parent().removeClass('drop-open');
         });
 
-        $('.sumbitImageURL').click(function () {
+        $('.sumbitImageURL').unbind().click(function () {
+          console.log("Passed through .sumbitImageURL");
           editor = iframe.contentWindow.editor;
           url = $(this).parent().children('#imageUrl').first()[0];
           editor.insertImage(url.value);
           $(this).parent().parent().removeClass('drop-open');
-          console.log(editor);
+          $(this).parent().children('#imageUrl').attr('value', '');
         });
       });
 
