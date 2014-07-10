@@ -49,8 +49,7 @@ $(document).ready(function() {
 
         $('.submitLink').click(function () {
           editor = iframe.contentWindow.editor;
-          url = $(this).parent().children('#url').first()[0];
-          editor.makeLink(url.value);
+          editor.makeLink($(this).parent().children('#url').first().val());
           $(this).parent().parent().removeClass('drop-open');
           $(this).parent().children('#url').attr('value', '');
         });
@@ -115,6 +114,7 @@ $(document).ready(function() {
         } else if (test.isNotValue('makeLink') | test.isNotValue('insertImage') | test.isNotValue('selectFont')) {
           // do nothing these are dropdowns.
         } else {
+          console.log($(this).data('action'));
           editor[$(this).data('action')]();
         }
       });

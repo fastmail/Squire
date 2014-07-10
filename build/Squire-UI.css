@@ -87,7 +87,14 @@ input[type=text] {
 .menu .item:first-child {
     border-left:none;
 }
-
+.menu {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
 .drop {
     border: 1px solid #dbdbdb;
     padding: 14px;
