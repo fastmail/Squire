@@ -1,0 +1,67 @@
+<div class="menu" contenteditable="false">
+    <div class="group">
+        <div data-action="bold"  class="item"><i class="fa fa-bold"></i></div>
+        <div data-action="italic"  class="item"><i  class="fa fa-italic"></i></div>
+        <div data-action="underline"  class="item"><i class="fa fa-underline"></i></div>
+        <div id="selectFont" data-action="selectFont"  class="item">
+            <i class="fa fa-font"></i>
+        </div>
+    </div>
+    <div class="group">
+        <div id="makeLink" data-action="makeLink" class="item"><i class="fa fa-link"></i></div>
+        <div data-action="makeOrderedList"  class="item"><i class="fa fa-list"></i></div>
+        <div id="insertImage" data-action="insertImage"  class="item">
+            <i class="fa fa-picture-o"></i>
+        </div>
+        <div data-action="increaseQuoteLevel"  class="item"><i class="fa fa-quote-right"></i></div>
+    </div>
+
+    <div class="group">
+        <div data-action="makeHeading"  data-action="" class="item"><i class="fa fa-header"></i></div>
+        <div data-action="alignLeft"  data-action="" class="item"><i class="fa fa-align-left"></i></div>
+        <div data-action="alignCenter"  data-action="" class="item"><i class="fa fa-align-center"></i></div>
+        <div data-action="alignRight"  data-action=""class="item"><i class="fa fa-align-right"></i></div>
+    </div>
+    
+    <div class="group">
+        <div data-action="undo"  class="item"><i class="fa fa-undo"></i></div>
+        <div data-action="redo"  class="item"><i class="fa fa-undo flip"></i></div>
+    </div>
+</div>
+<div class="templates hidden">
+    <div id="drop-font">
+        <strong>Change Font</strong>
+        <i class="fa fa-chevron-up quit"></i><br>
+        Text Size: 
+        <select id="textSelector">
+            <option data-size="12">Small</option>
+            <option data-size="24">Medium</option>
+            <option data-size="30">Large</option>
+        </select>
+        <br>        Font: 
+        <select id="fontSelect">
+            <option data-fonts="georgia">Georgia</option>
+            <option data-fonts="arial">Arial</option>
+            <option data-fonts="helvetica, arial">Helvetica</option>
+            <option data-fonts="menlo, consolas, courier new, monospace">Monospace</option>
+            <option data-fonts="\"Times New Roman\", times">Times New Roman</option>
+            <option data-fonts="tahoma, sans-serif">Tahoma</option>
+            <option data-fonts="\"Trebuchet MS\"">Trebuchet MS</option>
+            <option data-fonts="verdana">Verdana</option>
+        </select><br>
+
+        <div class="btn submitFont">Apply</div>
+    </div>
+    <div id="drop-link">
+        <strong>Insert Link</strong>
+        <i class="fa fa-chevron-up quit"></i>
+        <input placeholder="Link URL" type="text" id="url" />
+        <div class="btn submitLink">Insert</div>
+    </div>
+    <div id="drop-image">
+        <strong>Insert Image</strong>
+        <i class="fa fa-chevron-up quit"></i>
+        <input placeholder="Image URL" type="text" id="imageUrl" />
+        <div class="btn sumbitImageURL">Insert</div>
+    </div>
+</div>
