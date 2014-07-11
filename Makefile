@@ -15,6 +15,9 @@ fonts:
 jQuery:
 	cp -r source/assets/jQuery build
 
+bootstrap:
+	cp -r source/assets/bootstrap build
+
 build/Squire-UI.html: source/Squire-UI.html
 	mkdir -p $(@D)
 	cp $^ $@

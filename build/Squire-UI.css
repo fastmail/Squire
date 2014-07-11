@@ -88,6 +88,7 @@ input[type=text] {
     border-left:none;
 }
 .menu {
+    text-align: center;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
