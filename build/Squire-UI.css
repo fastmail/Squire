@@ -1,12 +1,40 @@
 body {
-    position: relative;
-    margin: 0 auto;
-    padding: 50px;
-    width: 70%;
-    font: 400 14px/1.24 helvetica, arial, sans-serif;
-    text-shadow: 0 1px 0 white;
-  }
-  
+    margin: 0;
+    font-family: 'Lato', sans-serif !important;
+}
+
+.header {
+    padding: 50px 0 30px;
+    color: #fff;
+    text-align: center;
+    background: #1d193d;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    font-size: 8em;
+    line-height: 1em;
+    font-weight: 900;
+}
+
+.header h2 {
+    margin-bottom: 1em;
+    font-size: 3em;
+    font-weight: 300;
+    text-transform: lowercase;
+    color: #afaedf;
+}
+
+    .col-centered{
+        float: none;
+        margin: 0 auto;
+        width: 80%;
+    }
+
+.alignCenter {
+    text-align: center;
+}
+
 iframe {
     width: 100%; 
     border: 1px #919191 solid;

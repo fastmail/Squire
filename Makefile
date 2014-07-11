@@ -5,7 +5,7 @@ all: build ui
 clean:
 	rm -rf build
 
-ui: build/Squire-UI.html build/Squire-UI.css build/Squire-UI.js fonts jQuery
+ui: build/Squire-UI.html build/Squire-UI.css build/Squire-UI.js fonts jQuery bootstrap
 
 build: build/ie8.js build/squire.js build/document.html 
 
