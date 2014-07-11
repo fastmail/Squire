@@ -15,6 +15,12 @@
         </div>
         <div data-action="increaseQuoteLevel"  class="item"><i class="fa fa-quote-right"></i></div>
     </div>
+
+    <div class="group">
+        <div data-action="makeOrderedList"  class="item"><i class="fa fa-list"></i></div>
+        <div data-action="makeOrderedList"  class="item"><i class="fa fa-list"></i></div>
+        <div data-action="makeOrderedList"  class="item"><i class="fa fa-list"></i></div>
+    </div>
     
     <div class="group">
         <div data-action="undo"  class="item"><i class="fa fa-undo"></i></div>
@@ -23,21 +29,22 @@
 </div>
 <div class="templates hidden">
     <div id="drop-font">
-        <strong>Insert Link</strong>
+        <strong>Change Font</strong>
         <i class="fa fa-chevron-up quit"></i><br>
-        Text Size: <input type="number" min="12" max="72" step="6" value="12" name="font-size">
+        Text Size: <input id="textSelector" type="text" min="12" max="72" step="6" placeholder="12" name="font-size">
         <br>
         Font: 
-        <select>
-            <option data-fonts="georgia, serif">Georgia</option>
-            <option data-fonts="arial, sans-serif">Arial</option>
-            <option data-fonts="helvetica, arial, sans-serif">Helvetica</option>
+        <select id="fontSelect">
+            <option data-fonts="georgia">Georgia</option>
+            <option data-fonts="arial">Arial</option>
+            <option data-fonts="helvetica, arial">Helvetica</option>
             <option data-fonts="menlo, consolas, courier new, monospace">Monospace</option>
-            <option data-fonts="\"Times New Roman\", times, serif">Times New Roman</option>
+            <option data-fonts="\"Times New Roman\", times">Times New Roman</option>
             <option data-fonts="tahoma, sans-serif">Tahoma</option>
-            <option data-fonts="\"Trebuchet MS\", sans-serif ">Trebuchet MS</option>
-            <option data-fonts="verdana, sans-serif">Verdana</option>
+            <option data-fonts="\"Trebuchet MS\"">Trebuchet MS</option>
+            <option data-fonts="verdana">Verdana</option>
         </select>
+        <div class="btn submitFont">Apply</div>
     </div>
     <div id="drop-link">
         <strong>Insert Link</strong>

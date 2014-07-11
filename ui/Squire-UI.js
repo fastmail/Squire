@@ -1,10 +1,3 @@
-if (typeof buildPath == "undefined") {
-  buildPath = 'build/';
-}
-
-function buildPathConCat(value) {
-  return buildPath + value;
-}
 $(document).ready(function() {
   Squire.prototype.testPresenceinSelection = function(name, action, format,
     validation) {
@@ -17,6 +10,9 @@ $(document).ready(function() {
     }
   };
   SquireUI = function(options) {
+    if (typeof options.buildPath == "undefined") {
+      options.buildPath = 'build/';
+    }
     // Create instance of iFrame
     var container, editor;
     if (options.replace) {
@@ -33,8 +29,7 @@ $(document).ready(function() {
     div.className = 'Squire-UI';
     iframe.height = options.height;
 
-
-    $(div).load(buildPath + 'Squire-UI.html', function() {
+    $(div).load(options.buildPath + 'Squire-UI.html', function() {
       this.linkDrop = new Drop({
         target: $('#makeLink').first()[0],
         content: $('#drop-link').html(),
@@ -48,7 +43,7 @@ $(document).ready(function() {
         });
 
         $('.submitLink').click(function () {
-          editor = iframe.contentWindow.editor;
+          var editor = iframe.contentWindow.editor;
           editor.makeLink($(this).parent().children('#url').first().val());
           $(this).parent().parent().removeClass('drop-open');
           $(this).parent().children('#url').attr('value', '');
@@ -69,7 +64,7 @@ $(document).ready(function() {
         
         $('.sumbitImageURL').unbind().click(function () {
           console.log("Passed through .sumbitImageURL");
-          editor = iframe.contentWindow.editor;
+          var editor = iframe.contentWindow.editor;
           url = $(this).parent().children('#imageUrl').first()[0];
           editor.insertImage(url.value);
           $(this).parent().parent().removeClass('drop-open');
@@ -86,13 +81,20 @@ $(document).ready(function() {
       });
 
       this.fontDrop.on('open', function () {
-        $('.quit').unbind().click(function () {
+        $('.quit').click(function () {
           $(this).parent().parent().removeClass('drop-open');
         });
-        
-        $('.sumbitImageURL').unbind().click(function () {
-       
+
+        $('.submitFont').unbind().click(function () {
+          var editor = iframe.contentWindow.editor;
+          var selectedFonts = $('select#fontSelect option:selected').last().data('fonts');
+          var fontSize = $('input#textSelector').val();
+          editor.setFontFace(selectedFonts);
+          editor.setFontSize(fontSize);
+          $(this).parent().parent().removeClass('drop-open');
         });
+
+        
       });
 
       $('.item').click(function() {
@@ -130,18 +132,25 @@ $(document).ready(function() {
         } else if (test.isNotValue('makeLink') | test.isNotValue('insertImage') | test.isNotValue('selectFont')) {
           // do nothing these are dropdowns.
         } else {
-          if (editor.getSelectedText() === '' && (action == 'insertImage' || action == 'makeOrderedList' || action == 'increaseQuoteLevel') == false) return;
-          editor[action]();
+          if (editor.getSelectedText() === '' && !(action == 'insertImage' || action == 'makeOrderedList' || action == 'increaseQuoteLevel' || action == 'redo' || action == 'undo')) return;
+            editor[action]();
         }
       });
     });
+
     $(container).append(div);
     $(container).append(iframe);
+
+    var style = document.createElement('style');
+    style.innerHTML = 'blockquote { border-left: 3px green solid; padding-left: 5px; }';
+    
+
     iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
     iframe.addEventListener('load', function() {
       iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
     });
-    
+
+    iframe.contentWindow.document.head.appendChild(style);
     return iframe.contentWindow.editor;
   };
 });
