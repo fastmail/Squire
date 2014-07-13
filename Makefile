@@ -1,11 +1,34 @@
 .PHONY: all build clean
 
-all: build
+all: build ui
 
 clean:
 	rm -rf build
 
-build: build/ie8.js build/squire.js build/document.html
+ui: build/Squire-UI.html build/Squire-UI.css build/Squire-UI.js fonts jQuery bootstrap
+
+build: build/ie8.js build/squire.js build/document.html 
+
+fonts:
+	cp -r source/assets/font-awesome build
+
+jQuery:
+	cp -r source/assets/jQuery build
+
+bootstrap:
+	cp -r source/assets/bootstrap build
+
+build/Squire-UI.html: source/Squire-UI.html
+	mkdir -p $(@D)
+	cp $^ $@
+
+build/Squire-UI.css: source/Squire-UI.css source/assets/drop/drop-theme-arrows.css source/assets/font-awesome/font-awesome.min.css
+	mkdir -p $(@D)
+	cat $^ >$@
+
+build/Squire-UI.js: source/Squire-UI.js source/assets/drop/drop.min.js 
+	mkdir -p $(@D)
+	cat $^ >$@
 
 build/ie8.js: source/ie8types.js source/ie8dom.js source/ie8range.js
 	mkdir -p $(@D)
