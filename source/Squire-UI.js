@@ -124,6 +124,7 @@ $(document).ready(function() {
           testQuote: editor.testPresenceinSelection(
             'increaseQuoteLevel', action, 'blockquote', (
               />blockquote\b/)),
+          testHeading: editor.testPresenceinSelection('makeHeading', action, 'H1', (/>H1\b/)),
           isNotValue: function (a) {return (a == action && this.value !== ''); }
         };
 
@@ -131,20 +132,20 @@ $(document).ready(function() {
         editor.alignCenter = function () { editor.setTextAlignment('center'); };
         editor.alignLeft = function () { editor.setTextAlignment('left'); };
         editor.alignJustify = function () { editor.setTextAlignment('justify'); };
-        editor.makeHeading = function () { editor.setFontSize('2em'); editor.bold(); };
 
-        if (test.testBold | test.testItalic | test.testUnderline | test.testOrderedList | test.testLink | test.testQuote) {
+        if (test.testBold | test.testItalic | test.testUnderline | test.testOrderedList | test.testLink | test.testQuote | test.testHeading) {
           if (test.testBold) editor.removeBold();
           if (test.testItalic) editor.removeItalic();
           if (test.testUnderline) editor.removeUnderline();
           if (test.testLink) editor.removeLink();
           if (test.testOrderedList) editor.removeList();
           if (test.testQuote) editor.decreaseQuoteLevel();
+          if (test.testHeading) editor.removeHeading();
         } else if (test.isNotValue('makeLink') | test.isNotValue('insertImage') | test.isNotValue('selectFont')) {
           // do nothing these are dropdowns.
         } else {
-          if (editor.getSelectedText() === '' && !(action == 'insertImage' || action == 'makeOrderedList' || action == 'increaseQuoteLevel' || action == 'redo' || action == 'undo')) return;
-            editor[action]();
+          if (editor.getSelectedText() === '' && !(action == 'insertImage' || action == 'makeOrderedList' || action == 'increaseQuoteLevel' || action == 'redo' || action == 'undo' || action == "makeHeading")) return;
+          editor[action]();
         }
       });
     });
