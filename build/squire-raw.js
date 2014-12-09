@@ -138,7 +138,7 @@ TreeWalker.prototype.previousNode = function () {
 };
 /*jshint strict:false, undef:false, unused:false */
 
-var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|FN|EL)|EM|FONT|HR|I(?:NPUT|MG|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:U[BP]|PAN|TR(?:IKE|ONG)|MALL|AMP)?|U|VAR|WBR)$/;
+var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|FN|EL)|EM|FONT|HR|H1|I(?:NPUT|MG|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:U[BP]|PAN|TR(?:IKE|ONG)|MALL|AMP)?|U|VAR|WBR)$/;
 
 var leafNodeNames = {
     BR: 1,
@@ -2060,6 +2060,7 @@ var makeOrderedList = function ( frag ) {
     return frag;
 };
 
+
 var removeList = function ( frag ) {
     var lists = frag.querySelectorAll( 'UL, OL' ),
         i, l, ll, list, listFrag, children, child;
@@ -3408,6 +3409,23 @@ proto.setTextDirection = function ( direction ) {
             ' dir-' + direction ).trim();
         block.dir = direction;
     }, true );
+    return this.focus();
+};
+
+proto.makeHeading =  function () {
+    var range = this.getSelection();
+    this.changeFormat({
+        tag: 'H1',
+    }, null, range );
+    return this.focus();
+};
+
+proto.removeHeading = function () {
+    var range = this.getSelection();
+    this.changeFormat( null, {
+        tag: 'H1',
+        attributes: {}
+    }, range, false);
     return this.focus();
 };
 
