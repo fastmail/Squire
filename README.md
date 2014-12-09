@@ -50,7 +50,7 @@ same page efficiently.
 License
 -------
 
-Squire is released under the MIT license. See License.txt for full license.
+Squire is released under the MIT license. See License for full license.
 
 API
 ---
