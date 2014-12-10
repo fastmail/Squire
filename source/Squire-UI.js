@@ -61,7 +61,7 @@ $(document).ready(function() {
         $('.quit').unbind().click(function () {
           $(this).parent().parent().removeClass('drop-open');
         });
-        
+
         $('.sumbitImageURL').unbind().click(function () {
           console.log("Passed through .sumbitImageURL");
           var editor = iframe.contentWindow.editor;
@@ -90,7 +90,7 @@ $(document).ready(function() {
           var selectedFonts = $('select#fontSelect option:selected').last().data('fonts');
           var fontSize =  $('select#textSelector option:selected').last().data('size') + 'px';
           editor.setFontSize(fontSize);
-          
+
           try {
             editor.setFontFace(selectedFonts);
           } catch (e) {
@@ -98,17 +98,17 @@ $(document).ready(function() {
           } finally {
             $(this).parent().parent().removeClass('drop-open');
           }
-          
+
         });
 
-        
+
       });
 
       $('.item').click(function() {
         var iframe = $(this).parents('.Squire-UI').next('iframe').first()[0];
         var editor = iframe.contentWindow.editor;
         var action = $(this).data('action');
-        
+
         test = {
           value: $(this).data('action'),
           testBold: editor.testPresenceinSelection('bold',
@@ -143,18 +143,18 @@ $(document).ready(function() {
         } else if (test.isNotValue('makeLink') | test.isNotValue('insertImage') | test.isNotValue('selectFont')) {
           // do nothing these are dropdowns.
         } else {
-          if (editor.getSelectedText() === '' && !(action == 'insertImage' || action == 'makeOrderedList' || action == 'increaseQuoteLevel' || action == 'redo' || action == 'undo')) return;
             editor[action]();
+            editor.focus();
         }
       });
     });
-    
+
     $(container).append(div);
     $(container).append(iframe);
 
     var style = document.createElement('style');
     style.innerHTML = 'blockquote { border-left: 3px green solid; padding-left: 5px; }';
-    
+
 
     iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
     iframe.addEventListener('load', function() {
