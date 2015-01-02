@@ -1,6 +1,6 @@
 /* Copyright © 2011-2013 by Neil Jenkins. MIT Licensed. */
 
-( function ( doc, undefined ) {
+(function ( doc, undefined ) {
 
 "use strict";
 /*jshint strict:false, undef:false, unused:false */
