@@ -14,12 +14,5 @@
     "undef": true,
     "strict": true,
     "trailing": true,
-    "predef": [ "navigator" ],
-    "predef": [ "MutationObserver" ],
-    "predef": [ "top" ],
-    "predef": [ "setTimeout" ],
-    "predef": [ "document" ],
-    "predef": [ "win" ],
-    "predef": [ "doc" ],
-    "predef": [ "Squire" ]
+    "devel": true
 }
