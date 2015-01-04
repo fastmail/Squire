@@ -2283,12 +2283,12 @@ proto.setFontSize = function ( size ) {
     return this.focus();
 };
 
-proto.setTextColour = function ( colour ) {
+proto.setTextColor = proto.setTextColour =function ( color ) {
     this.changeFormat({
         tag: 'SPAN',
         attributes: {
             'class': 'colour',
-            style: 'color: ' + colour
+            style: 'color: ' + color
         }
     }, {
         tag: 'SPAN',
@@ -2297,12 +2297,12 @@ proto.setTextColour = function ( colour ) {
     return this.focus();
 };
 
-proto.setHighlightColor = function ( colour ) {
+proto.setHighlightColor = proto.setHighlightColour = function ( color ) {
     this.changeFormat({
         tag: 'SPAN',
         attributes: {
             'class': 'highlight',
-            style: 'background-color: ' + colour
+            style: 'background-color: ' + color
         }
     }, {
         tag: 'SPAN',
