@@ -260,7 +260,7 @@ This method takes one argument:
 
 Returns self (the Squire instance).
 
-### setHighlightColour
+### setHighlightColor
 
 Sets the colour of the background of the selected text.
 

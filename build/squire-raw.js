@@ -3375,7 +3375,7 @@ proto.setTextColour = function ( colour ) {
     return this.focus();
 };
 
-proto.setHighlightColour = function ( colour ) {
+proto.setHighlightColor = function ( colour ) {
     this.changeFormat({
         tag: 'SPAN',
         attributes: {
