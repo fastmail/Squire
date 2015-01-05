@@ -1,0 +1,18 @@
+{
+    "boss": true,
+    "curly": true,
+    "eqeqeq": true,
+    "eqnull": true,
+    "globalstrict": true,
+    "immed": true,
+    "latedef": true,
+    "newcap": true,
+    "noarg": true,
+    "quotmark": false,
+    "regexp": false,
+    "unused": true,
+    "undef": true,
+    "strict": true,
+    "trailing": true,
+    "devel": true
+}

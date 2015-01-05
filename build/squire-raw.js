@@ -1,9 +1,10 @@
 /* Copyright © 2011-2013 by Neil Jenkins. MIT Licensed. */
 
-( function ( doc, undefined ) {
+/*jshint strict:false, undef:false, unused:false */
+/* global navigator, MutationObserver, top, setTimeout, document */
+(function ( doc, undefined ) {
 
 "use strict";
-/*jshint strict:false, undef:false, unused:false */
 
 var DOCUMENT_POSITION_PRECEDING = 2; // Node.DOCUMENT_POSITION_PRECEDING
 var ELEMENT_NODE = 1;                // Node.ELEMENT_NODE;
