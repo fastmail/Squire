@@ -1,4 +1,5 @@
-/*jshint strict:false, undef:false, unused:false */
+/*jshint strict:false, undef:false, unused:false, -W079 */
+/* global moveRangeBoundariesDownTree, moveRangeBoundariesUpTree, getStartBlockOfRange, getEndBlockOfRange */
 
 var getNodeBefore = function ( node, offset ) {
     var children = node.childNodes;
