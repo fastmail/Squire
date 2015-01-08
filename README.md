@@ -352,3 +352,16 @@ Returns self (the Squire instance).
 Decreases by 1 the nesting level of any at-least-partially selected blocks which are part of a list.
 
 Returns self (the Squire instance).
+
+### makeCodeSnippet ###
+
+Makes the currently selected text a code snippet. The entire selection is wrapped in a  `<pre>` tag. Each line is wrapped in a  `<code>` tag within a  `<div>` tag. If no text is selected, the input mode is set to a code snippet.
+Lines are located at the path `PRE > DIV > CODE`.
+
+Returns self (the Squire instance).
+
+### removeCodeSnippet ###
+
+Removes any `<pre>` or `<code>` tags, that are currently (at least partially) selected.
+
+Returns self (the Squire instance).

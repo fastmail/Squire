@@ -2339,6 +2339,44 @@ proto.setTextDirection = function ( direction ) {
     return this.focus();
 };
 
+proto.makeCodeSnippet = function () {
+    this.changeFormat({
+        tag: 'CODE'
+    }, null, this.getSelection(), true );
+    
+    this.modifyBlocks(function ( frag ) {
+        if (frag.querySelectorAll( 'pre' ).length === 0) {
+            return this.createElement( 'PRE', [
+                frag
+            ]);
+        } else {
+            // Return original fragment, prevent adding more than one pre tag.
+            return frag;
+        }
+    });
+    
+    return this.focus();
+};
+
+proto.removeCodeSnippet = function () {
+    this.changeFormat( null, {
+        tag: 'CODE'
+    }, this.getSelection(), true );
+
+    this.modifyBlocks(function ( frag ) {
+        var pres = frag.querySelectorAll( 'pre' );
+        Array.prototype.filter.call( pres, function ( el ) {
+            return !getNearest( el.parentNode, 'PRE' );
+        }).forEach( function ( el ) {
+            replaceWith( el, empty( el ) );
+        });
+        
+        return frag;
+    });
+
+    return this.focus();
+};
+
 proto.increaseQuoteLevel = command( 'modifyBlocks', increaseBlockQuoteLevel );
 proto.decreaseQuoteLevel = command( 'modifyBlocks', decreaseBlockQuoteLevel );
 
