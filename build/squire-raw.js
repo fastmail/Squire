@@ -687,14 +687,77 @@ var insertNodeInRange = function ( range, node ) {
 
     childCount = children.length;
 
+    /**
+     * Merge the given text node and the one on its left together into one text node.
+     */
+    var mergeLeft = function ( node ) {
+        if ( node.nodeType !== TEXT_NODE ) return;
+        var prev = node.previousSibling;
+        if ( prev && prev.nodeType === TEXT_NODE ) {
+            // Update the end of the selection if it'll be affected by our merge
+            var prevIndex = indexOf.call( endContainer.childNodes, prev );
+            if ( prevIndex >= 0 ) {
+                if ( prevIndex <= endOffset ) {
+                    endOffset--;
+                } else if ( prevIndex + 1 === endOffset ) {
+                    // It ends between the nodes we're merging. So find the index into that node.
+                    endContainer = prev;
+                    endOffset = prev.data.length;
+                }
+            }
+            if ( endContainer === prev ) {
+                endOffset += node.data.length;
+            }
+            // The updated selection will start in the middle of the previous element now.
+            startContainer = prev;
+            startOffset = prev.data.length;
+
+            prev.appendData( node.data );
+            node.parentNode.removeChild( node );
+
+            return prev;
+        }
+    }
+
+    /**
+     * Merge the given text node and the one on its right together into one text node.
+     */
+    var mergeRight = function ( node ) {
+        if ( node.nodeType !== TEXT_NODE ) return;
+        var next = node.nextSibling;
+        if ( next && next.nodeType === TEXT_NODE ) {
+            var nextIndex = indexOf.call( endContainer.childNodes, next );
+            if ( nextIndex >= 0 ) {
+                if ( nextIndex <= endOffset ) {
+                    endOffset--;
+                } else if ( nextIndex + 1 === endOffset ) {
+                    // It ends between the nodes we're merging. So find the index into that node.
+                    endContainer = next;
+                    endOffset = 0;
+                }
+            }
+            if ( endContainer === next ) {
+                endContainer = node;
+                endOffset += node.data.length;
+            }
+            node.appendData( next.data );
+            next.parentNode.removeChild( next );
+        }
+    }
+
     if ( startOffset === childCount) {
         startContainer.appendChild( node );
     } else {
         startContainer.insertBefore( node, children[ startOffset ] );
     }
+
     if ( startContainer === endContainer ) {
         endOffset += children.length - childCount;
     }
+
+    // If we split a text node, merge the text nodes back together
+    var insertedNode = children[ startOffset ];
+    mergeRight( mergeLeft( insertedNode ) || insertedNode );
 
     range.setStart( startContainer, startOffset );
     range.setEnd( endContainer, endOffset );
