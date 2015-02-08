@@ -248,7 +248,7 @@ function detach ( node ) {
 function replaceWith ( node, node2 ) {
     var parent = node.parentNode;
     if ( parent ) {
-        parent.replaceChild( node2, node );
+        return parent.replaceChild( node2, node );
     }
 }
 function empty ( node ) {
