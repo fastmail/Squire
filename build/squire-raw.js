@@ -277,9 +277,13 @@ function createElement ( doc, tag, props, children ) {
         }
     }
     if ( children ) {
+      if (Array.isArray(children)) {
         for ( i = 0, l = children.length; i < l; i += 1 ) {
             el.appendChild( children[i] );
         }
+      } else if (typeof children === 'string') {
+        el.innerHTML = children;
+      }
     }
     return el;
 }
