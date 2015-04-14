@@ -2263,6 +2263,49 @@ proto.insertImage = function ( src ) {
     return img;
 };
 
+proto.insertHTML = function ( html ) {
+    var self = this,
+        range = this.getSelection(),
+        frag = this._doc.createDocumentFragment(),
+        div = this.createElement( 'DIV' );
+
+    // Parse HTML into DOM tree
+    div.innerHTML = html;
+    frag.appendChild( empty( div ) );
+
+    // Record undo checkpoint
+    self._recordUndoState( range );
+    self._getRangeAndRemoveBookmark( range );
+
+
+    try {
+        frag.normalize();
+        addLinks( frag );
+        cleanTree( frag, true );
+        cleanupBRs( frag );
+        removeEmptyInlines( frag );
+        fixContainer( frag );
+
+        var node = frag;
+        while ( node = getNextBlock( node ) ) {
+            fixCursor( node );
+        }
+
+        insertTreeFragmentIntoRange( range, frag );
+        if ( !canObserveMutations ) {
+            self._docWasChanged();
+        }
+        range.collapse( false );
+        self._ensureBottomLine();
+
+        self.setSelection( range );
+        self._updatePath( range, true );
+
+    } catch ( error ) {
+        self.didError( error );
+    }
+};
+
 // --- Formatting ---
 
 var command = function ( method, arg, arg2 ) {
