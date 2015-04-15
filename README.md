@@ -138,7 +138,7 @@ Returns a reference to the newly inserted image element.
 
 ### insertHTML
 
-Inserts an HTML fragment at the current cursor location. The value supplied should not contain `<body>` tags or anything outside of that.
+Inserts an HTML fragment at the current cursor location, or replaces the selection if selected. The value supplied should not contain `<body>` tags or anything outside of that.
 
 The method takes one argument:
 
