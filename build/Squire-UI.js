@@ -149,19 +149,29 @@ $(document).ready(function() {
       });
     });
 
+    iframe.addEventListener('load', function() {
+      // Make sure we're in standards mode.
+      var doc = iframe.contentDocument;
+      if ( doc.compatMode !== 'CSS1Compat' ) {
+          doc.open();
+          doc.write( '<!DOCTYPE html><title></title>' );
+          doc.close();
+      }
+      // doc.close() can cause a re-entrant load event in some browsers,
+      // such as IE9.
+      if ( iframe.contentWindow.editor ) {
+          return;
+      }
+      iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
+      iframe.contentWindow.document.head.appendChild(style);
+    });
+
     $(container).append(div);
     $(container).append(iframe);
 
     var style = document.createElement('style');
     style.innerHTML = 'blockquote { border-left: 3px green solid; padding-left: 5px; }';
 
-
-    iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
-    iframe.addEventListener('load', function() {
-      iframe.contentWindow.editor = new Squire(iframe.contentWindow.document);
-    });
-
-    iframe.contentWindow.document.head.appendChild(style);
     return iframe.contentWindow.editor;
   };
 });

@@ -3,7 +3,6 @@
 ( function ( doc, undefined ) {
 
 "use strict";
-/*jshint strict:false, undef:false, unused:false */
 
 var DOCUMENT_POSITION_PRECEDING = 2; // Node.DOCUMENT_POSITION_PRECEDING
 var ELEMENT_NODE = 1;                // Node.ELEMENT_NODE;
@@ -16,6 +15,8 @@ var START_TO_END = 1;   // Range.START_TO_END
 var END_TO_END = 2;     // Range.END_TO_END
 var END_TO_START = 3;   // Range.END_TO_START
 
+var ZWS = '\u200B';
+
 var win = doc.defaultView;
 
 var ua = navigator.userAgent;
@@ -24,29 +25,22 @@ var isIOS = /iP(?:ad|hone|od)/.test( ua );
 var isMac = /Mac OS X/.test( ua );
 
 var isGecko = /Gecko\//.test( ua );
-var isIE8or9or10 = /Trident\/[456]\./.test( ua );
-var isIE8 = ( win.ie === 8 );
+var isIElt11 = /Trident\/[456]\./.test( ua );
 var isPresto = !!win.opera;
 var isWebKit = /WebKit\//.test( ua );
 
 var ctrlKey = isMac ? 'meta-' : 'ctrl-';
 
-var useTextFixer = isIE8or9or10 || isPresto;
-var cantFocusEmptyTextNodes = isIE8or9or10 || isWebKit;
-var losesSelectionOnBlur = isIE8or9or10;
-var hasBuggySplit = function ( doc ) {
-    var div = doc.createElement( 'DIV' ),
-        text = doc.createTextNode( '12' );
-    div.appendChild( text );
-    text.splitText( 2 );
-    return div.childNodes.length !== 2;
-};
+var useTextFixer = isIElt11 || isPresto;
+var cantFocusEmptyTextNodes = isIElt11 || isWebKit;
+var losesSelectionOnBlur = isIElt11;
+
+var canObserveMutations = typeof MutationObserver !== 'undefined';
 
 // Use [^ \t\r\n] instead of \S so that nbsp does not count as white-space
 var notWS = /[^ \t\r\n]/;
 
 var indexOf = Array.prototype.indexOf;
-/*jshint strict:false */
 
 /*
     Native TreeWalker is buggy in IE and Opera:
@@ -136,7 +130,6 @@ TreeWalker.prototype.previousNode = function () {
         current = node;
     }
 };
-/*jshint strict:false, undef:false, unused:false */
 
 var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|FN|EL)|EM|FONT|HR|I(?:NPUT|MG|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:U[BP]|PAN|TR(?:IKE|ONG)|MALL|AMP)?|U|VAR|WBR)$/;
 
@@ -298,12 +291,14 @@ function fixCursor ( node ) {
     // cursor to appear.
     var doc = node.ownerDocument,
         root = node,
-        fixer, child,
-        l, instance;
+        fixer, child, instance;
 
     if ( node.nodeName === 'BODY' ) {
         if ( !( child = node.firstChild ) || child.nodeName === 'BR' ) {
-            fixer = doc.createElement( 'DIV' );
+            instance = getSquireInstance( doc );
+            fixer = instance ?
+                instance.createDefaultBlock() :
+                createElement( doc, 'DIV' );
             if ( child ) {
                 node.replaceChild( fixer, child );
             }
@@ -324,15 +319,8 @@ function fixCursor ( node ) {
         }
         if ( !child ) {
             if ( cantFocusEmptyTextNodes ) {
-                fixer = doc.createTextNode( '\u200B' );
-                // Find the relevant Squire instance and notify
-                l = instances.length;
-                while ( l-- ) {
-                    instance = instances[l];
-                    if ( instance._doc === doc ) {
-                        instance._didAddZWS();
-                    }
-                }
+                fixer = doc.createTextNode( ZWS );
+                getSquireInstance( doc )._didAddZWS();
             } else {
                 fixer = doc.createTextNode( '' );
             }
@@ -358,7 +346,7 @@ function fixCursor ( node ) {
             }
         }
         else if ( !node.querySelector( 'BR' ) ) {
-            fixer = doc.createElement( 'BR' );
+            fixer = createElement( doc, 'BR' );
             while ( ( child = node.lastElementChild ) && !isInline( child ) ) {
                 node = child;
             }
@@ -431,6 +419,11 @@ function split ( node, offset, stopNode ) {
             next = offset.nextSibling;
             clone.appendChild( offset );
             offset = next;
+        }
+
+        // Maintain li numbering if inside a quote.
+        if ( node.nodeName === 'OL' && getNearest( node, 'BLOCKQUOTE' ) ) {
+            clone.start = ( +node.start || 1 ) + node.childNodes.length - 1;
         }
 
         // DO NOT NORMALISE. This may undo the fixCursor() call
@@ -568,7 +561,7 @@ function mergeContainers ( node ) {
     if ( prev && areAlike( prev, node ) ) {
         if ( !isContainer( prev ) ) {
             if ( isListItem ) {
-                block = doc.createElement( 'DIV' );
+                block = createElement( doc, 'DIV' );
                 block.appendChild( empty( prev ) );
                 prev.appendChild( block );
             } else {
@@ -585,12 +578,11 @@ function mergeContainers ( node ) {
             mergeContainers( first );
         }
     } else if ( isListItem ) {
-        prev = doc.createElement( 'DIV' );
+        prev = createElement( doc, 'DIV' );
         node.insertBefore( prev, first );
         fixCursor( prev );
     }
 }
-/*jshint strict:false, undef:false, unused:false */
 
 var getNodeBefore = function ( node, offset ) {
     var children = node.childNodes;
@@ -615,43 +607,6 @@ var getNodeAfter = function ( node, offset ) {
         }
     }
     return node;
-};
-
-// ---
-
-var forEachTextNodeInRange = function ( range, fn ) {
-    range = range.cloneRange();
-    moveRangeBoundariesDownTree( range );
-
-    var startContainer = range.startContainer,
-        endContainer = range.endContainer,
-        root = range.commonAncestorContainer,
-        walker = new TreeWalker(
-            root, SHOW_TEXT, function (/* node */) {
-                return true;
-        }, false ),
-        textnode = walker.currentNode = startContainer;
-
-    while ( !fn( textnode, range ) &&
-        textnode !== endContainer &&
-        ( textnode = walker.nextNode() ) ) {}
-};
-
-var getTextContentInRange = function ( range ) {
-    var textContent = '';
-    forEachTextNodeInRange( range, function ( textnode, range ) {
-        var value = textnode.data;
-        if ( value && ( /\S/.test( value ) ) ) {
-            if ( textnode === range.endContainer ) {
-                value = value.slice( 0, range.endOffset );
-            }
-            if ( textnode === range.startContainer ) {
-                value = value.slice( range.startOffset );
-            }
-            textContent += value;
-        }
-    });
-    return textContent;
 };
 
 // ---
@@ -700,6 +655,7 @@ var insertNodeInRange = function ( range, node ) {
     } else {
         startContainer.insertBefore( node, children[ startOffset ] );
     }
+
     if ( startContainer === endContainer ) {
         endOffset += children.length - childCount;
     }
@@ -725,7 +681,7 @@ var extractContentsOfRange = function ( range, common ) {
     var endNode = split( endContainer, endOffset, common ),
         startNode = split( startContainer, startOffset, common ),
         frag = common.ownerDocument.createDocumentFragment(),
-        next;
+        next, before, after;
 
     // End node will be null if at end of child nodes list.
     while ( startNode !== endNode ) {
@@ -734,9 +690,25 @@ var extractContentsOfRange = function ( range, common ) {
         startNode = next;
     }
 
-    range.setStart( common, endNode ?
+    startContainer = common;
+    startOffset = endNode ?
         indexOf.call( common.childNodes, endNode ) :
-            common.childNodes.length );
+        common.childNodes.length;
+
+    // Merge text nodes if adjacent. IE10 in particular will not focus
+    // between two text nodes
+    after = common.childNodes[ startOffset ];
+    before = after && after.previousSibling;
+    if ( before &&
+            before.nodeType === TEXT_NODE &&
+            after.nodeType === TEXT_NODE ) {
+        startContainer = before;
+        startOffset = before.length;
+        before.appendData( after.data );
+        detach( after );
+    }
+
+    range.setStart( startContainer, startOffset );
     range.collapse( true );
 
     fixCursor( common );
@@ -750,6 +722,11 @@ var deleteContentsOfRange = function ( range ) {
 
     // Remove selected range
     extractContentsOfRange( range );
+
+    // Move boundaries back down tree so that they are inside the blocks.
+    // If we don't do this, the range may be collapsed to a point between
+    // two blocks, so get(Start|End)BlockOfRange will return null.
+    moveRangeBoundariesDownTree( range );
 
     // If we split into two different blocks, merge the blocks.
     var startBlock = getStartBlockOfRange( range ),
@@ -769,14 +746,6 @@ var deleteContentsOfRange = function ( range ) {
     if ( !child || child.nodeName === 'BR' ) {
         fixCursor( body );
         range.selectNodeContents( body.firstChild );
-    }
-
-    // Ensure valid range (must have only block or inline containers)
-    var isCollapsed = range.collapsed;
-    moveRangeBoundariesDownTree( range );
-    if ( isCollapsed ) {
-        // Collapse
-        range.collapse( true );
     }
 };
 
@@ -799,7 +768,7 @@ var insertTreeFragmentIntoRange = function ( range, frag ) {
         deleteContentsOfRange( range );
     }
 
-    // Move range down into text ndoes
+    // Move range down into text nodes
     moveRangeBoundariesDownTree( range );
 
     // If inline, just insert at the current position.
@@ -807,11 +776,14 @@ var insertTreeFragmentIntoRange = function ( range, frag ) {
         insertNodeInRange( range, frag );
         range.collapse( false );
     }
-    // Otherwise, split up to body, insert inline before and after split
-    // and insert block in between split, then merge containers.
+    // Otherwise, split up to blockquote (if a parent) or body, insert inline
+    // before and after split and insert block in between split, then merge
+    // containers.
     else {
-        var nodeAfterSplit = split( range.startContainer, range.startOffset,
-                range.startContainer.ownerDocument.body ),
+        var splitPoint = range.startContainer,
+            nodeAfterSplit = split( splitPoint, range.startOffset,
+                getNearest( splitPoint.parentNode, 'BLOCKQUOTE' ) ||
+                splitPoint.ownerDocument.body ),
             nodeBeforeSplit = nodeAfterSplit.previousSibling,
             startContainer = nodeBeforeSplit,
             startOffset = startContainer.childNodes.length,
@@ -1083,19 +1055,33 @@ var expandRangeToBlockBoundaries = function ( range ) {
         range.setEnd( parent, indexOf.call( parent.childNodes, end ) + 1 );
     }
 };
-/*jshint strict:false, undef:false, unused:false */
 
 var instances = [];
+
+function getSquireInstance ( doc ) {
+    var l = instances.length,
+        instance;
+    while ( l-- ) {
+        instance = instances[l];
+        if ( instance._doc === doc ) {
+            return instance;
+        }
+    }
+    return null;
+}
 
 function Squire ( doc ) {
     var win = doc.defaultView;
     var body = doc.body;
+    var mutation;
+
     this._win = win;
     this._doc = doc;
     this._body = body;
 
     this._events = {};
 
+    this._sel = win.getSelection();
     this._lastSelection = null;
 
     // IE loses selection state of iframe on blur, so make sure we
@@ -1120,30 +1106,44 @@ function Squire ( doc ) {
     this._undoStack = [];
     this._undoStackLength = 0;
     this._isInUndoState = false;
+    this._ignoreChange = false;
 
-    this.defaultBlockProperties = undefined;
+    if ( canObserveMutations ) {
+        mutation = new MutationObserver( this._docWasChanged.bind( this ) );
+        mutation.observe( body, {
+            childList: true,
+            attributes: true,
+            characterData: true,
+            subtree: true
+        });
+        this._mutation = mutation;
+    } else {
+        this.addEventListener( 'keyup', this._keyUpDetectChange );
+    }
 
-    this.addEventListener( 'keyup', this._docWasChanged );
+    this.defaultBlockTag = 'DIV';
+    this.defaultBlockProperties = null;
 
     // IE sometimes fires the beforepaste event twice; make sure it is not run
     // again before our after paste function is called.
     this._awaitingPaste = false;
-    this.addEventListener( isIE8or9or10 ? 'beforecut' : 'cut', this._onCut );
-    this.addEventListener( isIE8or9or10 ? 'beforepaste' : 'paste', this._onPaste );
+    this.addEventListener( isIElt11 ? 'beforecut' : 'cut', this._onCut );
+    this.addEventListener( isIElt11 ? 'beforepaste' : 'paste', this._onPaste );
 
-    if ( isIE8 ) {
-        this.addEventListener( 'keyup', this._ieSelAllClean );
-    }
     // Opera does not fire keydown repeatedly.
     this.addEventListener( isPresto ? 'keypress' : 'keydown', this._onKey );
 
-    // Fix IE8/9's buggy implementation of Text#splitText.
+    // Fix IE<10's buggy implementation of Text#splitText.
     // If the split is at the end of the node, it doesn't insert the newly split
     // node into the document, and sets its value to undefined rather than ''.
     // And even if the split is not at the end, the original node is removed
     // from the document and replaced by another, rather than just having its
     // data shortened.
-    if ( hasBuggySplit( doc ) ) {
+    // We used to feature test for this, but then found the feature test would
+    // sometimes pass, but later on the buggy behaviour would still appear.
+    // I think IE10 does not have the same bug, but it doesn't hurt to replace
+    // its native fn too and then we don't need yet another UA category.
+    if ( isIElt11 ) {
         win.Text.prototype.splitText = function ( offset ) {
             var afterSplit = this.ownerDocument.createTextNode(
                     this.data.slice( offset ) ),
@@ -1182,7 +1182,8 @@ proto.createElement = function ( tag, props, children ) {
 
 proto.createDefaultBlock = function ( children ) {
     return fixCursor(
-        this.createElement( 'DIV', this.defaultBlockProperties, children )
+        this.createElement(
+            this.defaultBlockTag, this.defaultBlockProperties, children )
     );
 };
 
@@ -1244,6 +1245,9 @@ proto.destroy = function () {
         if ( !customEvents[ type ] ) {
             doc.removeEventListener( type, this, true );
         }
+    }
+    if ( this._mutation ) {
+        this._mutation.disconnect();
     }
     var l = instances.length;
     while ( l-- ) {
@@ -1322,7 +1326,7 @@ proto.setSelection = function ( range ) {
         if ( isIOS ) {
             this._win.focus();
         }
-        var sel = this._win.getSelection();
+        var sel = this._sel;
         sel.removeAllRanges();
         sel.addRange( range );
     }
@@ -1330,28 +1334,18 @@ proto.setSelection = function ( range ) {
 };
 
 proto.getSelection = function () {
-    var sel = this._win.getSelection(),
+    var sel = this._sel,
         selection, startContainer, endContainer;
     if ( sel.rangeCount ) {
         selection  = sel.getRangeAt( 0 ).cloneRange();
         startContainer = selection.startContainer;
         endContainer = selection.endContainer;
-        // FF sometimes throws an error reading the isLeaf property. Let's
-        // catch and log it to see if we can find what's going on.
-        try {
-            // FF can return the selection as being inside an <img>. WTF?
-            if ( startContainer && isLeaf( startContainer ) ) {
-                selection.setStartBefore( startContainer );
-            }
-            if ( endContainer && isLeaf( endContainer ) ) {
-                selection.setEndBefore( endContainer );
-            }
-        } catch ( error ) {
-            this.didError({
-                name: 'Squire#getSelection error',
-                message: 'Starts: ' + startContainer.nodeName +
-                    '\nEnds: ' + endContainer.nodeName
-            });
+        // FF can return the selection as being inside an <img>. WTF?
+        if ( startContainer && isLeaf( startContainer ) ) {
+            selection.setStartBefore( startContainer );
+        }
+        if ( endContainer && isLeaf( endContainer ) ) {
+            selection.setEndBefore( endContainer );
         }
         this._lastSelection = selection;
     } else {
@@ -1364,7 +1358,47 @@ proto.getSelection = function () {
 };
 
 proto.getSelectedText = function () {
-    return getTextContentInRange( this.getSelection() );
+    var range = this.getSelection(),
+        walker = new TreeWalker(
+            range.commonAncestorContainer,
+            SHOW_TEXT|SHOW_ELEMENT,
+            function ( node ) {
+                return isNodeContainedInRange( range, node, true );
+            }
+        ),
+        startContainer = range.startContainer,
+        endContainer = range.endContainer,
+        node = walker.currentNode = startContainer,
+        textContent = '',
+        addedTextInBlock = false,
+        value;
+
+    if ( !walker.filter( node ) ) {
+        node = walker.nextNode();
+    }
+
+    while ( node ) {
+        if ( node.nodeType === TEXT_NODE ) {
+            value = node.data;
+            if ( value && ( /\S/.test( value ) ) ) {
+                if ( node === endContainer ) {
+                    value = value.slice( 0, range.endOffset );
+                }
+                if ( node === startContainer ) {
+                    value = value.slice( range.startOffset );
+                }
+                textContent += value;
+                addedTextInBlock = true;
+            }
+        } else if ( node.nodeName === 'BR' ||
+                addedTextInBlock && !isInline( node ) ) {
+            textContent += '\n';
+            addedTextInBlock = false;
+        }
+        node = walker.nextNode();
+    }
+
+    return textContent;
 };
 
 proto.getPath = function () {
@@ -1375,6 +1409,27 @@ proto.getPath = function () {
 
 // WebKit bug: https://bugs.webkit.org/show_bug.cgi?id=15256
 
+var removeZWS = function ( root ) {
+    var walker = new TreeWalker( root, SHOW_TEXT, function () {
+            return true;
+        }, false ),
+        parent, node, index;
+    while ( node = walker.nextNode() ) {
+        while ( ( index = node.data.indexOf( ZWS ) ) > -1 ) {
+            if ( node.length === 1 ) {
+                do {
+                    parent = node.parentNode;
+                    parent.removeChild( node );
+                    node = parent;
+                } while ( isInline( node ) && !getLength( node ) );
+                break;
+            } else {
+                node.deleteData( index, 1 );
+            }
+        }
+    }
+};
+
 proto._didAddZWS = function () {
     this._hasZWS = true;
 };
@@ -1382,15 +1437,7 @@ proto._removeZWS = function () {
     if ( !this._hasZWS ) {
         return;
     }
-    var walker = new TreeWalker( this._body, SHOW_TEXT, function () {
-            return true;
-        }, false ),
-        node, index;
-    while ( node = walker.nextNode() ) {
-        while ( ( index = node.data.indexOf( '\u200B' ) ) > -1 ) {
-            node.deleteData( index, 1 );
-        }
-    }
+    removeZWS( this._body );
     this._hasZWS = false;
 };
 
@@ -1411,7 +1458,7 @@ proto._updatePath = function ( range, force ) {
             this.fireEvent( 'pathChange', { path: newPath } );
         }
     }
-    if ( anchor !== focus ) {
+    if ( !range.collapsed ) {
         this.fireEvent( 'select' );
     }
 };
@@ -1426,7 +1473,10 @@ proto.focus = function () {
     // FF seems to need the body to be focussed (at least on first load).
     // Chrome also now needs body to be focussed in order to show the cursor
     // (otherwise it is focussed, but the cursor doesn't appear).
-    this._body.focus();
+    // Opera (Presto-variant) however will lose the selection if you call this!
+    if ( !isPresto ) {
+        this._body.focus();
+    }
     this._win.focus();
     return this;
 };
@@ -1524,24 +1574,32 @@ proto._getRangeAndRemoveBookmark = function ( range ) {
 
 // --- Undo ---
 
-proto._docWasChanged = function ( event ) {
-    var code = event && event.keyCode;
+proto._keyUpDetectChange = function ( event ) {
+    var code = event.keyCode;
     // Presume document was changed if:
     // 1. A modifier key (other than shift) wasn't held down
     // 2. The key pressed is not in range 16<=x<=20 (control keys)
     // 3. The key pressed is not in range 33<=x<=45 (navigation keys)
-    if ( !event || ( !event.ctrlKey && !event.metaKey && !event.altKey &&
+    if ( !event.ctrlKey && !event.metaKey && !event.altKey &&
             ( code < 16 || code > 20 ) &&
-            ( code < 33 || code > 45 ) ) )  {
-        if ( this._isInUndoState ) {
-            this._isInUndoState = false;
-            this.fireEvent( 'undoStateChange', {
-                canUndo: true,
-                canRedo: false
-            });
-        }
-        this.fireEvent( 'input' );
+            ( code < 33 || code > 45 ) )  {
+        this._docWasChanged();
     }
+};
+
+proto._docWasChanged = function () {
+    if ( canObserveMutations && this._ignoreChange ) {
+        this._ignoreChange = false;
+        return;
+    }
+    if ( this._isInUndoState ) {
+        this._isInUndoState = false;
+        this.fireEvent( 'undoStateChange', {
+            canUndo: true,
+            canRedo: false
+        });
+    }
+    this.fireEvent( 'input' );
 };
 
 // Leaves bookmark
@@ -1657,7 +1715,7 @@ proto._addFormat = function ( tag, attributes, range ) {
     // If the range is collapsed we simply insert the node by wrapping
     // it round the range and focus it.
     var el, walker, startContainer, endContainer, startOffset, endOffset,
-        textNode, needsFormat;
+        node, needsFormat;
 
     if ( range.collapsed ) {
         el = fixCursor( this.createElement( tag, attributes ) );
@@ -1669,16 +1727,21 @@ proto._addFormat = function ( tag, attributes, range ) {
     // partially selected nodes) and if they're not already formatted
     // correctly we wrap them in the appropriate tag.
     else {
-        // We don't want to apply formatting twice so we check each text
-        // node to see if it has an ancestor with the formatting already.
         // Create an iterator to walk over all the text nodes under this
         // ancestor which are in the range and not already formatted
         // correctly.
+        //
+        // In Blink/WebKit, empty blocks may have no text nodes, just a <br>.
+        // Therefore we wrap this in the tag as well, as this will then cause it
+        // to apply when the user types something in the block, which is
+        // presumably what was intended.
         walker = new TreeWalker(
             range.commonAncestorContainer,
-            SHOW_TEXT,
+            SHOW_TEXT|SHOW_ELEMENT,
             function ( node ) {
-                return isNodeContainedInRange( range, node, true );
+                return ( node.nodeType === TEXT_NODE ||
+                                                    node.nodeName === 'BR' ) &&
+                    isNodeContainedInRange( range, node, true );
             },
             false
         );
@@ -1690,41 +1753,53 @@ proto._addFormat = function ( tag, attributes, range ) {
         endContainer = range.endContainer;
         endOffset = range.endOffset;
 
-        // Make sure we start inside a text node.
+        // Make sure we start with a valid node.
         walker.currentNode = startContainer;
-        if ( startContainer.nodeType !== TEXT_NODE ) {
+        if ( !walker.filter( startContainer ) ) {
             startContainer = walker.nextNode();
             startOffset = 0;
         }
 
+        // If there are no interesting nodes in the selection, abort
+        if ( !startContainer ) {
+            return range;
+        }
+
         do {
-            textNode = walker.currentNode;
-            needsFormat = !getNearest( textNode, tag, attributes );
+            node = walker.currentNode;
+            needsFormat = !getNearest( node, tag, attributes );
             if ( needsFormat ) {
-                if ( textNode === endContainer &&
-                        textNode.length > endOffset ) {
-                    textNode.splitText( endOffset );
+                // <br> can never be a container node, so must have a text node
+                // if node == (end|start)Container
+                if ( node === endContainer && node.length > endOffset ) {
+                    node.splitText( endOffset );
                 }
-                if ( textNode === startContainer && startOffset ) {
-                    textNode = textNode.splitText( startOffset );
+                if ( node === startContainer && startOffset ) {
+                    node = node.splitText( startOffset );
                     if ( endContainer === startContainer ) {
-                        endContainer = textNode;
+                        endContainer = node;
                         endOffset -= startOffset;
                     }
-                    startContainer = textNode;
+                    startContainer = node;
                     startOffset = 0;
                 }
                 el = this.createElement( tag, attributes );
-                replaceWith( textNode, el );
-                el.appendChild( textNode );
+                replaceWith( node, el );
+                el.appendChild( node );
             }
         } while ( walker.nextNode() );
 
-        // Make sure we finish inside a text node. Otherwise offset may have
-        // changed.
+        // If we don't finish inside a text node, offset may have changed.
         if ( endContainer.nodeType !== TEXT_NODE ) {
-            endContainer = textNode;
-            endOffset = textNode.length;
+            if ( node.nodeType === TEXT_NODE ) {
+                endContainer = node;
+                endOffset = node.length;
+            } else {
+                // If <br>, we must have just wrapped it, so it must have only
+                // one child
+                endContainer = node.parentNode;
+                endOffset = 1;
+            }
         }
 
         // Now set the selection to as it was before
@@ -1744,7 +1819,7 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
         fixer;
     if ( range.collapsed ) {
         if ( cantFocusEmptyTextNodes ) {
-            fixer = doc.createTextNode( '\u200B' );
+            fixer = doc.createTextNode( ZWS );
             this._didAddZWS();
         } else {
             fixer = doc.createTextNode( '' );
@@ -1873,7 +1948,9 @@ proto.changeFormat = function ( add, remove, range, partial ) {
     this._updatePath( range, true );
 
     // We're not still in an undo state
-    this._docWasChanged();
+    if ( !canObserveMutations ) {
+        this._docWasChanged();
+    }
 
     return this;
 };
@@ -1881,29 +1958,29 @@ proto.changeFormat = function ( add, remove, range, partial ) {
 // --- Block formatting ---
 
 var tagAfterSplit = {
-    DIV: 'DIV',
-    PRE: 'DIV',
-    H1:  'DIV',
-    H2:  'DIV',
-    H3:  'DIV',
-    H4:  'DIV',
-    H5:  'DIV',
-    H6:  'DIV',
-    P:   'DIV',
     DT:  'DD',
     DD:  'DT',
     LI:  'LI'
 };
 
-var splitBlock = function ( block, node, offset ) {
+var splitBlock = function ( self, block, node, offset ) {
     var splitTag = tagAfterSplit[ block.nodeName ],
+        splitProperties = null,
         nodeAfterSplit = split( node, offset, block.parentNode );
 
+    if ( !splitTag ) {
+        splitTag = self.defaultBlockTag;
+        splitProperties = self.defaultBlockProperties;
+    }
+
     // Make sure the new node is the correct type.
-    if ( nodeAfterSplit.nodeName !== splitTag ) {
-        block = createElement( nodeAfterSplit.ownerDocument, splitTag );
-        block.className = nodeAfterSplit.dir === 'rtl' ? 'dir-rtl' : '';
-        block.dir = nodeAfterSplit.dir;
+    if ( !hasTagAttributes( nodeAfterSplit, splitTag, splitProperties ) ) {
+        block = createElement( nodeAfterSplit.ownerDocument,
+            splitTag, splitProperties );
+        if ( nodeAfterSplit.dir ) {
+            block.className = nodeAfterSplit.dir === 'rtl' ? 'dir-rtl' : '';
+            block.dir = nodeAfterSplit.dir;
+        }
         replaceWith( nodeAfterSplit, block );
         block.appendChild( empty( nodeAfterSplit ) );
         nodeAfterSplit = block;
@@ -1937,7 +2014,9 @@ proto.forEachBlock = function ( fn, mutates, range ) {
         this._updatePath( range, true );
 
         // We're not still in an undo state
-        this._docWasChanged();
+        if ( !canObserveMutations ) {
+            this._docWasChanged();
+        }
     }
     return this;
 };
@@ -1978,7 +2057,9 @@ proto.modifyBlocks = function ( modify, range ) {
     this._updatePath( range, true );
 
     // 7. We're not still in an undo state
-    this._docWasChanged();
+    if ( !canObserveMutations ) {
+        this._docWasChanged();
+    }
 
     return this;
 };
@@ -2171,7 +2252,7 @@ var addLinks = function ( frag ) {
     }
 };
 
-var allowedBlock = /^(?:A(?:DDRESS|RTICLE|SIDE)|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|UL)$/;
+var allowedBlock = /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|UL)$/;
 
 var fontSizes = {
     1: 10,
@@ -2342,11 +2423,13 @@ var removeEmptyInlines = function ( root ) {
         child;
     while ( l-- ) {
         child = children[l];
-        if ( child.nodeType === ELEMENT_NODE && child.nodeName !== 'IMG' ) {
+        if ( child.nodeType === ELEMENT_NODE && !isLeaf( child ) ) {
             removeEmptyInlines( child );
             if ( isInline( child ) && !child.firstChild ) {
                 root.removeChild( child );
             }
+        } else if ( child.nodeType === TEXT_NODE && !child.data ) {
+            root.removeChild( child );
         }
     }
 };
@@ -2506,8 +2589,8 @@ var cleanupBRs = function ( root ) {
 
 proto._ensureBottomLine = function () {
     var body = this._body,
-        div = body.lastChild;
-    if ( !div || div.nodeName !== 'DIV' || !isBlock( div ) ) {
+        last = body.lastElementChild;
+    if ( !last || last.nodeName !== this.defaultBlockTag || !isBlock( last ) ) {
         body.appendChild( this.createDefaultBlock() );
     }
 };
@@ -2576,15 +2659,19 @@ proto._onPaste = function ( event ) {
     var self = this,
         body = this._body,
         range = this.getSelection(),
-        startContainer = range.startContainer,
-        startOffset = range.startOffset,
-        endContainer = range.endContainer,
-        endOffset = range.endOffset,
-        startBlock = getStartBlockOfRange( range );
+        startContainer, startOffset, endContainer, endOffset, startBlock;
 
     // Record undo checkpoint
     self._recordUndoState( range );
     self._getRangeAndRemoveBookmark( range );
+
+    // Note current selection. We must do this AFTER recording the undo
+    // checkpoint, as this modifies the DOM.
+    startContainer = range.startContainer;
+    startOffset = range.startOffset;
+    endContainer = range.endContainer;
+    endOffset = range.endOffset;
+    startBlock = getStartBlockOfRange( range );
 
     // We need to position the pasteArea in the visible portion of the screen
     // to stop the browser auto-scrolling.
@@ -2639,7 +2726,9 @@ proto._onPaste = function ( event ) {
                 // Insert pasted data
                 if ( doPaste ) {
                     insertTreeFragmentIntoRange( range, frag );
-                    self._docWasChanged();
+                    if ( !canObserveMutations ) {
+                        self._docWasChanged();
+                    }
                     range.collapse( false );
                     self._ensureBottomLine();
                 }
@@ -2693,62 +2782,52 @@ var mapKeyToFormat = function ( tag, remove ) {
 // replace it with a <font> tag (!). If you delete all the text inside a
 // link in Opera, it won't delete the link. Let's make things consistent. If
 // you delete all text inside an inline tag, remove the inline tag.
-var afterDelete = function ( self ) {
+var afterDelete = function ( self, range ) {
     try {
-        var range = self.getSelection(),
-            node = range.startContainer,
+        if ( !range ) { range = self.getSelection(); }
+        var node = range.startContainer,
             parent;
+        // Climb the tree from the focus point while we are inside an empty
+        // inline element
         if ( node.nodeType === TEXT_NODE ) {
             node = node.parentNode;
         }
+        parent = node;
+        while ( isInline( parent ) &&
+                ( !parent.textContent || parent.textContent === ZWS ) ) {
+            node = parent;
+            parent = node.parentNode;
+        }
         // If focussed in empty inline element
-        if ( isInline( node ) && !node.textContent ) {
-            do {
-                parent = node.parentNode;
-            } while ( isInline( parent ) &&
-                !parent.textContent && ( node = parent ) );
+        if ( node !== parent ) {
+            // Move focus to just before empty inline(s)
             range.setStart( parent,
                 indexOf.call( parent.childNodes, node ) );
             range.collapse( true );
+            // Remove empty inline(s)
             parent.removeChild( node );
+            // Fix cursor in block
             if ( !isBlock( parent ) ) {
                 parent = getPreviousBlock( parent );
             }
             fixCursor( parent );
+            // Move cursor into text node
             moveRangeBoundariesDownTree( range );
-            self.setSelection( range );
-            self._updatePath( range );
         }
         self._ensureBottomLine();
+        self.setSelection( range );
+        self._updatePath( range, true );
     } catch ( error ) {
         self.didError( error );
     }
 };
 
-// If you select all in IE8 then type, it makes a P; replace it with
-// a DIV.
-if ( isIE8 ) {
-    proto._ieSelAllClean = function () {
-        var firstChild = this._body.firstChild;
-        if ( firstChild.nodeName === 'P' ) {
-            this._saveRangeToBookmark( this.getSelection() );
-            replaceWith( firstChild, this.createDefaultBlock([
-                empty( firstChild )
-            ]));
-            this.setSelection( this._getRangeAndRemoveBookmark() );
-        }
-    };
-}
-
 var keyHandlers = {
-    enter: function ( self, event ) {
+    enter: function ( self, event, range ) {
+        var block, parent, nodeAfterSplit;
+
         // We handle this ourselves
         event.preventDefault();
-
-        // Must have some form of selection
-        var range = self.getSelection(),
-            block, parent, tag, splitTag, nodeAfterSplit;
-        if ( !range ) { return; }
 
         // Save undo checkpoint and add any links in the preceding section.
         // Remove any zws so we don't think there's content in an empty
@@ -2765,60 +2844,20 @@ var keyHandlers = {
         }
 
         block = getStartBlockOfRange( range );
-        if ( block && ( parent = getNearest( block, 'LI' ) ) ) {
-            block = parent;
-        }
-        tag = block ? block.nodeName : 'DIV';
-        splitTag = tagAfterSplit[ tag ];
 
-        // If this is a malformed bit of document, just play it safe
-        // and insert a <br>.
-        if ( !block ) {
+        // If this is a malformed bit of document or in a table;
+        // just play it safe and insert a <br>.
+        if ( !block || /^T[HD]$/.test( block.nodeName ) ) {
             insertNodeInRange( range, self.createElement( 'BR' ) );
             range.collapse( false );
             self.setSelection( range );
             self._updatePath( range, true );
-            self._docWasChanged();
             return;
         }
 
-        // We need to wrap the contents in divs.
-        var splitNode = range.startContainer,
-            splitOffset = range.startOffset,
-            replacement;
-        if ( !splitTag ) {
-            // If the selection point is inside the block, we're going to
-            // rewrite it so our saved reference points won't be valid.
-            // Pick a node at a deeper point in the tree to avoid this.
-            if ( splitNode === block ) {
-                splitNode = splitOffset ?
-                    splitNode.childNodes[ splitOffset - 1 ] : null;
-                splitOffset = 0;
-                if ( splitNode ) {
-                    if ( splitNode.nodeName === 'BR' ) {
-                        splitNode = splitNode.nextSibling;
-                    } else {
-                        splitOffset = getLength( splitNode );
-                    }
-                    if ( !splitNode || splitNode.nodeName === 'BR' ) {
-                        replacement = fixCursor( self.createElement( 'DIV' ) );
-                        if ( splitNode ) {
-                            block.replaceChild( replacement, splitNode );
-                        } else {
-                            block.appendChild( replacement );
-                        }
-                        splitNode = replacement;
-                    }
-                }
-            }
-            fixContainer( block );
-            splitTag = 'DIV';
-            if ( !splitNode ) {
-                splitNode = block.firstChild;
-            }
-            range.setStart( splitNode, splitOffset );
-            range.setEnd( splitNode, splitOffset );
-            block = getStartBlockOfRange( range );
+        // If in a list, we'll split the LI instead.
+        if ( parent = getNearest( block, 'LI' ) ) {
+            block = parent;
         }
 
         if ( !block.textContent ) {
@@ -2833,7 +2872,14 @@ var keyHandlers = {
         }
 
         // Otherwise, split at cursor point.
-        nodeAfterSplit = splitBlock( block, splitNode, splitOffset );
+        nodeAfterSplit = splitBlock( self, block,
+            range.startContainer, range.startOffset );
+
+        // Clean up any empty inlines if we hit enter at the beginning of the
+        // block
+        removeZWS( block );
+        removeEmptyInlines( block );
+        fixCursor( block );
 
         // Focus cursor
         // If there's a <b>/<i> etc. at the beginning of the split
@@ -2844,10 +2890,13 @@ var keyHandlers = {
 
             // Don't continue links over a block break; unlikely to be the
             // desired outcome.
-            if ( nodeAfterSplit.nodeName === 'A' ) {
-                replaceWith( nodeAfterSplit, empty( nodeAfterSplit ) );
+            if ( nodeAfterSplit.nodeName === 'A' &&
+                    ( !nodeAfterSplit.textContent ||
+                        nodeAfterSplit.textContent === ZWS ) ) {
+                child = self._doc.createTextNode( '' );
+                replaceWith( nodeAfterSplit, child );
                 nodeAfterSplit = child;
-                continue;
+                break;
             }
 
             while ( child && child.nodeType === TEXT_NODE && !child.data ) {
@@ -2883,23 +2932,17 @@ var keyHandlers = {
                 body.offsetHeight ) {
             nodeAfterSplit.scrollIntoView( false );
         }
-
-        // We're not still in an undo state
-        self._docWasChanged();
     },
-    backspace: function ( self, event ) {
+    backspace: function ( self, event, range ) {
         self._removeZWS();
         // Record undo checkpoint.
-        var range = self.getSelection();
         self._recordUndoState( range );
         self._getRangeAndRemoveBookmark( range );
         // If not collapsed, delete contents
         if ( !range.collapsed ) {
             event.preventDefault();
             deleteContentsOfRange( range );
-            self._ensureBottomLine();
-            self.setSelection( range );
-            self._updatePath( range, true );
+            afterDelete( self, range );
         }
         // If at beginning of block, merge with previous
         else if ( rangeDoesStartAtBlockBoundary( range ) ) {
@@ -2949,19 +2992,16 @@ var keyHandlers = {
             setTimeout( function () { afterDelete( self ); }, 0 );
         }
     },
-    'delete': function ( self, event ) {
+    'delete': function ( self, event, range ) {
         self._removeZWS();
         // Record undo checkpoint.
-        var range = self.getSelection();
         self._recordUndoState( range );
         self._getRangeAndRemoveBookmark( range );
         // If not collapsed, delete contents
         if ( !range.collapsed ) {
             event.preventDefault();
             deleteContentsOfRange( range );
-            self._ensureBottomLine();
-            self.setSelection( range );
-            self._updatePath( range, true );
+            afterDelete( self, range );
         }
         // If at end of block, merge next into this block
         else if ( rangeDoesEndAtBlockBoundary( range ) ) {
@@ -2997,10 +3037,9 @@ var keyHandlers = {
             setTimeout( function () { afterDelete( self ); }, 0 );
         }
     },
-    tab: function ( self, event ) {
+    tab: function ( self, event, range ) {
+        var node, parent;
         self._removeZWS();
-        var range = self.getSelection(),
-            node, parent;
         // If no selection and in an empty block
         if ( range.collapsed &&
                 rangeDoesStartAtBlockBoundary( range ) &&
@@ -3023,11 +3062,22 @@ var keyHandlers = {
             event.preventDefault();
         }
     },
-    space: function ( self ) {
-        var range = self.getSelection();
+    space: function ( self, _, range ) {
+        var node, parent;
         self._recordUndoState( range );
         addLinks( range.startContainer );
         self._getRangeAndRemoveBookmark( range );
+
+        // If the cursor is at the end of a link (<a>foo|</a>) then move it
+        // outside of the link (<a>foo</a>|) so that the space is not part of
+        // the link text.
+        node = range.endContainer;
+        parent = node.parentNode;
+        if ( range.collapsed && parent.nodeName === 'A' &&
+                !node.nextSibling && range.endOffset === getLength( node ) ) {
+            range.setStartAfter( parent );
+        }
+
         self.setSelection( range );
     },
     left: function ( self ) {
@@ -3045,11 +3095,11 @@ var keyHandlers = {
 if ( isMac && isGecko && win.getSelection().modify ) {
     keyHandlers[ 'meta-left' ] = function ( self, event ) {
         event.preventDefault();
-        self._win.getSelection().modify( 'move', 'backward', 'lineboundary' );
+        self._sel.modify( 'move', 'backward', 'lineboundary' );
     };
     keyHandlers[ 'meta-right' ] = function ( self, event ) {
         event.preventDefault();
-        self._win.getSelection().modify( 'move', 'forward', 'lineboundary' );
+        self._sel.modify( 'move', 'forward', 'lineboundary' );
     };
 }
 
@@ -3071,7 +3121,8 @@ keyHandlers[ ctrlKey + 'shift-z' ] = mapKeyTo( 'redo' );
 proto._onKey = function ( event ) {
     var code = event.keyCode,
         key = keys[ code ],
-        modifiers = '';
+        modifiers = '',
+        range = this.getSelection();
 
     if ( !key ) {
         key = String.fromCharCode( code ).toLowerCase();
@@ -3106,7 +3157,16 @@ proto._onKey = function ( event ) {
     key = modifiers + key;
 
     if ( keyHandlers[ key ] ) {
-        keyHandlers[ key ]( this, event );
+        keyHandlers[ key ]( this, event, range );
+    } else if ( key.length === 1 && !range.collapsed ) {
+        // Record undo checkpoint.
+        this._recordUndoState( range );
+        this._getRangeAndRemoveBookmark( range );
+        // Delete the selection
+        deleteContentsOfRange( range );
+        this._ensureBottomLine();
+        this.setSelection( range );
+        this._updatePath( range, true );
     }
 };
 
@@ -3122,6 +3182,7 @@ proto._setHTML = function ( html ) {
     do {
         fixCursor( node );
     } while ( node = getNextBlock( node ) );
+    this._ignoreChange = true;
 };
 
 proto.getHTML = function ( withBookMark ) {
@@ -3172,6 +3233,9 @@ proto.setHTML = function ( html ) {
     while ( node = getNextBlock( node ) ) {
         fixCursor( node );
     }
+
+    // Don't fire an input event
+    this._ignoreChange = true;
 
     // Remove existing body children
     var body = this._body;
@@ -3255,6 +3319,50 @@ proto.insertImage = function ( src ) {
     return img;
 };
 
+// Insert HTML at the cursor location. If the selection is not collapsed
+// insertTreeFragmentIntoRange will delete the selection so that it is replaced
+// by the html being inserted.
+proto.insertHTML = function ( html ) {
+    var range = this.getSelection(),
+        frag = this._doc.createDocumentFragment(),
+        div = this.createElement( 'DIV' );
+
+    // Parse HTML into DOM tree
+    div.innerHTML = html;
+    frag.appendChild( empty( div ) );
+
+    // Record undo checkpoint
+    this._recordUndoState( range );
+    this._getRangeAndRemoveBookmark( range );
+
+    try {
+        frag.normalize();
+        addLinks( frag );
+        cleanTree( frag, true );
+        cleanupBRs( frag );
+        removeEmptyInlines( frag );
+        fixContainer( frag );
+
+        var node = frag;
+        while ( node = getNextBlock( node ) ) {
+            fixCursor( node );
+        }
+
+        insertTreeFragmentIntoRange( range, frag );
+        if ( !canObserveMutations ) {
+            this._docWasChanged();
+        }
+        range.collapse( false );
+        this._ensureBottomLine();
+
+        this.setSelection( range );
+        this._updatePath( range, true );
+    } catch ( error ) {
+        this.didError( error );
+    }
+    return this;
+};
+
 // --- Formatting ---
 
 var command = function ( method, arg, arg2 ) {
@@ -3298,7 +3406,7 @@ proto.removeStrikethrough = command( 'changeFormat', null, { tag: 'S' } );
 proto.removeSubscript = command( 'changeFormat', null, { tag: 'SUB' } );
 proto.removeSuperscript = command( 'changeFormat', null, { tag: 'SUP' } );
 
-proto.makeLink = function ( url ) {
+proto.makeLink = function ( url, attributes ) {
     var range = this.getSelection();
     if ( range.collapsed ) {
         var protocolEnd = url.indexOf( ':' ) + 1;
@@ -3310,11 +3418,15 @@ proto.makeLink = function ( url ) {
             this._doc.createTextNode( url.slice( protocolEnd ) )
         );
     }
+
+    if ( !attributes ) {
+        attributes = {};
+    }
+    attributes.href = url;
+
     this.changeFormat({
         tag: 'A',
-        attributes: {
-            href: url
-        }
+        attributes: attributes
     }, {
         tag: 'A'
     }, range );
