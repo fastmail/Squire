@@ -1629,6 +1629,8 @@ proto.undo = function () {
         this._recordUndoState( this.getSelection() );
 
         this._undoIndex -= 1;
+        // Grab _ignoreChange priort to setHTML since it sets it to true
+        var ignoreChange = this._ignoreChange;
         this._setHTML( this._undoStack[ this._undoIndex ] );
         var range = this._getRangeAndRemoveBookmark();
         if ( range ) {
@@ -1639,6 +1641,12 @@ proto.undo = function () {
             canUndo: this._undoIndex !== 0,
             canRedo: true
         });
+        // If this._ignoreChange was set to true prior to _setHTML,
+        // then set it to false now and return.
+        if ( canObserveMutations && ignoreChange ) {
+            this._ignoreChange = false;
+            return this;
+        }
         this.fireEvent( 'input' );
     }
     return this;
@@ -1651,6 +1659,8 @@ proto.redo = function () {
         undoStackLength = this._undoStackLength;
     if ( undoIndex + 1 < undoStackLength && this._isInUndoState ) {
         this._undoIndex += 1;
+        // Grab _ignoreChange priort to setHTML since it sets it to true
+        var ignoreChange = this._ignoreChange;
         this._setHTML( this._undoStack[ this._undoIndex ] );
         var range = this._getRangeAndRemoveBookmark();
         if ( range ) {
@@ -1660,6 +1670,12 @@ proto.redo = function () {
             canUndo: true,
             canRedo: undoIndex + 2 < undoStackLength
         });
+        // If this._ignoreChange was set to true prior to _setHTML,
+        // then set it to false now and return.
+        if ( canObserveMutations && ignoreChange ) {
+            this._ignoreChange = false;
+            return this;
+        }
         this.fireEvent( 'input' );
     }
     return this;
