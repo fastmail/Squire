@@ -14,7 +14,27 @@ function getSquireInstance ( doc ) {
     return null;
 }
 
-function Squire ( doc ) {
+// Merges two objects
+function MergeObjects(defaults, newObj) {
+    for ( var prop in newObj ) {
+        try {
+            if ( newObj[prop].constructor == Object ) {
+                defaults[prop] = MergeObjects( defaults[prop], newObj[prop] );
+            }
+            else {
+                defaults[prop] = newObj[prop];
+            }
+        }
+        catch ( e ) {
+            defaults[prop] = newObj[prop];
+        }
+    }
+    return defaults;
+}
+
+function Squire ( doc, options ) {
+    instances.push( this );
+    
     var win = doc.defaultView;
     var body = doc.body;
     var mutation;
@@ -22,6 +42,14 @@ function Squire ( doc ) {
     this._win = win;
     this._doc = doc;
     this._body = body;
+    
+    var defaults = {
+        blockTag: 'DIV',
+        blockProperties: null
+    }
+    this.options = MergeObjects(defaults, options);
+    // To prevent mistakes if the tag is set in lowercase by a user
+    this.options.blockTag = this.options.blockTag.toUpperCase();
 
     this._events = {};
 
@@ -64,10 +92,7 @@ function Squire ( doc ) {
     } else {
         this.addEventListener( 'keyup', this._keyUpDetectChange );
     }
-
-    this.defaultBlockTag = 'DIV';
-    this.defaultBlockProperties = null;
-
+    
     // IE sometimes fires the beforepaste event twice; make sure it is not run
     // again before our after paste function is called.
     this._awaitingPaste = false;
@@ -115,7 +140,7 @@ function Squire ( doc ) {
         doc.execCommand( 'enableInlineTableEditing', false, 'false' );
     } catch ( error ) {}
 
-    instances.push( this );
+    
 }
 
 var proto = Squire.prototype;
@@ -127,7 +152,7 @@ proto.createElement = function ( tag, props, children ) {
 proto.createDefaultBlock = function ( children ) {
     return fixCursor(
         this.createElement(
-            this.defaultBlockTag, this.defaultBlockProperties, children )
+            this.options.blockTag, this.options.blockProperties, children )
     );
 };
 
@@ -913,8 +938,8 @@ var splitBlock = function ( self, block, node, offset ) {
         nodeAfterSplit = split( node, offset, block.parentNode );
 
     if ( !splitTag ) {
-        splitTag = self.defaultBlockTag;
-        splitProperties = self.defaultBlockProperties;
+        splitTag = self.options.blockTag;
+        splitProperties = self.options.blockProperties;
     }
 
     // Make sure the new node is the correct type.
@@ -1521,7 +1546,7 @@ var cleanupBRs = function ( root ) {
                 // If in a <div>, split, but anywhere else we might change
                 // the formatting too much (e.g. <li> -> to two list items!)
                 // so just play it safe and leave it.
-                if ( block.nodeName !== 'DIV' ) {
+                if ( block.nodeName !== this.options.blockTag ) {
                     continue;
                 }
                 split( br.parentNode, br, block.parentNode );
@@ -1534,7 +1559,7 @@ var cleanupBRs = function ( root ) {
 proto._ensureBottomLine = function () {
     var body = this._body,
         last = body.lastElementChild;
-    if ( !last || last.nodeName !== this.defaultBlockTag || !isBlock( last ) ) {
+    if ( !last || last.nodeName !== this.options.blockTag || !isBlock( last ) ) {
         body.appendChild( this.createDefaultBlock() );
     }
 };
@@ -2160,7 +2185,7 @@ proto.getHTML = function ( withBookMark ) {
 
 proto.setHTML = function ( html ) {
     var frag = this._doc.createDocumentFragment(),
-        div = this.createElement( 'DIV' ),
+        div = this.createElement(this.options.blockTag, this.options.blockProperties),
         child;
 
     // Parse HTML into DOM tree
