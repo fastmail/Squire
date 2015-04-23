@@ -1114,13 +1114,19 @@ function Squire ( doc, options ) {
     this._doc = doc;
     this._body = body;
     
-    var defaults = {
+    var settings = {
         blockTag: 'DIV',
-        blockProperties: null
+        tagAttributes: {
+            block: null
+        }
     }
-    this.options = MergeObjects(defaults, options);
+    settings = MergeObjects(settings, options);
     // To prevent mistakes if the tag is set in lowercase by a user
-    this.options.blockTag = this.options.blockTag.toUpperCase();
+    settings.blockTag = settings.blockTag.toUpperCase();
+    
+    this.getSettings = function (){
+        return settings;
+    }
 
     this._events = {};
 
@@ -1221,9 +1227,10 @@ proto.createElement = function ( tag, props, children ) {
 };
 
 proto.createDefaultBlock = function ( children ) {
+    var settings = this.getSettings();
     return fixCursor(
         this.createElement(
-            this.options.blockTag, this.options.blockProperties, children )
+            settings.blockTag, settings.tagAttributes.block, children )
     );
 };
 
@@ -2006,11 +2013,12 @@ var tagAfterSplit = {
 var splitBlock = function ( self, block, node, offset ) {
     var splitTag = tagAfterSplit[ block.nodeName ],
         splitProperties = null,
-        nodeAfterSplit = split( node, offset, block.parentNode );
+        nodeAfterSplit = split( node, offset, block.parentNode ),
+        settings = self.getSettings();
 
     if ( !splitTag ) {
-        splitTag = self.options.blockTag;
-        splitProperties = self.options.blockProperties;
+        splitTag = settings.blockTag;
+        splitProperties = settings.tagAttributes.block;
     }
 
     // Make sure the new node is the correct type.
@@ -2617,7 +2625,7 @@ var cleanupBRs = function ( root ) {
                 // If in a <div>, split, but anywhere else we might change
                 // the formatting too much (e.g. <li> -> to two list items!)
                 // so just play it safe and leave it.
-                if ( block.nodeName !== this.options.blockTag ) {
+                if ( block.nodeName !== this.getSettings().blockTag ) {
                     continue;
                 }
                 split( br.parentNode, br, block.parentNode );
@@ -2630,7 +2638,7 @@ var cleanupBRs = function ( root ) {
 proto._ensureBottomLine = function () {
     var body = this._body,
         last = body.lastElementChild;
-    if ( !last || last.nodeName !== this.options.blockTag || !isBlock( last ) ) {
+    if ( !last || last.nodeName !== this.getSettings().blockTag || !isBlock( last ) ) {
         body.appendChild( this.createDefaultBlock() );
     }
 };
@@ -3256,7 +3264,8 @@ proto.getHTML = function ( withBookMark ) {
 
 proto.setHTML = function ( html ) {
     var frag = this._doc.createDocumentFragment(),
-        div = this.createElement(this.options.blockTag, this.options.blockProperties),
+        settings = this.getSettings(),
+        div = this.createElement(settings.blockTag, settings.tagAttributes.block),
         child;
 
     // Parse HTML into DOM tree
