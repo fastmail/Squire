@@ -1117,7 +1117,15 @@ function Squire ( doc, options ) {
     var settings = {
         blockTag: 'DIV',
         tagAttributes: {
-            block: null
+            // Some of these properties don't even need default values,
+            // since there are checks on them in changeFormat etc.
+            block: null,
+            ul: null,
+            ol: null,
+            li: null,
+            blockquote: null,
+            img: null,
+            a: null
         }
     }
     settings = MergeObjects(settings, options);
@@ -1977,18 +1985,23 @@ proto.changeFormat = function ( add, remove, range, partial ) {
     if ( !range && !( range = this.getSelection() ) ) {
         return;
     }
+    var addAttrs, removeAttrs;
 
     // Save undo checkpoint
     this._recordUndoState( range );
     this._getRangeAndRemoveBookmark( range );
 
     if ( remove ) {
+        removeAttrs = this.getSettings().tagAttributes[remove.tag.toLowerCase()];
+        removeAttrs = removeAttrs && (typeof(removeAttrs) === 'object') ? removeAttrs : {};
         range = this._removeFormat( remove.tag.toUpperCase(),
-            remove.attributes || {}, range, partial );
+            remove.attributes || removeAttrs, range, partial );
     }
     if ( add ) {
+        addAttrs = this.getSettings().tagAttributes[add.tag.toLowerCase()];
+        addAttrs = addAttrs && (typeof(addAttrs) === 'object') ? addAttrs : {};
         range = this._addFormat( add.tag.toUpperCase(),
-            add.attributes || {}, range );
+            add.attributes || addAttrs, range );
     }
 
     this.setSelection( range );
@@ -2113,7 +2126,7 @@ proto.modifyBlocks = function ( modify, range ) {
 };
 
 var increaseBlockQuoteLevel = function ( frag ) {
-    return this.createElement( 'BLOCKQUOTE', [
+    return this.createElement( 'BLOCKQUOTE', this.getSettings().tagAttributes.blockquote, [
         frag
     ]);
 };
@@ -2143,15 +2156,23 @@ var removeBlockQuote = function (/* frag */) {
 
 var makeList = function ( self, frag, type ) {
     var walker = getBlockWalker( frag ),
-        node, tag, prev, newLi;
+        node, tag, prev, newLi,
+        listAttrs = self.getSettings().tagAttributes[type.toLowerCase()],
+        listItemAttrs = self.getSettings().tagAttributes.li,
+        liAttrs;
+        
+    listItemAttrs = listItemAttrs && (typeof(listItemAttrs) === 'object') ? 
+        listItemAttrs : {};
 
     while ( node = walker.nextNode() ) {
         tag = node.parentNode.nodeName;
         if ( tag !== 'LI' ) {
-            newLi = self.createElement( 'LI', {
-                'class': node.dir === 'rtl' ? 'dir-rtl' : undefined,
-                dir: node.dir || undefined
-            });
+            liAttrs = MergeObjects(listItemAttrs, {dir: node.dir || undefined});
+            liAttrs['class'] = ( liAttrs['class'] ? liAttrs['class'] : '') + 
+                ( node.dir === 'rtl' ? ' dir-rtl' : '' );
+            liAttrs['class'] = liAttrs['class'] ? liAttrs['class'] : undefined;
+            
+            newLi = self.createElement( 'LI', liAttrs);
             // Have we replaced the previous block with a new <ul>/<ol>?
             if ( ( prev = node.previousSibling ) &&
                     prev.nodeName === type ) {
@@ -2161,7 +2182,7 @@ var makeList = function ( self, frag, type ) {
             else {
                 replaceWith(
                     node,
-                    self.createElement( type, [
+                    self.createElement( type, listAttrs, [
                         newLi
                     ])
                 );
@@ -2172,7 +2193,7 @@ var makeList = function ( self, frag, type ) {
             tag = node.nodeName;
             if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
                 replaceWith( node,
-                    self.createElement( type, [ empty( node ) ] )
+                    self.createElement( type, listAttrs, [ empty( node ) ] )
                 );
             }
         }
@@ -2210,19 +2231,21 @@ var removeList = function ( frag ) {
 var increaseListLevel = function ( frag ) {
     var items = frag.querySelectorAll( 'LI' ),
         i, l, item,
-        type, newParent;
+        type, newParent,
+        listAttrs;
     for ( i = 0, l = items.length; i < l; i += 1 ) {
         item = items[i];
         if ( !isContainer( item.firstChild ) ) {
             // type => 'UL' or 'OL'
             type = item.parentNode.nodeName;
+            listAttrs = self.getSettings().tagAttributes[type.toLowerCase()];
             newParent = item.previousSibling;
             if ( !newParent || !( newParent = newParent.lastChild ) ||
                     newParent.nodeName !== type ) {
                 replaceWith(
                     item,
                     this.createElement( 'LI', [
-                        newParent = this.createElement( type )
+                        newParent = this.createElement( type, listAttrs )
                     ])
                 );
             }
@@ -3361,7 +3384,7 @@ proto.insertElement = function ( el, range ) {
 };
 
 proto.insertImage = function ( src ) {
-    var img = this.createElement( 'IMG', {
+    var img = this.createElement( 'IMG', this.getSettings().tagAttributes.img, {
         src: src
     });
     this.insertElement( img );
@@ -3469,8 +3492,9 @@ proto.makeLink = function ( url, attributes ) {
     }
 
     if ( !attributes ) {
-        attributes = {};
+        attributes = this.getSettings().tagAttributes.a;
     }
+    attributes = attributes && (typeof(attributes) === 'object') ? attributes : {};
     attributes.href = url;
 
     this.changeFormat({
