@@ -2,6 +2,8 @@
 
 var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|FN|EL)|EM|FONT|HR|I(?:NPUT|MG|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:U[BP]|PAN|TR(?:IKE|ONG)|MALL|AMP)?|U|VAR|WBR)$/;
 
+var editableBlockNodeNames = /^H2$/;
+
 var leafNodeNames = {
     BR: 1,
     IMG: 1,
@@ -47,6 +49,9 @@ function isLeaf ( node ) {
 }
 function isInline ( node ) {
     return inlineNodeNames.test( node.nodeName );
+}
+function isEditableBlock( node ) {
+    return editableBlockNodeNames.test( node.nodeName );
 }
 function isBlock ( node ) {
     return node.nodeType === ELEMENT_NODE &&
