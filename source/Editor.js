@@ -773,7 +773,7 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
 
     // Find block-level ancestor of selection
     var root = range.commonAncestorContainer;
-    while ( isInline( root ) ) {
+    while ( isInline( root ) || isEditableBlock( root ) ) {
         root = root.parentNode;
     }
 
