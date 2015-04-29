@@ -233,17 +233,27 @@ function fixContainer ( container ) {
     var children = container.childNodes,
         doc = container.ownerDocument,
         wrapper = null,
-        i, l, child, isBR;
+        i, l, child, isBR,
+        instance = getSquireInstance( doc );
+    
     for ( i = 0, l = children.length; i < l; i += 1 ) {
         child = children[i];
         isBR = child.nodeName === 'BR';
         if ( !isBR && isInline( child ) ) {
-            if ( !wrapper ) { wrapper = createElement( doc, 'DIV' ); }
+            if ( !wrapper ) {
+                wrapper = instance ?
+                    instance.createDefaultBlock() :
+                    createElement( doc, 'DIV' );
+            }
             wrapper.appendChild( child );
             i -= 1;
             l -= 1;
         } else if ( isBR || wrapper ) {
-            if ( !wrapper ) { wrapper = createElement( doc, 'DIV' ); }
+            if ( !wrapper ) {
+                wrapper = instance ?
+                    instance.createDefaultBlock() :
+                    createElement( doc, 'DIV' );
+            }
             fixCursor( wrapper );
             if ( isBR ) {
                 container.replaceChild( wrapper, child );
@@ -420,7 +430,8 @@ function mergeContainers ( node ) {
         first = node.firstChild,
         doc = node.ownerDocument,
         isListItem = ( node.nodeName === 'LI' ),
-        needsFix, block;
+        needsFix, block,
+        instance = getSquireInstance( doc );
 
     // Do not merge LIs, unless it only contains a UL
     if ( isListItem && ( !first || !/^[OU]L$/.test( first.nodeName ) ) ) {
@@ -430,7 +441,9 @@ function mergeContainers ( node ) {
     if ( prev && areAlike( prev, node ) ) {
         if ( !isContainer( prev ) ) {
             if ( isListItem ) {
-                block = createElement( doc, 'DIV' );
+                block = instance ?
+                    instance.createDefaultBlock() :
+                    createElement( doc, 'DIV' );                    
                 block.appendChild( empty( prev ) );
                 prev.appendChild( block );
             } else {
@@ -447,7 +460,9 @@ function mergeContainers ( node ) {
             mergeContainers( first );
         }
     } else if ( isListItem ) {
-        prev = createElement( doc, 'DIV' );
+        prev = instance ?
+            instance.createDefaultBlock() :
+            createElement( doc, 'DIV' );
         node.insertBefore( prev, first );
         fixCursor( prev );
     }

@@ -14,7 +14,27 @@ function getSquireInstance ( doc ) {
     return null;
 }
 
-function Squire ( doc ) {
+// Merges two objects
+function MergeObjects(defaults, newObj) {
+    for ( var prop in newObj ) {
+        try {
+            if ( newObj[prop].constructor == Object ) {
+                defaults[prop] = MergeObjects( defaults[prop], newObj[prop] );
+            }
+            else {
+                defaults[prop] = newObj[prop];
+            }
+        }
+        catch ( e ) {
+            defaults[prop] = newObj[prop];
+        }
+    }
+    return defaults;
+}
+
+function Squire ( doc, options ) {
+    instances.push( this );
+    
     var win = doc.defaultView;
     var body = doc.body;
     var mutation;
@@ -22,6 +42,28 @@ function Squire ( doc ) {
     this._win = win;
     this._doc = doc;
     this._body = body;
+    
+    var settings = {
+        blockTag: 'DIV',
+        tagAttributes: {
+            // Some of these properties don't even need default values,
+            // since there are checks on them in changeFormat etc.
+            block: null,
+            ul: null,
+            ol: null,
+            li: null,
+            blockquote: null,
+            img: null,
+            a: null
+        }
+    }
+    settings = MergeObjects(settings, options);
+    // To prevent mistakes if the tag is set in lowercase by a user
+    settings.blockTag = settings.blockTag.toUpperCase();
+    
+    this.getSettings = function (){
+        return settings;
+    }
 
     this._events = {};
 
@@ -64,10 +106,7 @@ function Squire ( doc ) {
     } else {
         this.addEventListener( 'keyup', this._keyUpDetectChange );
     }
-
-    this.defaultBlockTag = 'DIV';
-    this.defaultBlockProperties = null;
-
+    
     // IE sometimes fires the beforepaste event twice; make sure it is not run
     // again before our after paste function is called.
     this._awaitingPaste = false;
@@ -115,7 +154,7 @@ function Squire ( doc ) {
         doc.execCommand( 'enableInlineTableEditing', false, 'false' );
     } catch ( error ) {}
 
-    instances.push( this );
+    
 }
 
 var proto = Squire.prototype;
@@ -125,9 +164,10 @@ proto.createElement = function ( tag, props, children ) {
 };
 
 proto.createDefaultBlock = function ( children ) {
+    var settings = this.getSettings();
     return fixCursor(
         this.createElement(
-            this.defaultBlockTag, this.defaultBlockProperties, children )
+            settings.blockTag, settings.tagAttributes.block, children )
     );
 };
 
@@ -874,18 +914,23 @@ proto.changeFormat = function ( add, remove, range, partial ) {
     if ( !range && !( range = this.getSelection() ) ) {
         return;
     }
+    var addAttrs, removeAttrs;
 
     // Save undo checkpoint
     this._recordUndoState( range );
     this._getRangeAndRemoveBookmark( range );
 
     if ( remove ) {
+        removeAttrs = this.getSettings().tagAttributes[remove.tag.toLowerCase()];
+        removeAttrs = removeAttrs && (typeof(removeAttrs) === 'object') ? removeAttrs : {};
         range = this._removeFormat( remove.tag.toUpperCase(),
-            remove.attributes || {}, range, partial );
+            remove.attributes || removeAttrs, range, partial );
     }
     if ( add ) {
+        addAttrs = this.getSettings().tagAttributes[add.tag.toLowerCase()];
+        addAttrs = addAttrs && (typeof(addAttrs) === 'object') ? addAttrs : {};
         range = this._addFormat( add.tag.toUpperCase(),
-            add.attributes || {}, range );
+            add.attributes || addAttrs, range );
     }
 
     this.setSelection( range );
@@ -910,11 +955,12 @@ var tagAfterSplit = {
 var splitBlock = function ( self, block, node, offset ) {
     var splitTag = tagAfterSplit[ block.nodeName ],
         splitProperties = null,
-        nodeAfterSplit = split( node, offset, block.parentNode );
+        nodeAfterSplit = split( node, offset, block.parentNode ),
+        settings = self.getSettings();
 
     if ( !splitTag ) {
-        splitTag = self.defaultBlockTag;
-        splitProperties = self.defaultBlockProperties;
+        splitTag = settings.blockTag;
+        splitProperties = settings.tagAttributes.block;
     }
 
     // Make sure the new node is the correct type.
@@ -1009,7 +1055,7 @@ proto.modifyBlocks = function ( modify, range ) {
 };
 
 var increaseBlockQuoteLevel = function ( frag ) {
-    return this.createElement( 'BLOCKQUOTE', [
+    return this.createElement( 'BLOCKQUOTE', this.getSettings().tagAttributes.blockquote, [
         frag
     ]);
 };
@@ -1039,15 +1085,23 @@ var removeBlockQuote = function (/* frag */) {
 
 var makeList = function ( self, frag, type ) {
     var walker = getBlockWalker( frag ),
-        node, tag, prev, newLi;
+        node, tag, prev, newLi,
+        listAttrs = self.getSettings().tagAttributes[type.toLowerCase()],
+        listItemAttrs = self.getSettings().tagAttributes.li,
+        liAttrs;
+        
+    listItemAttrs = listItemAttrs && (typeof(listItemAttrs) === 'object') ? 
+        listItemAttrs : {};
 
     while ( node = walker.nextNode() ) {
         tag = node.parentNode.nodeName;
         if ( tag !== 'LI' ) {
-            newLi = self.createElement( 'LI', {
-                'class': node.dir === 'rtl' ? 'dir-rtl' : undefined,
-                dir: node.dir || undefined
-            });
+            liAttrs = MergeObjects(listItemAttrs, {dir: node.dir || undefined});
+            liAttrs['class'] = ( liAttrs['class'] ? liAttrs['class'] : '') + 
+                ( node.dir === 'rtl' ? ' dir-rtl' : '' );
+            liAttrs['class'] = liAttrs['class'] ? liAttrs['class'] : undefined;
+            
+            newLi = self.createElement( 'LI', liAttrs);
             // Have we replaced the previous block with a new <ul>/<ol>?
             if ( ( prev = node.previousSibling ) &&
                     prev.nodeName === type ) {
@@ -1057,7 +1111,7 @@ var makeList = function ( self, frag, type ) {
             else {
                 replaceWith(
                     node,
-                    self.createElement( type, [
+                    self.createElement( type, listAttrs, [
                         newLi
                     ])
                 );
@@ -1068,7 +1122,7 @@ var makeList = function ( self, frag, type ) {
             tag = node.nodeName;
             if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
                 replaceWith( node,
-                    self.createElement( type, [ empty( node ) ] )
+                    self.createElement( type, listAttrs, [ empty( node ) ] )
                 );
             }
         }
@@ -1106,19 +1160,21 @@ var removeList = function ( frag ) {
 var increaseListLevel = function ( frag ) {
     var items = frag.querySelectorAll( 'LI' ),
         i, l, item,
-        type, newParent;
+        type, newParent,
+        listAttrs;
     for ( i = 0, l = items.length; i < l; i += 1 ) {
         item = items[i];
         if ( !isContainer( item.firstChild ) ) {
             // type => 'UL' or 'OL'
             type = item.parentNode.nodeName;
+            listAttrs = self.getSettings().tagAttributes[type.toLowerCase()];
             newParent = item.previousSibling;
             if ( !newParent || !( newParent = newParent.lastChild ) ||
                     newParent.nodeName !== type ) {
                 replaceWith(
                     item,
                     this.createElement( 'LI', [
-                        newParent = this.createElement( type )
+                        newParent = this.createElement( type, listAttrs )
                     ])
                 );
             }
@@ -1521,7 +1577,7 @@ var cleanupBRs = function ( root ) {
                 // If in a <div>, split, but anywhere else we might change
                 // the formatting too much (e.g. <li> -> to two list items!)
                 // so just play it safe and leave it.
-                if ( block.nodeName !== 'DIV' ) {
+                if ( block.nodeName !== this.getSettings().blockTag ) {
                     continue;
                 }
                 split( br.parentNode, br, block.parentNode );
@@ -1534,7 +1590,7 @@ var cleanupBRs = function ( root ) {
 proto._ensureBottomLine = function () {
     var body = this._body,
         last = body.lastElementChild;
-    if ( !last || last.nodeName !== this.defaultBlockTag || !isBlock( last ) ) {
+    if ( !last || last.nodeName !== this.getSettings().blockTag || !isBlock( last ) ) {
         body.appendChild( this.createDefaultBlock() );
     }
 };
@@ -2160,7 +2216,8 @@ proto.getHTML = function ( withBookMark ) {
 
 proto.setHTML = function ( html ) {
     var frag = this._doc.createDocumentFragment(),
-        div = this.createElement( 'DIV' ),
+        settings = this.getSettings(),
+        div = this.createElement(settings.blockTag, settings.tagAttributes.block),
         child;
 
     // Parse HTML into DOM tree
@@ -2256,7 +2313,7 @@ proto.insertElement = function ( el, range ) {
 };
 
 proto.insertImage = function ( src ) {
-    var img = this.createElement( 'IMG', {
+    var img = this.createElement( 'IMG', this.getSettings().tagAttributes.img, {
         src: src
     });
     this.insertElement( img );
@@ -2364,8 +2421,9 @@ proto.makeLink = function ( url, attributes ) {
     }
 
     if ( !attributes ) {
-        attributes = {};
+        attributes = this.getSettings().tagAttributes.a;
     }
+    attributes = attributes && (typeof(attributes) === 'object') ? attributes : {};
     attributes.href = url;
 
     this.changeFormat({

@@ -8,6 +8,7 @@ if ( top !== win ) {
     }
 } else {
     win.Squire = Squire;
+    win.instances = instances;
 }
 
 }( document ) );
