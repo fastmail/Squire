@@ -1,4 +1,4 @@
-/* Copyright © 2011-2013 by Neil Jenkins. MIT Licensed. */
+/* Copyright © 2011-2015 by Neil Jenkins. MIT Licensed. */
 
 ( function ( doc, undefined ) {
 
@@ -3082,21 +3082,25 @@ proto._onPaste = function ( event ) {
                 removeEmptyInlines( frag );
 
                 var node = frag,
-                    doPaste = true;
+                    doPaste = true,
+                    evt = {
+                        fragment: frag,
+                        preventDefault: function () {
+                            doPaste = false;
+                        },
+                        isDefaultPrevented: function () {
+                            return doPaste;
+                        }
+                    };
                 while ( node = getNextBlock( node ) ) {
                     fixCursor( node );
                 }
 
-                self.fireEvent( 'willPaste', {
-                    fragment: frag,
-                    preventDefault: function () {
-                        doPaste = false;
-                    }
-                });
+                self.fireEvent( 'willPaste', evt);
 
                 // Insert pasted data
                 if ( doPaste ) {
-                    insertTreeFragmentIntoRange( range, frag );
+                    insertTreeFragmentIntoRange( range, evt.fragment );
                     if ( !canObserveMutations ) {
                         self._docWasChanged();
                     }
