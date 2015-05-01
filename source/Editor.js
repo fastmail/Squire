@@ -1665,7 +1665,7 @@ proto._onPaste = function ( event ) {
                             doPaste = false;
                         },
                         isDefaultPrevented: function () {
-                            return doPaste;
+                            return !doPaste;
                         }
                     };
                 while ( node = getNextBlock( node ) ) {
