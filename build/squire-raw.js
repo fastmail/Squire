@@ -3083,7 +3083,7 @@ proto._onPaste = function ( event ) {
 
                 var node = frag,
                     doPaste = true,
-                    evt = {
+                    event = {
                         fragment: frag,
                         preventDefault: function () {
                             doPaste = false;
@@ -3096,11 +3096,11 @@ proto._onPaste = function ( event ) {
                     fixCursor( node );
                 }
 
-                self.fireEvent( 'willPaste', evt);
+                self.fireEvent( 'willPaste', event );
 
                 // Insert pasted data
                 if ( doPaste ) {
-                    insertTreeFragmentIntoRange( range, evt.fragment );
+                    insertTreeFragmentIntoRange( range, event.fragment );
                     if ( !canObserveMutations ) {
                         self._docWasChanged();
                     }
