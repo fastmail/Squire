@@ -14,7 +14,7 @@ function getSquireInstance ( doc ) {
     return null;
 }
 
-function Squire ( doc ) {
+function Squire ( doc, config ) {
     var win = doc.defaultView;
     var body = doc.body;
     var mutation;
@@ -80,6 +80,9 @@ function Squire ( doc ) {
     // Add key handlers
     this._keyHandlers = Object.create( keyHandlers );
 
+    // Override default properties
+    this.initConfig( config );
+
     // Fix IE<10's buggy implementation of Text#splitText.
     // If the split is at the end of the node, it doesn't insert the newly split
     // node into the document, and sets its value to undefined rather than ''.
@@ -110,7 +113,6 @@ function Squire ( doc ) {
     }
 
     body.setAttribute( 'contenteditable', 'true' );
-    this.setHTML( '' );
 
     // Remove Firefox's built-in controls
     try {
@@ -119,9 +121,24 @@ function Squire ( doc ) {
     } catch ( error ) {}
 
     instances.push( this );
+
+    // For fixCursor would query instance by doc first,
+    // we initialize HTML after instance saved
+    this.setHTML( '' );
 }
 
 var proto = Squire.prototype;
+
+proto.initConfig = function ( config ) {
+    var prop;
+    if (config) {
+        for ( prop in config ) {
+            if ( config.hasOwnProperty(prop) ) {
+                this[prop] = config[prop];
+            }
+        }
+    }
+};
 
 proto.createElement = function ( tag, props, children ) {
     return createElement( this._doc, tag, props, children );
