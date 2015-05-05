@@ -128,16 +128,16 @@
         return;
     }
     // Create Squire instance
-    editor = new Squire( doc );
+    editor = new Squire( doc, {
+      defaultBlockTag: 'P'
+    } );
     // Add styles to frame
     var style = doc.createElement( 'style' );
     style.type = 'text/css';
     style.textContent = document.getElementById( 'editorStyles' ).textContent;
     doc.querySelector( 'head' ).appendChild( style );
   }, false );
-
   document.body.appendChild( iframe );
-
   document.addEventListener( 'click', function ( e ) {
     var id = e.target.id,
         value;
