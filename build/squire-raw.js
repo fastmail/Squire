@@ -1438,7 +1438,7 @@ function getSquireInstance ( doc ) {
     return null;
 }
 
-function Squire ( doc ) {
+function Squire ( doc, config ) {
     var win = doc.defaultView;
     var body = doc.body;
     var mutation;
@@ -1504,6 +1504,9 @@ function Squire ( doc ) {
     // Add key handlers
     this._keyHandlers = Object.create( keyHandlers );
 
+    // initialize custom configurations
+    this.initConfig( config );
+
     // Fix IE<10's buggy implementation of Text#splitText.
     // If the split is at the end of the node, it doesn't insert the newly split
     // node into the document, and sets its value to undefined rather than ''.
@@ -1543,10 +1546,21 @@ function Squire ( doc ) {
 
     instances.push( this );
 
+    // for fixCursor would query instance by node.ownerDocument first
+    // we must initialize HTML after instance save
     this.setHTML( '' );
 }
 
 var proto = Squire.prototype;
+
+proto.initConfig = function ( config ) {
+    if (config) {
+        var that = this;
+        Object.keys(config).forEach(function(key) {
+            that[key] = config[key];
+        });
+    }
+};
 
 proto.createElement = function ( tag, props, children ) {
     return createElement( this._doc, tag, props, children );
