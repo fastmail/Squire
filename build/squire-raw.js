@@ -1534,7 +1534,6 @@ function Squire ( doc ) {
     }
 
     body.setAttribute( 'contenteditable', 'true' );
-    this.setHTML( '' );
 
     // Remove Firefox's built-in controls
     try {
@@ -1543,6 +1542,8 @@ function Squire ( doc ) {
     } catch ( error ) {}
 
     instances.push( this );
+
+    this.setHTML( '' );
 }
 
 var proto = Squire.prototype;
