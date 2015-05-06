@@ -14,7 +14,26 @@ function getSquireInstance ( doc ) {
     return null;
 }
 
-function Squire ( doc ) {
+// Merges two objects
+function mergeObjects( defaults, newObj ) {
+    if( ! defaults )
+        defaults = {};
+    for ( var prop in newObj ) {
+        try {
+            if ( newObj[ prop ].constructor == Object ) {
+                defaults[ prop ] = mergeObjects( defaults[ prop ], newObj[ prop ] );
+            } else {
+                defaults[ prop ] = newObj[ prop ];
+            }
+        }
+        catch ( e ) {
+            defaults[ prop ] = newObj[ prop ];
+        }
+    }
+    return defaults;
+}
+
+function Squire ( doc, options ) {
     var win = doc.defaultView;
     var body = doc.body;
     var mutation;
@@ -22,6 +41,16 @@ function Squire ( doc ) {
     this._win = win;
     this._doc = doc;
     this._body = body;
+    
+    this._settings = {
+        blockTag: 'DIV',
+        tagAttributes: {
+            block: null
+        }
+    }
+    this._settings = mergeObjects(this._settings, options);
+    // To prevent mistakes if the tag is set in lowercase by a user
+    this._settings.blockTag = this._settings.blockTag.toUpperCase();
 
     this._events = {};
 
@@ -64,9 +93,6 @@ function Squire ( doc ) {
     } else {
         this.addEventListener( 'keyup', this._keyUpDetectChange );
     }
-
-    this.defaultBlockTag = 'DIV';
-    this.defaultBlockProperties = null;
 
     // IE sometimes fires the beforepaste event twice; make sure it is not run
     // again before our after paste function is called.
@@ -130,7 +156,7 @@ proto.createElement = function ( tag, props, children ) {
 proto.createDefaultBlock = function ( children ) {
     return fixCursor(
         this.createElement(
-            this.defaultBlockTag, this.defaultBlockProperties, children )
+            this._settings.blockTag, this._settings.tagAttributes.block, children )
     );
 };
 
@@ -141,6 +167,10 @@ proto.didError = function ( error ) {
 proto.getDocument = function () {
     return this._doc;
 };
+
+proto.getSettings = function () {
+    return this._settings;
+}
 
 // --- Events ---
 
@@ -916,8 +946,8 @@ var splitBlock = function ( self, block, node, offset ) {
         nodeAfterSplit = split( node, offset, block.parentNode );
 
     if ( !splitTag ) {
-        splitTag = self.defaultBlockTag;
-        splitProperties = self.defaultBlockProperties;
+        splitTag = self._settings.blockTag;
+        splitProperties = self._settings.tagAttributes.block;
     }
 
     // Make sure the new node is the correct type.
@@ -1537,7 +1567,7 @@ var cleanupBRs = function ( root ) {
 proto._ensureBottomLine = function () {
     var body = this._body,
         last = body.lastElementChild;
-    if ( !last || last.nodeName !== this.defaultBlockTag || !isBlock( last ) ) {
+    if ( !last || last.nodeName !== this._settings.blockTag || !isBlock( last ) ) {
         body.appendChild( this.createDefaultBlock() );
     }
 };
