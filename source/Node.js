@@ -233,17 +233,30 @@ function fixContainer ( container ) {
     var children = container.childNodes,
         doc = container.ownerDocument,
         wrapper = null,
-        i, l, child, isBR;
+        i, l, child, isBR,
+        instance = getSquireInstance( doc );
+        
     for ( i = 0, l = children.length; i < l; i += 1 ) {
         child = children[i];
         isBR = child.nodeName === 'BR';
         if ( !isBR && isInline( child ) ) {
-            if ( !wrapper ) { wrapper = createElement( doc, 'DIV' ); }
-            wrapper.appendChild( child );
+            if ( !wrapper ) {
+                wrapper = instance ?
+                    // Append the child here, because `appendChild` will
+                    // paste it after the <br>
+                    instance.createDefaultBlock( [ child ] ) :
+                    createElement( doc, 'DIV', null, [ child ] );                
+            } else {
+                wrapper.appendChild( child );
+            }
             i -= 1;
             l -= 1;
         } else if ( isBR || wrapper ) {
-            if ( !wrapper ) { wrapper = createElement( doc, 'DIV' ); }
+            if ( !wrapper ) {
+                wrapper = instance ?
+                    instance.createDefaultBlock() :
+                    createElement( doc, 'DIV' );
+            }
             fixCursor( wrapper );
             if ( isBR ) {
                 container.replaceChild( wrapper, child );

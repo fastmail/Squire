@@ -34,6 +34,10 @@ function mergeObjects( defaults, newObj ) {
 }
 
 function Squire ( doc, options ) {
+    // Make this Squire instance accessible as early as possible
+    // in functions like fixCursor, etc.
+    instances.push( this );
+    
     var win = doc.defaultView;
     var body = doc.body;
     var mutation;
@@ -143,8 +147,6 @@ function Squire ( doc, options ) {
         doc.execCommand( 'enableObjectResizing', false, 'false' );
         doc.execCommand( 'enableInlineTableEditing', false, 'false' );
     } catch ( error ) {}
-
-    instances.push( this );
 }
 
 var proto = Squire.prototype;
