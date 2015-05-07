@@ -3,3 +3,4 @@ Makefile
 .gitignore
 .editorconfig
 bower.json
+source/
