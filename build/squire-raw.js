@@ -1601,7 +1601,7 @@ proto.createElement = function ( tag, props, children ) {
 proto.createDefaultBlock = function ( children ) {
     return fixCursor(
         this.createElement(
-            this._settings.blockTag, this._settings.tagAttributes.block, children )
+            this.getSettings().blockTag, this.getSettings().tagAttributes.block, children )
     );
 };
 
@@ -2391,8 +2391,8 @@ var splitBlock = function ( self, block, node, offset ) {
         nodeAfterSplit = split( node, offset, block.parentNode );
 
     if ( !splitTag ) {
-        splitTag = self._settings.blockTag;
-        splitProperties = self._settings.tagAttributes.block;
+        splitTag = self.getSettings().blockTag;
+        splitProperties = self.getSettings().tagAttributes.block;
     }
 
     // Make sure the new node is the correct type.
@@ -3030,7 +3030,7 @@ var cleanupBRs = function ( root ) {
 proto._ensureBottomLine = function () {
     var body = this._body,
         last = body.lastElementChild;
-    if ( !last || last.nodeName !== this._settings.blockTag || !isBlock( last ) ) {
+    if ( !last || last.nodeName !== this.getSettings().blockTag || !isBlock( last ) ) {
         body.appendChild( this.createDefaultBlock() );
     }
 };
