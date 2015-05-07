@@ -7,7 +7,11 @@ if ( top !== win ) {
         win.onEditorLoad = null;
     }
 } else {
-    win.Squire = Squire;
+    if ( module && module.exports ) {
+        module.exports = Squire;
+    } else {
+        win.Squire = Squire;
+    }
 }
 
 }( document ) );
