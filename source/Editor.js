@@ -49,7 +49,13 @@ function Squire ( doc, options ) {
     this._settings = {
         blockTag: 'DIV',
         tagAttributes: {
-            block: null
+            block: null,
+            ul: null,
+            ol: null,
+            li: null,
+            blockquote: null,
+            img: null,
+            a: null
         }
     }
     this._settings = mergeObjects(this._settings, options);
@@ -957,7 +963,13 @@ var splitBlock = function ( self, block, node, offset ) {
         block = createElement( nodeAfterSplit.ownerDocument,
             splitTag, splitProperties );
         if ( nodeAfterSplit.dir ) {
-            block.className = nodeAfterSplit.dir === 'rtl' ? 'dir-rtl' : '';
+            block.className = ( block.className
+                .split( /\s+/ )
+                .filter( function ( klass ) {
+                    return !( /rtl/.test( klass ) );
+                })
+                .join( ' ' ) +
+                ( nodeAfterSplit.dir === 'rtl' ? ' dir-rtl' : '' ) ).trim();
             block.dir = nodeAfterSplit.dir;
         }
         replaceWith( nodeAfterSplit, block );
@@ -1044,7 +1056,7 @@ proto.modifyBlocks = function ( modify, range ) {
 };
 
 var increaseBlockQuoteLevel = function ( frag ) {
-    return this.createElement( 'BLOCKQUOTE', [
+    return this.createElement( 'BLOCKQUOTE', this.getSettings().tagAttributes.blockquote, [
         frag
     ]);
 };
@@ -1074,15 +1086,24 @@ var removeBlockQuote = function (/* frag */) {
 
 var makeList = function ( self, frag, type ) {
     var walker = getBlockWalker( frag ),
-        node, tag, prev, newLi;
+        node, tag, prev, newLi,
+        listAttrs = self.getSettings().tagAttributes[ type.toLowerCase() ],
+        listItemAttrs = self.getSettings().tagAttributes.li,
+        liAttrs;
+    
+    listItemAttrs = ( listItemAttrs && ( typeof ( listItemAttrs ) === 'object' ) ) ? 
+        listItemAttrs : {};
 
     while ( node = walker.nextNode() ) {
         tag = node.parentNode.nodeName;
         if ( tag !== 'LI' ) {
-            newLi = self.createElement( 'LI', {
-                'class': node.dir === 'rtl' ? 'dir-rtl' : undefined,
-                dir: node.dir || undefined
-            });
+            liAttrs = mergeObjects ( listItemAttrs, { dir: node.dir || undefined } );
+            liAttrs[ 'class' ] = ( liAttrs[ 'class' ] ? liAttrs[ 'class' ] : '' ) + 
+                ( node.dir === 'rtl' ? ' dir-rtl' : '' );
+            liAttrs[ 'class' ] = liAttrs[ 'class' ] ? liAttrs[ 'class' ] : undefined;
+            
+            newLi = self.createElement( 'LI', liAttrs );
+            
             // Have we replaced the previous block with a new <ul>/<ol>?
             if ( ( prev = node.previousSibling ) &&
                     prev.nodeName === type ) {
@@ -1092,7 +1113,7 @@ var makeList = function ( self, frag, type ) {
             else {
                 replaceWith(
                     node,
-                    self.createElement( type, [
+                    self.createElement( type, listAttrs, [
                         newLi
                     ])
                 );
@@ -1103,7 +1124,7 @@ var makeList = function ( self, frag, type ) {
             tag = node.nodeName;
             if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
                 replaceWith( node,
-                    self.createElement( type, [ empty( node ) ] )
+                    self.createElement( type, listAttrs, [ empty( node ) ] )
                 );
             }
         }
@@ -1141,19 +1162,22 @@ var removeList = function ( frag ) {
 var increaseListLevel = function ( frag ) {
     var items = frag.querySelectorAll( 'LI' ),
         i, l, item,
-        type, newParent;
+        type, newParent,
+        listAttrs,
+        listItemAttrs = this.getSettings().tagAttributes.li;
     for ( i = 0, l = items.length; i < l; i += 1 ) {
         item = items[i];
         if ( !isContainer( item.firstChild ) ) {
             // type => 'UL' or 'OL'
             type = item.parentNode.nodeName;
+            listAttrs = this.getSettings().tagAttributes[ type.toLowerCase() ];
             newParent = item.previousSibling;
             if ( !newParent || !( newParent = newParent.lastChild ) ||
                     newParent.nodeName !== type ) {
                 replaceWith(
                     item,
-                    this.createElement( 'LI', [
-                        newParent = this.createElement( type )
+                    this.createElement( 'LI', listItemAttrs, [
+                        newParent = this.createElement( type, listAttrs )
                     ])
                 );
             }
@@ -1941,9 +1965,9 @@ proto.insertElement = function ( el, range ) {
 };
 
 proto.insertImage = function ( src ) {
-    var img = this.createElement( 'IMG', {
+    var img = this.createElement( 'IMG', mergeObjects( this.getSettings().tagAttributes.img, {
         src: src
-    });
+    }) );
     this.insertElement( img );
     return img;
 };
@@ -2055,7 +2079,7 @@ proto.makeLink = function ( url, attributes ) {
 
     this.changeFormat({
         tag: 'A',
-        attributes: attributes
+        attributes: mergeObjects( this.getSettings().tagAttributes.a, attributes)
     }, {
         tag: 'A'
     }, range );
