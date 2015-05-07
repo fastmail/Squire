@@ -1505,7 +1505,7 @@ function Squire ( doc, config ) {
     this._keyHandlers = Object.create( keyHandlers );
 
     // Override default properties
-    this.initConfig( config );
+    this.setConfig( config );
 
     // Fix IE<10's buggy implementation of Text#splitText.
     // If the split is at the end of the node, it doesn't insert the newly split
@@ -1546,22 +1546,20 @@ function Squire ( doc, config ) {
 
     instances.push( this );
 
-    // For fixCursor would query instance by doc first,
-    // we initialize HTML after instance saved
+    // Need to register instance before calling setHTML, so that the fixCursor
+    // function can lookup any default block tag options set.
     this.setHTML( '' );
 }
 
 var proto = Squire.prototype;
 
-proto.initConfig = function ( config ) {
-    var prop;
-    if (config) {
-        for ( prop in config ) {
-            if ( config.hasOwnProperty(prop) ) {
-                this[prop] = config[prop];
-            }
+proto.setConfig = function ( config ) {
+    for ( var prop in config ) {
+        if ( config.hasOwnProperty( prop ) ) {
+            this[ prop ] = config[ prop ];
         }
     }
+    return this;
 };
 
 proto.createElement = function ( tag, props, children ) {
