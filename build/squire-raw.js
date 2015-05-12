@@ -1348,6 +1348,50 @@ var keyHandlers = {
         // Otherwise, leave to browser but check afterwards whether it has
         // left behind an empty inline tag.
         else {
+            // Fixing deletion of <img> with display:block.
+            // Browsers don't delete inlines (<b>, <img>, etc.) whose display
+            // is not inline or inline block. Although bold, italic and so on
+            // are unlikely to be set to display:block in CSS, <img> can.
+            var container = range.commonAncestorContainer,
+                next,
+                delImg = false;
+                
+            if ( isInline( container ) ) {
+                var length = container.nodeValue && container.nodeValue.length ||
+                        container.innerText.length,
+                    display;
+                while ( container.parentNode && 
+                        !container.nextSibling 
+                        && isInline( container.parentNode ) )
+                    container = container.parentNode;
+                next = container.nextSibling;
+                display = window.getComputedStyle( next ).display
+                // In the same block with <img>, at the end of TextNode,
+                // the <img> is (almost) right after the cursor
+                if ( isInline( container ) && 
+                        range.endOffset === length && 
+                        next.nodeName === 'IMG' && 
+                        !/^inline|inline-block$/.test( display ) ) {
+                    delImg = true;
+                }
+            }
+            // Surprisingly, there is another possible cursor position:
+            // when range offsets are based on container's childNodes.
+            // Seems to happen only if <img> (or another inline)
+            // is display:block
+            else if ( isBlock( container ) ) {
+                next = container.childNodes[range.startOffset];
+                if ( container === range.endContainer &&
+                        container === range.startContainer &&
+                        next.nodeName === 'IMG' ) {
+                    delImg = true;
+                }            
+            }            
+            if ( delImg ){            
+                event.preventDefault();
+                next.parentNode.removeChild( next );
+            }
+            
             self.setSelection( range );
             setTimeout( function () { afterDelete( self ); }, 0 );
         }
