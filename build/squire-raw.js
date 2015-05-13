@@ -2448,7 +2448,13 @@ var splitBlock = function ( self, block, node, offset ) {
     return nodeAfterSplit;
 };
 
-proto.forEachBlock = function ( fn, mutates, range ) {
+proto.forEachBlock = function ( fn, mutates, args, range ) {
+    if ( !range && args &&
+            args.collapse && typeof( args.collapse ) === 'function' ) {
+        range = args;
+        args = null;
+    }
+    
     if ( !range && !( range = this.getSelection() ) ) {
         return this;
     }
@@ -2463,7 +2469,7 @@ proto.forEachBlock = function ( fn, mutates, range ) {
         end = getEndBlockOfRange( range );
     if ( start && end ) {
         do {
-            if ( fn( start ) || start === end ) { break; }
+            if ( fn( start, args ) || start === end ) { break; }
         } while ( start = getNextBlock( start ) );
     }
 
@@ -2481,10 +2487,16 @@ proto.forEachBlock = function ( fn, mutates, range ) {
     return this;
 };
 
-proto.modifyBlocks = function ( modify, range ) {
+proto.modifyBlocks = function ( modify, args, range ) {
+    if ( !range && args &&
+            args.collapse && typeof( args.collapse ) === 'function' ) {
+        range = args;
+        args = null;
+    }
+    
     if ( !range && !( range = this.getSelection() ) ) {
         return this;
-    }
+    }    
 
     // 1. Save undo checkpoint and bookmark selection
     if ( this._isInUndoState ) {
@@ -2503,7 +2515,7 @@ proto.modifyBlocks = function ( modify, range ) {
     frag = extractContentsOfRange( range, body );
 
     // 4. Modify tree of fragment and reinsert.
-    insertNodeInRange( range, modify.call( this, frag ) );
+    insertNodeInRange( range, modify.call( this, frag, args ) );
 
     // 5. Merge containers at edges
     if ( range.endOffset < range.endContainer.childNodes.length ) {
