@@ -1348,6 +1348,50 @@ var keyHandlers = {
         // Otherwise, leave to browser but check afterwards whether it has
         // left behind an empty inline tag.
         else {
+            // Fixing deletion of <img> with display:block.
+            // Browsers don't delete inlines (<b>, <img>, etc.) whose display
+            // is not inline or inline block. Although bold, italic and so on
+            // are unlikely to be set to display:block in CSS, <img> can.
+            var container = range.commonAncestorContainer,
+                next,
+                delImg = false;
+                
+            if ( isInline( container ) ) {
+                var length = container.nodeValue && container.nodeValue.length ||
+                        container.innerText.length,
+                    display;
+                while ( container.parentNode && 
+                        !container.nextSibling 
+                        && isInline( container.parentNode ) )
+                    container = container.parentNode;
+                next = container.nextSibling;
+                display = window.getComputedStyle( next ).display
+                // In the same block with <img>, at the end of TextNode,
+                // the <img> is (almost) right after the cursor
+                if ( isInline( container ) && 
+                        range.endOffset === length && 
+                        next.nodeName === 'IMG' && 
+                        !/^inline|inline-block$/.test( display ) ) {
+                    delImg = true;
+                }
+            }
+            // Surprisingly, there is another possible cursor position:
+            // when range offsets are based on container's childNodes.
+            // Seems to happen only if <img> (or another inline)
+            // is display:block
+            else if ( isBlock( container ) ) {
+                next = container.childNodes[range.startOffset];
+                if ( container === range.endContainer &&
+                        container === range.startContainer &&
+                        next.nodeName === 'IMG' ) {
+                    delImg = true;
+                }            
+            }            
+            if ( delImg ){            
+                event.preventDefault();
+                next.parentNode.removeChild( next );
+            }
+            
             self.setSelection( range );
             setTimeout( function () { afterDelete( self ); }, 0 );
         }
@@ -2404,7 +2448,13 @@ var splitBlock = function ( self, block, node, offset ) {
     return nodeAfterSplit;
 };
 
-proto.forEachBlock = function ( fn, mutates, range ) {
+proto.forEachBlock = function ( fn, mutates, args, range ) {
+    if ( !range && args &&
+            args.collapse && typeof( args.collapse ) === 'function' ) {
+        range = args;
+        args = null;
+    }
+    
     if ( !range && !( range = this.getSelection() ) ) {
         return this;
     }
@@ -2419,7 +2469,7 @@ proto.forEachBlock = function ( fn, mutates, range ) {
         end = getEndBlockOfRange( range );
     if ( start && end ) {
         do {
-            if ( fn( start ) || start === end ) { break; }
+            if ( fn( start, args ) || start === end ) { break; }
         } while ( start = getNextBlock( start ) );
     }
 
@@ -2437,10 +2487,16 @@ proto.forEachBlock = function ( fn, mutates, range ) {
     return this;
 };
 
-proto.modifyBlocks = function ( modify, range ) {
+proto.modifyBlocks = function ( modify, args, range ) {
+    if ( !range && args &&
+            args.collapse && typeof( args.collapse ) === 'function' ) {
+        range = args;
+        args = null;
+    }
+    
     if ( !range && !( range = this.getSelection() ) ) {
         return this;
-    }
+    }    
 
     // 1. Save undo checkpoint and bookmark selection
     if ( this._isInUndoState ) {
@@ -2459,7 +2515,7 @@ proto.modifyBlocks = function ( modify, range ) {
     frag = extractContentsOfRange( range, body );
 
     // 4. Modify tree of fragment and reinsert.
-    insertNodeInRange( range, modify.call( this, frag ) );
+    insertNodeInRange( range, modify.call( this, frag, args ) );
 
     // 5. Merge containers at edges
     if ( range.endOffset < range.endContainer.childNodes.length ) {
