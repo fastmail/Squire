@@ -1,4 +1,4 @@
-/* Copyright © 2011-2013 by Neil Jenkins. MIT Licensed. */
+/* Copyright © 2011-2015 by Neil Jenkins. MIT Licensed. */
 
 ( function ( doc, undefined ) {
 
@@ -41,6 +41,15 @@ var canObserveMutations = typeof MutationObserver !== 'undefined';
 var notWS = /[^ \t\r\n]/;
 
 var indexOf = Array.prototype.indexOf;
+
+// Polyfill for FF3.5
+if ( !Object.create ) {
+    Object.create = function ( proto ) {
+        var F = function () {};
+        F.prototype = proto;
+        return new F();
+    };
+}
 
 /*
     Native TreeWalker is buggy in IE and Opera:
@@ -213,7 +222,7 @@ function getNearest ( node, tag, attributes ) {
 
 function getPath ( node ) {
     var parent = node.parentNode,
-        path, id, className, classNames;
+        path, id, className, classNames, dir;
     if ( !parent || node.nodeType !== ELEMENT_NODE ) {
         path = parent ? getPath( parent ) : '';
     } else {
@@ -227,6 +236,9 @@ function getPath ( node ) {
             classNames.sort();
             path += '.';
             path += classNames.join( '.' );
+        }
+        if ( dir = node.dir ) {
+            path += '[dir=' + dir + ']';
         }
     }
     return path;
@@ -291,14 +303,11 @@ function fixCursor ( node ) {
     // cursor to appear.
     var doc = node.ownerDocument,
         root = node,
-        fixer, child, instance;
+        fixer, child;
 
     if ( node.nodeName === 'BODY' ) {
         if ( !( child = node.firstChild ) || child.nodeName === 'BR' ) {
-            instance = getSquireInstance( doc );
-            fixer = instance ?
-                instance.createDefaultBlock() :
-                createElement( doc, 'DIV' );
+            fixer = getSquireInstance( doc ).createDefaultBlock();
             if ( child ) {
                 node.replaceChild( fixer, child );
             }
@@ -364,17 +373,25 @@ function fixContainer ( container ) {
     var children = container.childNodes,
         doc = container.ownerDocument,
         wrapper = null,
-        i, l, child, isBR;
+        i, l, child, isBR,
+        config = getSquireInstance( doc )._config;
+
     for ( i = 0, l = children.length; i < l; i += 1 ) {
         child = children[i];
         isBR = child.nodeName === 'BR';
         if ( !isBR && isInline( child ) ) {
-            if ( !wrapper ) { wrapper = createElement( doc, 'DIV' ); }
+            if ( !wrapper ) {
+                 wrapper = createElement( doc,
+                    config.blockTag, config.blockAttributes );
+            }
             wrapper.appendChild( child );
             i -= 1;
             l -= 1;
         } else if ( isBR || wrapper ) {
-            if ( !wrapper ) { wrapper = createElement( doc, 'DIV' ); }
+            if ( !wrapper ) {
+                wrapper = createElement( doc,
+                    config.blockTag, config.blockAttributes );
+            }
             fixCursor( wrapper );
             if ( isBR ) {
                 container.replaceChild( wrapper, child );
@@ -1056,6 +1073,365 @@ var expandRangeToBlockBoundaries = function ( range ) {
     }
 };
 
+var mapKeyTo = function ( method ) {
+    return function ( self, event ) {
+        event.preventDefault();
+        self[ method ]();
+    };
+};
+
+var mapKeyToFormat = function ( tag, remove ) {
+    remove = remove || null;
+    return function ( self, event ) {
+        event.preventDefault();
+        var range = self.getSelection();
+        if ( self.hasFormat( tag, null, range ) ) {
+            self.changeFormat( null, { tag: tag }, range );
+        } else {
+            self.changeFormat( { tag: tag }, remove, range );
+        }
+    };
+};
+
+// If you delete the content inside a span with a font styling, Webkit will
+// replace it with a <font> tag (!). If you delete all the text inside a
+// link in Opera, it won't delete the link. Let's make things consistent. If
+// you delete all text inside an inline tag, remove the inline tag.
+var afterDelete = function ( self, range ) {
+    try {
+        if ( !range ) { range = self.getSelection(); }
+        var node = range.startContainer,
+            parent;
+        // Climb the tree from the focus point while we are inside an empty
+        // inline element
+        if ( node.nodeType === TEXT_NODE ) {
+            node = node.parentNode;
+        }
+        parent = node;
+        while ( isInline( parent ) &&
+                ( !parent.textContent || parent.textContent === ZWS ) ) {
+            node = parent;
+            parent = node.parentNode;
+        }
+        // If focussed in empty inline element
+        if ( node !== parent ) {
+            // Move focus to just before empty inline(s)
+            range.setStart( parent,
+                indexOf.call( parent.childNodes, node ) );
+            range.collapse( true );
+            // Remove empty inline(s)
+            parent.removeChild( node );
+            // Fix cursor in block
+            if ( !isBlock( parent ) ) {
+                parent = getPreviousBlock( parent );
+            }
+            fixCursor( parent );
+            // Move cursor into text node
+            moveRangeBoundariesDownTree( range );
+        }
+        self._ensureBottomLine();
+        self.setSelection( range );
+        self._updatePath( range, true );
+    } catch ( error ) {
+        self.didError( error );
+    }
+};
+
+var keyHandlers = {
+    enter: function ( self, event, range ) {
+        var block, parent, nodeAfterSplit;
+
+        // We handle this ourselves
+        event.preventDefault();
+
+        // Save undo checkpoint and add any links in the preceding section.
+        // Remove any zws so we don't think there's content in an empty
+        // block.
+        self._recordUndoState( range );
+        addLinks( range.startContainer );
+        self._removeZWS();
+        self._getRangeAndRemoveBookmark( range );
+
+        // Selected text is overwritten, therefore delete the contents
+        // to collapse selection.
+        if ( !range.collapsed ) {
+            deleteContentsOfRange( range );
+        }
+
+        block = getStartBlockOfRange( range );
+
+        // If this is a malformed bit of document or in a table;
+        // just play it safe and insert a <br>.
+        if ( !block || /^T[HD]$/.test( block.nodeName ) ) {
+            insertNodeInRange( range, self.createElement( 'BR' ) );
+            range.collapse( false );
+            self.setSelection( range );
+            self._updatePath( range, true );
+            return;
+        }
+
+        // If in a list, we'll split the LI instead.
+        if ( parent = getNearest( block, 'LI' ) ) {
+            block = parent;
+        }
+
+        if ( !block.textContent ) {
+            // Break list
+            if ( getNearest( block, 'UL' ) || getNearest( block, 'OL' ) ) {
+                return self.modifyBlocks( decreaseListLevel, range );
+            }
+            // Break blockquote
+            else if ( getNearest( block, 'BLOCKQUOTE' ) ) {
+                return self.modifyBlocks( removeBlockQuote, range );
+            }
+        }
+
+        // Otherwise, split at cursor point.
+        nodeAfterSplit = splitBlock( self, block,
+            range.startContainer, range.startOffset );
+
+        // Clean up any empty inlines if we hit enter at the beginning of the
+        // block
+        removeZWS( block );
+        removeEmptyInlines( block );
+        fixCursor( block );
+
+        // Focus cursor
+        // If there's a <b>/<i> etc. at the beginning of the split
+        // make sure we focus inside it.
+        while ( nodeAfterSplit.nodeType === ELEMENT_NODE ) {
+            var child = nodeAfterSplit.firstChild,
+                next;
+
+            // Don't continue links over a block break; unlikely to be the
+            // desired outcome.
+            if ( nodeAfterSplit.nodeName === 'A' &&
+                    ( !nodeAfterSplit.textContent ||
+                        nodeAfterSplit.textContent === ZWS ) ) {
+                child = self._doc.createTextNode( '' );
+                replaceWith( nodeAfterSplit, child );
+                nodeAfterSplit = child;
+                break;
+            }
+
+            while ( child && child.nodeType === TEXT_NODE && !child.data ) {
+                next = child.nextSibling;
+                if ( !next || next.nodeName === 'BR' ) {
+                    break;
+                }
+                detach( child );
+                child = next;
+            }
+
+            // 'BR's essentially don't count; they're a browser hack.
+            // If you try to select the contents of a 'BR', FF will not let
+            // you type anything!
+            if ( !child || child.nodeName === 'BR' ||
+                    ( child.nodeType === TEXT_NODE && !isPresto ) ) {
+                break;
+            }
+            nodeAfterSplit = child;
+        }
+        range = self._createRange( nodeAfterSplit, 0 );
+        self.setSelection( range );
+        self._updatePath( range, true );
+
+        // Scroll into view
+        if ( nodeAfterSplit.nodeType === TEXT_NODE ) {
+            nodeAfterSplit = nodeAfterSplit.parentNode;
+        }
+        var doc = self._doc,
+            body = self._body;
+        if ( nodeAfterSplit.offsetTop + nodeAfterSplit.offsetHeight >
+                ( doc.documentElement.scrollTop || body.scrollTop ) +
+                body.offsetHeight ) {
+            nodeAfterSplit.scrollIntoView( false );
+        }
+    },
+    backspace: function ( self, event, range ) {
+        self._removeZWS();
+        // Record undo checkpoint.
+        self._recordUndoState( range );
+        self._getRangeAndRemoveBookmark( range );
+        // If not collapsed, delete contents
+        if ( !range.collapsed ) {
+            event.preventDefault();
+            deleteContentsOfRange( range );
+            afterDelete( self, range );
+        }
+        // If at beginning of block, merge with previous
+        else if ( rangeDoesStartAtBlockBoundary( range ) ) {
+            event.preventDefault();
+            var current = getStartBlockOfRange( range ),
+                previous = current && getPreviousBlock( current );
+            // Must not be at the very beginning of the text area.
+            if ( previous ) {
+                // If not editable, just delete whole block.
+                if ( !previous.isContentEditable ) {
+                    detach( previous );
+                    return;
+                }
+                // Otherwise merge.
+                mergeWithBlock( previous, current, range );
+                // If deleted line between containers, merge newly adjacent
+                // containers.
+                current = previous.parentNode;
+                while ( current && !current.nextSibling ) {
+                    current = current.parentNode;
+                }
+                if ( current && ( current = current.nextSibling ) ) {
+                    mergeContainers( current );
+                }
+                self.setSelection( range );
+            }
+            // If at very beginning of text area, allow backspace
+            // to break lists/blockquote.
+            else if ( current ) {
+                // Break list
+                if ( getNearest( current, 'UL' ) ||
+                        getNearest( current, 'OL' ) ) {
+                    return self.modifyBlocks( decreaseListLevel, range );
+                }
+                // Break blockquote
+                else if ( getNearest( current, 'BLOCKQUOTE' ) ) {
+                    return self.modifyBlocks( decreaseBlockQuoteLevel, range );
+                }
+                self.setSelection( range );
+                self._updatePath( range, true );
+            }
+        }
+        // Otherwise, leave to browser but check afterwards whether it has
+        // left behind an empty inline tag.
+        else {
+            self.setSelection( range );
+            setTimeout( function () { afterDelete( self ); }, 0 );
+        }
+    },
+    'delete': function ( self, event, range ) {
+        self._removeZWS();
+        // Record undo checkpoint.
+        self._recordUndoState( range );
+        self._getRangeAndRemoveBookmark( range );
+        // If not collapsed, delete contents
+        if ( !range.collapsed ) {
+            event.preventDefault();
+            deleteContentsOfRange( range );
+            afterDelete( self, range );
+        }
+        // If at end of block, merge next into this block
+        else if ( rangeDoesEndAtBlockBoundary( range ) ) {
+            event.preventDefault();
+            var current = getStartBlockOfRange( range ),
+                next = current && getNextBlock( current );
+            // Must not be at the very end of the text area.
+            if ( next ) {
+                // If not editable, just delete whole block.
+                if ( !next.isContentEditable ) {
+                    detach( next );
+                    return;
+                }
+                // Otherwise merge.
+                mergeWithBlock( current, next, range );
+                // If deleted line between containers, merge newly adjacent
+                // containers.
+                next = current.parentNode;
+                while ( next && !next.nextSibling ) {
+                    next = next.parentNode;
+                }
+                if ( next && ( next = next.nextSibling ) ) {
+                    mergeContainers( next );
+                }
+                self.setSelection( range );
+                self._updatePath( range, true );
+            }
+        }
+        // Otherwise, leave to browser but check afterwards whether it has
+        // left behind an empty inline tag.
+        else {
+            self.setSelection( range );
+            setTimeout( function () { afterDelete( self ); }, 0 );
+        }
+    },
+    tab: function ( self, event, range ) {
+        var node, parent;
+        self._removeZWS();
+        // If no selection and in an empty block
+        if ( range.collapsed &&
+                rangeDoesStartAtBlockBoundary( range ) &&
+                rangeDoesEndAtBlockBoundary( range ) ) {
+            node = getStartBlockOfRange( range );
+            // Iterate through the block's parents
+            while ( parent = node.parentNode ) {
+                // If we find a UL or OL (so are in a list, node must be an LI)
+                if ( parent.nodeName === 'UL' || parent.nodeName === 'OL' ) {
+                    // AND the LI is not the first in the list
+                    if ( node.previousSibling ) {
+                        // Then increase the list level
+                        event.preventDefault();
+                        self.modifyBlocks( increaseListLevel, range );
+                    }
+                    break;
+                }
+                node = parent;
+            }
+            event.preventDefault();
+        }
+    },
+    space: function ( self, _, range ) {
+        var node, parent;
+        self._recordUndoState( range );
+        addLinks( range.startContainer );
+        self._getRangeAndRemoveBookmark( range );
+
+        // If the cursor is at the end of a link (<a>foo|</a>) then move it
+        // outside of the link (<a>foo</a>|) so that the space is not part of
+        // the link text.
+        node = range.endContainer;
+        parent = node.parentNode;
+        if ( range.collapsed && parent.nodeName === 'A' &&
+                !node.nextSibling && range.endOffset === getLength( node ) ) {
+            range.setStartAfter( parent );
+        }
+
+        self.setSelection( range );
+    },
+    left: function ( self ) {
+        self._removeZWS();
+    },
+    right: function ( self ) {
+        self._removeZWS();
+    }
+};
+
+// Firefox incorrectly handles Cmd-left/Cmd-right on Mac:
+// it goes back/forward in history! Override to do the right
+// thing.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=289384
+if ( isMac && isGecko && win.getSelection().modify ) {
+    keyHandlers[ 'meta-left' ] = function ( self, event ) {
+        event.preventDefault();
+        self._sel.modify( 'move', 'backward', 'lineboundary' );
+    };
+    keyHandlers[ 'meta-right' ] = function ( self, event ) {
+        event.preventDefault();
+        self._sel.modify( 'move', 'forward', 'lineboundary' );
+    };
+}
+
+keyHandlers[ ctrlKey + 'b' ] = mapKeyToFormat( 'B' );
+keyHandlers[ ctrlKey + 'i' ] = mapKeyToFormat( 'I' );
+keyHandlers[ ctrlKey + 'u' ] = mapKeyToFormat( 'U' );
+keyHandlers[ ctrlKey + 'shift-7' ] = mapKeyToFormat( 'S' );
+keyHandlers[ ctrlKey + 'shift-5' ] = mapKeyToFormat( 'SUB', { tag: 'SUP' } );
+keyHandlers[ ctrlKey + 'shift-6' ] = mapKeyToFormat( 'SUP', { tag: 'SUB' } );
+keyHandlers[ ctrlKey + 'shift-8' ] = mapKeyTo( 'makeUnorderedList' );
+keyHandlers[ ctrlKey + 'shift-9' ] = mapKeyTo( 'makeOrderedList' );
+keyHandlers[ ctrlKey + '[' ] = mapKeyTo( 'decreaseQuoteLevel' );
+keyHandlers[ ctrlKey + ']' ] = mapKeyTo( 'increaseQuoteLevel' );
+keyHandlers[ ctrlKey + 'y' ] = mapKeyTo( 'redo' );
+keyHandlers[ ctrlKey + 'z' ] = mapKeyTo( 'undo' );
+keyHandlers[ ctrlKey + 'shift-z' ] = mapKeyTo( 'redo' );
+
 var instances = [];
 
 function getSquireInstance ( doc ) {
@@ -1070,7 +1446,21 @@ function getSquireInstance ( doc ) {
     return null;
 }
 
-function Squire ( doc ) {
+function mergeObjects ( base, extras ) {
+    var prop, value;
+    if ( !base ) {
+        base = {};
+    }
+    for ( prop in extras ) {
+        value = extras[ prop ];
+        base[ prop ] = ( value && value.constructor === Object ) ?
+            mergeObjects( base[ prop ], value ) :
+            value;
+    }
+    return base;
+}
+
+function Squire ( doc, config ) {
     var win = doc.defaultView;
     var body = doc.body;
     var mutation;
@@ -1121,9 +1511,6 @@ function Squire ( doc ) {
         this.addEventListener( 'keyup', this._keyUpDetectChange );
     }
 
-    this.defaultBlockTag = 'DIV';
-    this.defaultBlockProperties = null;
-
     // IE sometimes fires the beforepaste event twice; make sure it is not run
     // again before our after paste function is called.
     this._awaitingPaste = false;
@@ -1132,6 +1519,12 @@ function Squire ( doc ) {
 
     // Opera does not fire keydown repeatedly.
     this.addEventListener( isPresto ? 'keypress' : 'keydown', this._onKey );
+
+    // Add key handlers
+    this._keyHandlers = Object.create( keyHandlers );
+
+    // Override default properties
+    this.setConfig( config );
 
     // Fix IE<10's buggy implementation of Text#splitText.
     // If the split is at the end of the node, it doesn't insert the newly split
@@ -1163,7 +1556,6 @@ function Squire ( doc ) {
     }
 
     body.setAttribute( 'contenteditable', 'true' );
-    this.setHTML( '' );
 
     // Remove Firefox's built-in controls
     try {
@@ -1172,18 +1564,42 @@ function Squire ( doc ) {
     } catch ( error ) {}
 
     instances.push( this );
+
+    // Need to register instance before calling setHTML, so that the fixCursor
+    // function can lookup any default block tag options set.
+    this.setHTML( '' );
 }
 
 var proto = Squire.prototype;
+
+proto.setConfig = function ( config ) {
+    config = mergeObjects({
+        blockTag: 'DIV',
+        blockAttributes: null,
+        tagAttributes: {
+            blockquote: null,
+            ul: null,
+            ol: null,
+            li: null
+        }
+    }, config );
+
+    // Users may specify block tag in lower case
+    config.blockTag = config.blockTag.toUpperCase();
+
+    this._config = config;
+
+    return this;
+};
 
 proto.createElement = function ( tag, props, children ) {
     return createElement( this._doc, tag, props, children );
 };
 
 proto.createDefaultBlock = function ( children ) {
+    var config = this._config;
     return fixCursor(
-        this.createElement(
-            this.defaultBlockTag, this.defaultBlockProperties, children )
+        this.createElement( config.blockTag, config.blockAttributes, children )
     );
 };
 
@@ -1966,11 +2382,12 @@ var tagAfterSplit = {
 var splitBlock = function ( self, block, node, offset ) {
     var splitTag = tagAfterSplit[ block.nodeName ],
         splitProperties = null,
-        nodeAfterSplit = split( node, offset, block.parentNode );
+        nodeAfterSplit = split( node, offset, block.parentNode ),
+        config = self._config;
 
     if ( !splitTag ) {
-        splitTag = self.defaultBlockTag;
-        splitProperties = self.defaultBlockProperties;
+        splitTag = config.blockTag;
+        splitProperties = config.blockAttributes;
     }
 
     // Make sure the new node is the correct type.
@@ -1978,7 +2395,6 @@ var splitBlock = function ( self, block, node, offset ) {
         block = createElement( nodeAfterSplit.ownerDocument,
             splitTag, splitProperties );
         if ( nodeAfterSplit.dir ) {
-            block.className = nodeAfterSplit.dir === 'rtl' ? 'dir-rtl' : '';
             block.dir = nodeAfterSplit.dir;
         }
         replaceWith( nodeAfterSplit, block );
@@ -2065,9 +2481,10 @@ proto.modifyBlocks = function ( modify, range ) {
 };
 
 var increaseBlockQuoteLevel = function ( frag ) {
-    return this.createElement( 'BLOCKQUOTE', [
-        frag
-    ]);
+    return this.createElement( 'BLOCKQUOTE',
+        this._config.tagAttributes.blockquote, [
+            frag
+        ]);
 };
 
 var decreaseBlockQuoteLevel = function ( frag ) {
@@ -2095,15 +2512,19 @@ var removeBlockQuote = function (/* frag */) {
 
 var makeList = function ( self, frag, type ) {
     var walker = getBlockWalker( frag ),
-        node, tag, prev, newLi;
+        node, tag, prev, newLi,
+        tagAttributes = self._config.tagAttributes,
+        listAttrs = tagAttributes[ type.toLowerCase() ],
+        listItemAttrs = tagAttributes.li;
 
     while ( node = walker.nextNode() ) {
         tag = node.parentNode.nodeName;
         if ( tag !== 'LI' ) {
-            newLi = self.createElement( 'LI', {
-                'class': node.dir === 'rtl' ? 'dir-rtl' : undefined,
-                dir: node.dir || undefined
-            });
+            newLi = self.createElement( 'LI', listItemAttrs );
+            if ( node.dir ) {
+                newLi.dir = node.dir;
+            }
+
             // Have we replaced the previous block with a new <ul>/<ol>?
             if ( ( prev = node.previousSibling ) &&
                     prev.nodeName === type ) {
@@ -2113,7 +2534,7 @@ var makeList = function ( self, frag, type ) {
             else {
                 replaceWith(
                     node,
-                    self.createElement( type, [
+                    self.createElement( type, listAttrs, [
                         newLi
                     ])
                 );
@@ -2124,7 +2545,7 @@ var makeList = function ( self, frag, type ) {
             tag = node.nodeName;
             if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
                 replaceWith( node,
-                    self.createElement( type, [ empty( node ) ] )
+                    self.createElement( type, listAttrs, [ empty( node ) ] )
                 );
             }
         }
@@ -2162,7 +2583,10 @@ var removeList = function ( frag ) {
 var increaseListLevel = function ( frag ) {
     var items = frag.querySelectorAll( 'LI' ),
         i, l, item,
-        type, newParent;
+        type, newParent,
+        tagAttributes = this._config.tagAttributes,
+        listItemAttrs = tagAttributes.li,
+        listAttrs;
     for ( i = 0, l = items.length; i < l; i += 1 ) {
         item = items[i];
         if ( !isContainer( item.firstChild ) ) {
@@ -2171,10 +2595,11 @@ var increaseListLevel = function ( frag ) {
             newParent = item.previousSibling;
             if ( !newParent || !( newParent = newParent.lastChild ) ||
                     newParent.nodeName !== type ) {
+                listAttrs = tagAttributes[ type.toLowerCase() ];
                 replaceWith(
                     item,
-                    this.createElement( 'LI', [
-                        newParent = this.createElement( type )
+                    this.createElement( 'LI', listItemAttrs, [
+                        newParent = this.createElement( type, listAttrs )
                     ])
                 );
             }
@@ -2590,7 +3015,8 @@ var cleanupBRs = function ( root ) {
 proto._ensureBottomLine = function () {
     var body = this._body,
         last = body.lastElementChild;
-    if ( !last || last.nodeName !== this.defaultBlockTag || !isBlock( last ) ) {
+    if ( !last ||
+            last.nodeName !== this._config.blockTag || !isBlock( last ) ) {
         body.appendChild( this.createDefaultBlock() );
     }
 };
@@ -2711,21 +3137,25 @@ proto._onPaste = function ( event ) {
                 removeEmptyInlines( frag );
 
                 var node = frag,
-                    doPaste = true;
+                    doPaste = true,
+                    event = {
+                        fragment: frag,
+                        preventDefault: function () {
+                            doPaste = false;
+                        },
+                        isDefaultPrevented: function () {
+                            return !doPaste;
+                        }
+                    };
                 while ( node = getNextBlock( node ) ) {
                     fixCursor( node );
                 }
 
-                self.fireEvent( 'willPaste', {
-                    fragment: frag,
-                    preventDefault: function () {
-                        doPaste = false;
-                    }
-                });
+                self.fireEvent( 'willPaste', event );
 
                 // Insert pasted data
                 if ( doPaste ) {
-                    insertTreeFragmentIntoRange( range, frag );
+                    insertTreeFragmentIntoRange( range, event.fragment );
                     if ( !canObserveMutations ) {
                         self._docWasChanged();
                     }
@@ -2757,365 +3187,6 @@ var keys = {
     219: '[',
     221: ']'
 };
-
-var mapKeyTo = function ( method ) {
-    return function ( self, event ) {
-        event.preventDefault();
-        self[ method ]();
-    };
-};
-
-var mapKeyToFormat = function ( tag, remove ) {
-    remove = remove || null;
-    return function ( self, event ) {
-        event.preventDefault();
-        var range = self.getSelection();
-        if ( self.hasFormat( tag, null, range ) ) {
-            self.changeFormat( null, { tag: tag }, range );
-        } else {
-            self.changeFormat( { tag: tag }, remove, range );
-        }
-    };
-};
-
-// If you delete the content inside a span with a font styling, Webkit will
-// replace it with a <font> tag (!). If you delete all the text inside a
-// link in Opera, it won't delete the link. Let's make things consistent. If
-// you delete all text inside an inline tag, remove the inline tag.
-var afterDelete = function ( self, range ) {
-    try {
-        if ( !range ) { range = self.getSelection(); }
-        var node = range.startContainer,
-            parent;
-        // Climb the tree from the focus point while we are inside an empty
-        // inline element
-        if ( node.nodeType === TEXT_NODE ) {
-            node = node.parentNode;
-        }
-        parent = node;
-        while ( isInline( parent ) &&
-                ( !parent.textContent || parent.textContent === ZWS ) ) {
-            node = parent;
-            parent = node.parentNode;
-        }
-        // If focussed in empty inline element
-        if ( node !== parent ) {
-            // Move focus to just before empty inline(s)
-            range.setStart( parent,
-                indexOf.call( parent.childNodes, node ) );
-            range.collapse( true );
-            // Remove empty inline(s)
-            parent.removeChild( node );
-            // Fix cursor in block
-            if ( !isBlock( parent ) ) {
-                parent = getPreviousBlock( parent );
-            }
-            fixCursor( parent );
-            // Move cursor into text node
-            moveRangeBoundariesDownTree( range );
-        }
-        self._ensureBottomLine();
-        self.setSelection( range );
-        self._updatePath( range, true );
-    } catch ( error ) {
-        self.didError( error );
-    }
-};
-
-var keyHandlers = {
-    enter: function ( self, event, range ) {
-        var block, parent, nodeAfterSplit;
-
-        // We handle this ourselves
-        event.preventDefault();
-
-        // Save undo checkpoint and add any links in the preceding section.
-        // Remove any zws so we don't think there's content in an empty
-        // block.
-        self._recordUndoState( range );
-        addLinks( range.startContainer );
-        self._removeZWS();
-        self._getRangeAndRemoveBookmark( range );
-
-        // Selected text is overwritten, therefore delete the contents
-        // to collapse selection.
-        if ( !range.collapsed ) {
-            deleteContentsOfRange( range );
-        }
-
-        block = getStartBlockOfRange( range );
-
-        // If this is a malformed bit of document or in a table;
-        // just play it safe and insert a <br>.
-        if ( !block || /^T[HD]$/.test( block.nodeName ) ) {
-            insertNodeInRange( range, self.createElement( 'BR' ) );
-            range.collapse( false );
-            self.setSelection( range );
-            self._updatePath( range, true );
-            return;
-        }
-
-        // If in a list, we'll split the LI instead.
-        if ( parent = getNearest( block, 'LI' ) ) {
-            block = parent;
-        }
-
-        if ( !block.textContent ) {
-            // Break list
-            if ( getNearest( block, 'UL' ) || getNearest( block, 'OL' ) ) {
-                return self.modifyBlocks( decreaseListLevel, range );
-            }
-            // Break blockquote
-            else if ( getNearest( block, 'BLOCKQUOTE' ) ) {
-                return self.modifyBlocks( removeBlockQuote, range );
-            }
-        }
-
-        // Otherwise, split at cursor point.
-        nodeAfterSplit = splitBlock( self, block,
-            range.startContainer, range.startOffset );
-
-        // Clean up any empty inlines if we hit enter at the beginning of the
-        // block
-        removeZWS( block );
-        removeEmptyInlines( block );
-        fixCursor( block );
-
-        // Focus cursor
-        // If there's a <b>/<i> etc. at the beginning of the split
-        // make sure we focus inside it.
-        while ( nodeAfterSplit.nodeType === ELEMENT_NODE ) {
-            var child = nodeAfterSplit.firstChild,
-                next;
-
-            // Don't continue links over a block break; unlikely to be the
-            // desired outcome.
-            if ( nodeAfterSplit.nodeName === 'A' &&
-                    ( !nodeAfterSplit.textContent ||
-                        nodeAfterSplit.textContent === ZWS ) ) {
-                child = self._doc.createTextNode( '' );
-                replaceWith( nodeAfterSplit, child );
-                nodeAfterSplit = child;
-                break;
-            }
-
-            while ( child && child.nodeType === TEXT_NODE && !child.data ) {
-                next = child.nextSibling;
-                if ( !next || next.nodeName === 'BR' ) {
-                    break;
-                }
-                detach( child );
-                child = next;
-            }
-
-            // 'BR's essentially don't count; they're a browser hack.
-            // If you try to select the contents of a 'BR', FF will not let
-            // you type anything!
-            if ( !child || child.nodeName === 'BR' ||
-                    ( child.nodeType === TEXT_NODE && !isPresto ) ) {
-                break;
-            }
-            nodeAfterSplit = child;
-        }
-        range = self._createRange( nodeAfterSplit, 0 );
-        self.setSelection( range );
-        self._updatePath( range, true );
-
-        // Scroll into view
-        if ( nodeAfterSplit.nodeType === TEXT_NODE ) {
-            nodeAfterSplit = nodeAfterSplit.parentNode;
-        }
-        var doc = self._doc,
-            body = self._body;
-        if ( nodeAfterSplit.offsetTop + nodeAfterSplit.offsetHeight >
-                ( doc.documentElement.scrollTop || body.scrollTop ) +
-                body.offsetHeight ) {
-            nodeAfterSplit.scrollIntoView( false );
-        }
-    },
-    backspace: function ( self, event, range ) {
-        self._removeZWS();
-        // Record undo checkpoint.
-        self._recordUndoState( range );
-        self._getRangeAndRemoveBookmark( range );
-        // If not collapsed, delete contents
-        if ( !range.collapsed ) {
-            event.preventDefault();
-            deleteContentsOfRange( range );
-            afterDelete( self, range );
-        }
-        // If at beginning of block, merge with previous
-        else if ( rangeDoesStartAtBlockBoundary( range ) ) {
-            event.preventDefault();
-            var current = getStartBlockOfRange( range ),
-                previous = current && getPreviousBlock( current );
-            // Must not be at the very beginning of the text area.
-            if ( previous ) {
-                // If not editable, just delete whole block.
-                if ( !previous.isContentEditable ) {
-                    detach( previous );
-                    return;
-                }
-                // Otherwise merge.
-                mergeWithBlock( previous, current, range );
-                // If deleted line between containers, merge newly adjacent
-                // containers.
-                current = previous.parentNode;
-                while ( current && !current.nextSibling ) {
-                    current = current.parentNode;
-                }
-                if ( current && ( current = current.nextSibling ) ) {
-                    mergeContainers( current );
-                }
-                self.setSelection( range );
-            }
-            // If at very beginning of text area, allow backspace
-            // to break lists/blockquote.
-            else if ( current ) {
-                // Break list
-                if ( getNearest( current, 'UL' ) ||
-                        getNearest( current, 'OL' ) ) {
-                    return self.modifyBlocks( decreaseListLevel, range );
-                }
-                // Break blockquote
-                else if ( getNearest( current, 'BLOCKQUOTE' ) ) {
-                    return self.modifyBlocks( decreaseBlockQuoteLevel, range );
-                }
-                self.setSelection( range );
-                self._updatePath( range, true );
-            }
-        }
-        // Otherwise, leave to browser but check afterwards whether it has
-        // left behind an empty inline tag.
-        else {
-            self.setSelection( range );
-            setTimeout( function () { afterDelete( self ); }, 0 );
-        }
-    },
-    'delete': function ( self, event, range ) {
-        self._removeZWS();
-        // Record undo checkpoint.
-        self._recordUndoState( range );
-        self._getRangeAndRemoveBookmark( range );
-        // If not collapsed, delete contents
-        if ( !range.collapsed ) {
-            event.preventDefault();
-            deleteContentsOfRange( range );
-            afterDelete( self, range );
-        }
-        // If at end of block, merge next into this block
-        else if ( rangeDoesEndAtBlockBoundary( range ) ) {
-            event.preventDefault();
-            var current = getStartBlockOfRange( range ),
-                next = current && getNextBlock( current );
-            // Must not be at the very end of the text area.
-            if ( next ) {
-                // If not editable, just delete whole block.
-                if ( !next.isContentEditable ) {
-                    detach( next );
-                    return;
-                }
-                // Otherwise merge.
-                mergeWithBlock( current, next, range );
-                // If deleted line between containers, merge newly adjacent
-                // containers.
-                next = current.parentNode;
-                while ( next && !next.nextSibling ) {
-                    next = next.parentNode;
-                }
-                if ( next && ( next = next.nextSibling ) ) {
-                    mergeContainers( next );
-                }
-                self.setSelection( range );
-                self._updatePath( range, true );
-            }
-        }
-        // Otherwise, leave to browser but check afterwards whether it has
-        // left behind an empty inline tag.
-        else {
-            self.setSelection( range );
-            setTimeout( function () { afterDelete( self ); }, 0 );
-        }
-    },
-    tab: function ( self, event, range ) {
-        var node, parent;
-        self._removeZWS();
-        // If no selection and in an empty block
-        if ( range.collapsed &&
-                rangeDoesStartAtBlockBoundary( range ) &&
-                rangeDoesEndAtBlockBoundary( range ) ) {
-            node = getStartBlockOfRange( range );
-            // Iterate through the block's parents
-            while ( parent = node.parentNode ) {
-                // If we find a UL or OL (so are in a list, node must be an LI)
-                if ( parent.nodeName === 'UL' || parent.nodeName === 'OL' ) {
-                    // AND the LI is not the first in the list
-                    if ( node.previousSibling ) {
-                        // Then increase the list level
-                        event.preventDefault();
-                        self.modifyBlocks( increaseListLevel, range );
-                    }
-                    break;
-                }
-                node = parent;
-            }
-            event.preventDefault();
-        }
-    },
-    space: function ( self, _, range ) {
-        var node, parent;
-        self._recordUndoState( range );
-        addLinks( range.startContainer );
-        self._getRangeAndRemoveBookmark( range );
-
-        // If the cursor is at the end of a link (<a>foo|</a>) then move it
-        // outside of the link (<a>foo</a>|) so that the space is not part of
-        // the link text.
-        node = range.endContainer;
-        parent = node.parentNode;
-        if ( range.collapsed && parent.nodeName === 'A' &&
-                !node.nextSibling && range.endOffset === getLength( node ) ) {
-            range.setStartAfter( parent );
-        }
-
-        self.setSelection( range );
-    },
-    left: function ( self ) {
-        self._removeZWS();
-    },
-    right: function ( self ) {
-        self._removeZWS();
-    }
-};
-
-// Firefox incorrectly handles Cmd-left/Cmd-right on Mac:
-// it goes back/forward in history! Override to do the right
-// thing.
-// https://bugzilla.mozilla.org/show_bug.cgi?id=289384
-if ( isMac && isGecko && win.getSelection().modify ) {
-    keyHandlers[ 'meta-left' ] = function ( self, event ) {
-        event.preventDefault();
-        self._sel.modify( 'move', 'backward', 'lineboundary' );
-    };
-    keyHandlers[ 'meta-right' ] = function ( self, event ) {
-        event.preventDefault();
-        self._sel.modify( 'move', 'forward', 'lineboundary' );
-    };
-}
-
-keyHandlers[ ctrlKey + 'b' ] = mapKeyToFormat( 'B' );
-keyHandlers[ ctrlKey + 'i' ] = mapKeyToFormat( 'I' );
-keyHandlers[ ctrlKey + 'u' ] = mapKeyToFormat( 'U' );
-keyHandlers[ ctrlKey + 'shift-7' ] = mapKeyToFormat( 'S' );
-keyHandlers[ ctrlKey + 'shift-5' ] = mapKeyToFormat( 'SUB', { tag: 'SUP' } );
-keyHandlers[ ctrlKey + 'shift-6' ] = mapKeyToFormat( 'SUP', { tag: 'SUB' } );
-keyHandlers[ ctrlKey + 'shift-8' ] = mapKeyTo( 'makeUnorderedList' );
-keyHandlers[ ctrlKey + 'shift-9' ] = mapKeyTo( 'makeOrderedList' );
-keyHandlers[ ctrlKey + '[' ] = mapKeyTo( 'decreaseQuoteLevel' );
-keyHandlers[ ctrlKey + ']' ] = mapKeyTo( 'increaseQuoteLevel' );
-keyHandlers[ ctrlKey + 'y' ] = mapKeyTo( 'redo' );
-keyHandlers[ ctrlKey + 'z' ] = mapKeyTo( 'undo' );
-keyHandlers[ ctrlKey + 'shift-z' ] = mapKeyTo( 'redo' );
 
 // Ref: http://unixpapa.com/js/key.html
 proto._onKey = function ( event ) {
@@ -3156,8 +3227,8 @@ proto._onKey = function ( event ) {
 
     key = modifiers + key;
 
-    if ( keyHandlers[ key ] ) {
-        keyHandlers[ key ]( this, event, range );
+    if ( this._keyHandlers[ key ] ) {
+        this._keyHandlers[ key ]( this, event, range );
     } else if ( key.length === 1 && !range.collapsed ) {
         // Record undo checkpoint.
         this._recordUndoState( range );
@@ -3168,6 +3239,11 @@ proto._onKey = function ( event ) {
         this.setSelection( range );
         this._updatePath( range, true );
     }
+};
+
+proto.setKeyHandler = function ( key, fn ) {
+    this._keyHandlers[ key ] = fn;
+    return this;
 };
 
 // --- Get/Set data ---
@@ -3311,10 +3387,10 @@ proto.insertElement = function ( el, range ) {
     return this;
 };
 
-proto.insertImage = function ( src ) {
-    var img = this.createElement( 'IMG', {
+proto.insertImage = function ( src, attributes ) {
+    var img = this.createElement( 'IMG', mergeObjects({
         src: src
-    });
+    }, attributes ));
     this.insertElement( img );
     return img;
 };
@@ -3511,13 +3587,6 @@ proto.setTextAlignment = function ( alignment ) {
 
 proto.setTextDirection = function ( direction ) {
     this.forEachBlock( function ( block ) {
-        block.className = ( block.className
-            .split( /\s+/ )
-            .filter( function ( klass ) {
-                return !( /dir/.test( klass ) );
-            })
-            .join( ' ' ) +
-            ' dir-' + direction ).trim();
         block.dir = direction;
     }, true );
     return this.focus();
@@ -3540,7 +3609,11 @@ if ( top !== win ) {
         win.onEditorLoad = null;
     }
 } else {
-    win.Squire = Squire;
+    if ( typeof exports === 'object' ) {
+        module.exports = Squire;
+    } else {
+        win.Squire = Squire;
+    }
 }
 
 }( document ) );
