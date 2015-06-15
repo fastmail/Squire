@@ -525,7 +525,7 @@ proto._saveRangeToBookmark = function ( range ) {
     range.setEndBefore( endNode );
 };
 
-proto._getRangeAndRemoveBookmark = function ( range ) {
+proto._getRangeAndRemoveBookmark = function ( range, persistSplits ) {
     var doc = this._doc,
         start = doc.getElementById( startSelectionId ),
         end = doc.getElementById( endSelectionId );
@@ -549,10 +549,12 @@ proto._getRangeAndRemoveBookmark = function ( range ) {
         detach( start );
         detach( end );
 
-        // Merge any text nodes we split
-        mergeInlines( startContainer, _range );
-        if ( startContainer !== endContainer ) {
-            mergeInlines( endContainer, _range );
+        if ( !persistSplits ) {
+            // Merge any text nodes we split
+            mergeInlines( startContainer, _range );
+            if ( startContainer !== endContainer ) {
+                mergeInlines( endContainer, _range );
+            }
         }
 
         if ( !range ) {
