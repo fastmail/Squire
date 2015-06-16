@@ -3715,6 +3715,8 @@ proto.removeAllFormatting = function ( range ) {
     } );
 
     this.setSelection( this._getRangeAndRemoveBookmark() );
+
+    return this;
 };
 
 proto.increaseQuoteLevel = command( 'modifyBlocks', increaseBlockQuoteLevel );
