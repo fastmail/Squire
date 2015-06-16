@@ -3622,7 +3622,7 @@ proto.setTextDirection = function ( direction ) {
 
 
 function forEachChildInRange( rootNode, range, iterator ) {
-    var walker = new TreeWalker( rootNode, SHOW_ELEMENT,
+    var walker = new TreeWalker( rootNode, SHOW_ELEMENT|SHOW_TEXT,
             function ( node ) {
                 return node.parentNode === rootNode &&
                     isNodeContainedInRange( range, node, false /* include partials */ );
