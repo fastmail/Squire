@@ -525,7 +525,7 @@ proto._saveRangeToBookmark = function ( range ) {
     range.setEndBefore( endNode );
 };
 
-proto._getRangeAndRemoveBookmark = function ( range ) {
+proto._getRangeAndRemoveBookmark = function ( range, persistSplits ) {
     var doc = this._doc,
         start = doc.getElementById( startSelectionId ),
         end = doc.getElementById( endSelectionId );
@@ -549,10 +549,12 @@ proto._getRangeAndRemoveBookmark = function ( range ) {
         detach( start );
         detach( end );
 
-        // Merge any text nodes we split
-        mergeInlines( startContainer, _range );
-        if ( startContainer !== endContainer ) {
-            mergeInlines( endContainer, _range );
+        if ( !persistSplits ) {
+            // Merge any text nodes we split
+            mergeInlines( startContainer, _range );
+            if ( startContainer !== endContainer ) {
+                mergeInlines( endContainer, _range );
+            }
         }
 
         if ( !range ) {
@@ -2173,6 +2175,90 @@ proto.setTextDirection = function ( direction ) {
         block.dir = direction;
     }, true );
     return this.focus();
+};
+
+
+function forEachChildInRange( rootNode, range, iterator ) {
+    var walker = new TreeWalker( rootNode, SHOW_ELEMENT|SHOW_TEXT,
+            function ( node ) {
+                return node.parentNode === rootNode &&
+                    isNodeContainedInRange( range, node, false /* include partials */ );
+            }
+        );
+    var node;
+    while ( node = walker.nextNode() ) {
+        iterator( node );
+    }
+}
+
+function mapEachChildInRange( rootNode, range, iterator ) {
+    var output = [];
+    forEachChildInRange( rootNode, range, function ( node ) {
+        output.push( iterator( node ) );
+    } );
+    return output;
+}
+
+var stylingNodeNames = /(^|>)(?:B|I|S|SUB|SUP|U|BLOCKQUOTE|OL|UL|LI|T(?:ABLE|BODY|HEAD|FOOT|R|D|H))(>|$)/;
+
+proto.removeAllFormatting = function ( range ) {
+    if ( !range && !( range = this.getSelection() ) || range.collapsed ) {
+        return false;
+    }
+
+    var stopNode = range.commonAncestorContainer;
+    while ( stylingNodeNames.test( getPath( stopNode ) ) ) {
+        stopNode = stopNode.parentNode;
+    }
+    if (stopNode.nodeType === TEXT_NODE) {
+        return false;
+    }
+
+    moveRangeBoundariesUpTree( range, stopNode );
+    this._saveRangeToBookmark( range );
+
+    var doc = stopNode.ownerDocument;
+
+    var startContainer = range.startContainer;
+    var startOffset = range.startOffset;
+    var endContainer = range.endContainer;
+    var endOffset = range.endOffset;
+    // Split end point first to avoid problems when end and start in same container.
+    split( endContainer, endOffset, stopNode );
+    split( startContainer, startOffset, stopNode );
+
+    range = this._getRangeAndRemoveBookmark(null, true);
+    moveRangeBoundariesUpTree( range, stopNode );
+    this._saveRangeToBookmark( range );
+
+    var that = this;
+
+    var contents = [];
+    forEachChildInRange( stopNode, range, function cleanSingleNode( node ) {
+        if ( isContainer( node ) ) {
+            forEachChildInRange( node, range, cleanSingleNode );
+        } else if ( isBlock( node ) ) {
+            var block = that.createDefaultBlock();
+            block.appendChild( doc.createTextNode( node.textContent ) );
+            contents.push( block );
+        } else if ( isInline( node ) ) {
+            contents.push( doc.createTextNode( node.textContent ) );
+        }
+    } );
+    var oldContents = mapEachChildInRange( stopNode, range, function ( node ) {
+        return node;
+    } );
+
+    contents.forEach( function ( node ) {
+        stopNode.insertBefore( node, oldContents[0] );
+    } );
+    oldContents.forEach( function ( node ) {
+        stopNode.removeChild( node );
+    } );
+
+    this.setSelection( this._getRangeAndRemoveBookmark() );
+
+    return this;
 };
 
 proto.increaseQuoteLevel = command( 'modifyBlocks', increaseBlockQuoteLevel );
