@@ -2163,7 +2163,7 @@ proto.setTextDirection = function ( direction ) {
 };
 
 
-function forEachChildInRange( rootNode, range, iterator ) {
+function forEachChildInRange ( rootNode, range, iterator ) {
     var walker = new TreeWalker( rootNode, SHOW_ELEMENT|SHOW_TEXT,
             function ( node ) {
                 return node.parentNode === rootNode &&
@@ -2176,11 +2176,11 @@ function forEachChildInRange( rootNode, range, iterator ) {
     }
 }
 
-function mapEachChildInRange( rootNode, range, iterator ) {
+function mapEachChildInRange ( rootNode, range, iterator ) {
     var output = [];
     forEachChildInRange( rootNode, range, function ( node ) {
         output.push( iterator( node ) );
-    } );
+    });
     return output;
 }
 
@@ -2195,8 +2195,8 @@ proto.removeAllFormatting = function ( range ) {
     while ( stylingNodeNames.test( getPath( stopNode ) ) ) {
         stopNode = stopNode.parentNode;
     }
-    if (stopNode.nodeType === TEXT_NODE) {
         return false;
+    if ( stopNode.nodeType === TEXT_NODE ) {
     }
 
     moveRangeBoundariesUpTree( range, stopNode );
@@ -2212,14 +2212,14 @@ proto.removeAllFormatting = function ( range ) {
     split( endContainer, endOffset, stopNode );
     split( startContainer, startOffset, stopNode );
 
-    range = this._getRangeAndRemoveBookmark(null, true);
+    range = this._getRangeAndRemoveBookmark( null, true );
     moveRangeBoundariesUpTree( range, stopNode );
     this._saveRangeToBookmark( range );
 
     var that = this;
 
     var contents = [];
-    forEachChildInRange( stopNode, range, function cleanSingleNode( node ) {
+    forEachChildInRange( stopNode, range, function cleanSingleNode ( node ) {
         if ( isContainer( node ) ) {
             forEachChildInRange( node, range, cleanSingleNode );
         } else if ( isBlock( node ) ) {
@@ -2229,17 +2229,17 @@ proto.removeAllFormatting = function ( range ) {
         } else if ( isInline( node ) ) {
             contents.push( doc.createTextNode( node.textContent ) );
         }
-    } );
+    });
     var oldContents = mapEachChildInRange( stopNode, range, function ( node ) {
         return node;
-    } );
+    });
 
     contents.forEach( function ( node ) {
         stopNode.insertBefore( node, oldContents[0] );
-    } );
+    });
     oldContents.forEach( function ( node ) {
         stopNode.removeChild( node );
-    } );
+    });
 
     this.setSelection( this._getRangeAndRemoveBookmark() );
 

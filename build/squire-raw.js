@@ -3621,7 +3621,7 @@ proto.setTextDirection = function ( direction ) {
 };
 
 
-function forEachChildInRange( rootNode, range, iterator ) {
+function forEachChildInRange ( rootNode, range, iterator ) {
     var walker = new TreeWalker( rootNode, SHOW_ELEMENT|SHOW_TEXT,
             function ( node ) {
                 return node.parentNode === rootNode &&
@@ -3634,11 +3634,11 @@ function forEachChildInRange( rootNode, range, iterator ) {
     }
 }
 
-function mapEachChildInRange( rootNode, range, iterator ) {
+function mapEachChildInRange ( rootNode, range, iterator ) {
     var output = [];
     forEachChildInRange( rootNode, range, function ( node ) {
         output.push( iterator( node ) );
-    } );
+    });
     return output;
 }
 
@@ -3687,17 +3687,17 @@ proto.removeAllFormatting = function ( range ) {
         } else if ( isInline( node ) ) {
             contents.push( doc.createTextNode( node.textContent ) );
         }
-    } );
+    });
     var oldContents = mapEachChildInRange( stopNode, range, function ( node ) {
         return node;
-    } );
+    });
 
     contents.forEach( function ( node ) {
         stopNode.insertBefore( node, oldContents[0] );
-    } );
+    });
     oldContents.forEach( function ( node ) {
         stopNode.removeChild( node );
-    } );
+    });
 
     this.setSelection( this._getRangeAndRemoveBookmark() );
 
