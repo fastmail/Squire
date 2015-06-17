@@ -2188,15 +2188,15 @@ var stylingNodeNames = /(^|>)(?:B|I|S|SUB|SUP|U|BLOCKQUOTE|OL|UL|LI|T(?:ABLE|BOD
 
 proto.removeAllFormatting = function ( range ) {
     if ( !range && !( range = this.getSelection() ) || range.collapsed ) {
-        return false;
+        return this;
     }
 
     var stopNode = range.commonAncestorContainer;
     while ( stylingNodeNames.test( getPath( stopNode ) ) ) {
         stopNode = stopNode.parentNode;
     }
-        return false;
     if ( stopNode.nodeType === TEXT_NODE ) {
+        return this;
     }
 
     moveRangeBoundariesUpTree( range, stopNode );
