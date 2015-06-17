@@ -2164,15 +2164,13 @@ proto.setTextDirection = function ( direction ) {
 
 
 function forEachChildInRange ( rootNode, range, iterator ) {
-    var walker = new TreeWalker( rootNode, SHOW_ELEMENT|SHOW_TEXT,
-            function ( node ) {
-                return node.parentNode === rootNode &&
-                    isNodeContainedInRange( range, node, false /* include partials */ );
-            }
-        );
-    var node;
-    while ( node = walker.nextNode() ) {
-        iterator( node );
+    var childNodes = rootNode.childNodes,
+        node = rootNode.firstChild;
+    while ( node ) {
+        if ( isNodeContainedInRange( range, node, false ) ) {
+            iterator( node );
+        }
+        node = node.nextSibling;
     }
 }
 
