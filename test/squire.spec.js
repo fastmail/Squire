@@ -43,13 +43,13 @@ describe('Squire RTE', function () {
             expect(editor, 'to contain HTML', '<div>one two three four five</div>');
         });
         it('removes block styles', function () {
-            var startHTML = '<div><blockquote>one</blockquote><ul><li>two</li></ul>' + 
+            var startHTML = '<div><blockquote>one</blockquote><ul><li>two</li></ul>' +
                 '<ol><li>three</li></ol><table><tbody><tr><th>four</th><td>five</td></tr></tbody></table></div>';
             editor.setHTML(startHTML);
             expect(editor, 'to contain HTML', startHTML);
             selectAll(editor);
             editor.removeAllFormatting();
-            var expectedHTML = '<div><div>one</div><div>two</div><div>three</div><div>four</div><div>five</div></div>';
+            var expectedHTML = '<div>one</div><div>two</div><div>three</div><div>four</div><div>five</div>';
             expect(editor, 'to contain HTML', expectedHTML);
         });
 

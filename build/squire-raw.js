@@ -851,8 +851,9 @@ var insertTreeFragmentIntoRange = function ( range, frag ) {
             nodeBeforeSplit = next.previousSibling;
         }
         if ( !startContainer.parentNode ) {
-            startContainer = nodeBeforeSplit;
-            startOffset = nodeBeforeSplit.childNodes.length;
+            startContainer = nodeBeforeSplit || next.parentNode;
+            startOffset = nodeBeforeSplit ?
+                nodeBeforeSplit.childNodes.length : 0;
         }
         // Merge inserted containers with edges of split
         if ( isContainer( next ) ) {
@@ -878,7 +879,7 @@ var insertTreeFragmentIntoRange = function ( range, frag ) {
             endOffset = prev.childNodes.length;
         }
         // Merge inserted containers with edges of split
-        if ( isContainer( nodeAfterSplit ) ) {
+        if ( nodeAfterSplit && isContainer( nodeAfterSplit ) ) {
             mergeContainers( nodeAfterSplit );
         }
 
@@ -1983,7 +1984,7 @@ proto._saveRangeToBookmark = function ( range ) {
     range.setEndBefore( endNode );
 };
 
-proto._getRangeAndRemoveBookmark = function ( range, persistSplits ) {
+proto._getRangeAndRemoveBookmark = function ( range ) {
     var doc = this._doc,
         start = doc.getElementById( startSelectionId ),
         end = doc.getElementById( endSelectionId );
@@ -2007,12 +2008,10 @@ proto._getRangeAndRemoveBookmark = function ( range, persistSplits ) {
         detach( start );
         detach( end );
 
-        if ( !persistSplits ) {
-            // Merge any text nodes we split
-            mergeInlines( startContainer, _range );
-            if ( startContainer !== endContainer ) {
-                mergeInlines( endContainer, _range );
-            }
+        // Merge any text nodes we split
+        mergeInlines( startContainer, _range );
+        if ( startContainer !== endContainer ) {
+            mergeInlines( endContainer, _range );
         }
 
         if ( !range ) {
@@ -3620,84 +3619,91 @@ proto.setTextDirection = function ( direction ) {
     return this.focus();
 };
 
-
-function forEachChildInRange ( rootNode, range, iterator ) {
-    var childNodes = rootNode.childNodes,
-        node = rootNode.firstChild;
-    while ( node ) {
-        if ( isNodeContainedInRange( range, node, false ) ) {
-            iterator( node );
+function removeFormatting ( self, root, clean ) {
+    var node, next;
+    for ( node = root.firstChild; node; node = next ) {
+        next = node.nextSibling;
+        if ( isInline( node ) ) {
+            if ( node.nodeType === TEXT_NODE || isLeaf( node ) ) {
+                clean.appendChild( node );
+                continue;
+            }
+        } else if ( isBlock( node ) ) {
+            clean.appendChild( self.createDefaultBlock([
+                removeFormatting(
+                    self, node, self._doc.createDocumentFragment() )
+            ]));
+            continue;
         }
-        node = node.nextSibling;
+        removeFormatting( self, node, clean );
     }
+    return clean;
 }
-
-function mapEachChildInRange ( rootNode, range, iterator ) {
-    var output = [];
-    forEachChildInRange( rootNode, range, function ( node ) {
-        output.push( iterator( node ) );
-    });
-    return output;
-}
-
-var stylingNodeNames = /(^|>)(?:B|I|S|SUB|SUP|U|BLOCKQUOTE|OL|UL|LI|T(?:ABLE|BODY|HEAD|FOOT|R|D|H))(>|$)/;
 
 proto.removeAllFormatting = function ( range ) {
     if ( !range && !( range = this.getSelection() ) || range.collapsed ) {
-        return false;
+        return this;
     }
 
     var stopNode = range.commonAncestorContainer;
-    while ( stylingNodeNames.test( getPath( stopNode ) ) ) {
+    while ( stopNode && !isBlock( stopNode ) ) {
         stopNode = stopNode.parentNode;
     }
-    if (stopNode.nodeType === TEXT_NODE) {
-        return false;
+    if ( !stopNode ) {
+        expandRangeToBlockBoundaries( range );
+        stopNode = this._body;
+    }
+    if ( stopNode.nodeType === TEXT_NODE ) {
+        return this;
     }
 
+    // Record undo point
+    this._recordUndoState( range );
+    this._getRangeAndRemoveBookmark( range );
+
+
+    // Avoid splitting where we're already at edges.
     moveRangeBoundariesUpTree( range, stopNode );
-    this._saveRangeToBookmark( range );
 
+    // Split the selection up to the block, or if whole selection in same
+    // block, expand range boundaries to ends of block and split up to body.
     var doc = stopNode.ownerDocument;
-
     var startContainer = range.startContainer;
     var startOffset = range.startOffset;
     var endContainer = range.endContainer;
     var endOffset = range.endOffset;
-    // Split end point first to avoid problems when end and start in same container.
-    split( endContainer, endOffset, stopNode );
-    split( startContainer, startOffset, stopNode );
 
-    range = this._getRangeAndRemoveBookmark(null, true);
-    moveRangeBoundariesUpTree( range, stopNode );
-    this._saveRangeToBookmark( range );
+    // Split end point first to avoid problems when end and start
+    // in same container.
+    var formattedNodes = doc.createDocumentFragment();
+    var cleanNodes = doc.createDocumentFragment();
+    var nodeAfterSplit = split( endContainer, endOffset, stopNode );
+    var nodeInSplit = split( startContainer, startOffset, stopNode );
+    var nextNode;
 
-    var that = this;
+    // Then replace contents in split with a cleaned version of the same:
+    // blocks become default blocks, text and leaf nodes survive, everything
+    // else is obliterated.
+    while ( nodeInSplit !== nodeAfterSplit ) {
+        nextNode = nodeInSplit.nextSibling;
+        formattedNodes.appendChild( nodeInSplit );
+        nodeInSplit = nextNode;
+    }
+    removeFormatting( this, formattedNodes, cleanNodes );
+    nodeInSplit = cleanNodes.firstChild;
+    nextNode = cleanNodes.lastChild;
 
-    var contents = [];
-    forEachChildInRange( stopNode, range, function cleanSingleNode( node ) {
-        if ( isContainer( node ) ) {
-            forEachChildInRange( node, range, cleanSingleNode );
-        } else if ( isBlock( node ) ) {
-            var block = that.createDefaultBlock();
-            block.appendChild( doc.createTextNode( node.textContent ) );
-            contents.push( block );
-        } else if ( isInline( node ) ) {
-            contents.push( doc.createTextNode( node.textContent ) );
-        }
-    });
-    var oldContents = mapEachChildInRange( stopNode, range, function ( node ) {
-        return node;
-    });
+    if ( nodeInSplit ) {
+        stopNode.insertBefore( cleanNodes, nodeAfterSplit );
+        range.setStartBefore( nodeInSplit );
+        range.setEndAfter( nextNode );
+    } else {
+        range.setStartBefore( nodeAfterSplit );
+        range.setEndBefore( nodeAfterSplit );
+    }
+    moveRangeBoundariesDownTree( range );
 
-    contents.forEach( function ( node ) {
-        stopNode.insertBefore( node, oldContents[0] );
-    });
-    oldContents.forEach( function ( node ) {
-        stopNode.removeChild( node );
-    });
-
-    this.setSelection( this._getRangeAndRemoveBookmark() );
+    this.setSelection( range );
 
     return this;
 };
