@@ -187,12 +187,7 @@ function fixCursor ( node ) {
             child = node.firstChild;
         }
         if ( !child ) {
-            if ( cantFocusEmptyTextNodes ) {
-                fixer = doc.createTextNode( ZWS );
-                getSquireInstance( doc )._didAddZWS();
-            } else {
-                fixer = doc.createTextNode( '' );
-            }
+            fixer = doc.createTextNode( '' );
         }
     } else {
         if ( useTextFixer ) {
