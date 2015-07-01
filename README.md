@@ -60,6 +60,16 @@ If you are adding a UI to Squire, you'll probably want to show a button in diffe
 
 The efficient way to determine the state for most buttons is to monitor the "pathChange" event in the editor, and determine the state from the new path. If the selection goes across nodes, you will need to call the `hasFormat` method for each of your buttons to determine whether the styles are active. See the `getPath` and `hasFormat` documentation for more information.
 
+### Disabling squire from running in an iframe
+
+By default, if you include squire in an iframe, squire will turn the iframe into an editable document. You can disable this by putting the follow script above squire:
+```html
+<script>
+DISABLE_SQUIRE = true;
+</script>
+```
+
+
 License
 -------
 
