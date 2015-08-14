@@ -1,5 +1,76 @@
 /*jshint strict:false, undef:false, unused:false */
 
+var keys = {
+    8: 'backspace',
+    9: 'tab',
+    13: 'enter',
+    32: 'space',
+    33: 'pageup',
+    34: 'pagedown',
+    37: 'left',
+    39: 'right',
+    46: 'delete',
+    219: '[',
+    221: ']'
+};
+
+// Ref: http://unixpapa.com/js/key.html
+var onKey = function ( event ) {
+    var code = event.keyCode,
+        key = keys[ code ],
+        modifiers = '',
+        range = this.getSelection();
+
+    if ( event.defaultPrevented ) {
+        return;
+    }
+
+    if ( !key ) {
+        key = String.fromCharCode( code ).toLowerCase();
+        // Only reliable for letters and numbers
+        if ( !/^[A-Za-z0-9]$/.test( key ) ) {
+            key = '';
+        }
+    }
+
+    // On keypress, delete and '.' both have event.keyCode 46
+    // Must check event.which to differentiate.
+    if ( isPresto && event.which === 46 ) {
+        key = '.';
+    }
+
+    // Function keys
+    if ( 111 < code && code < 124 ) {
+        key = 'f' + ( code - 111 );
+    }
+
+    // We need to apply the backspace/delete handlers regardless of
+    // control key modifiers.
+    if ( key !== 'backspace' && key !== 'delete' ) {
+        if ( event.altKey  ) { modifiers += 'alt-'; }
+        if ( event.ctrlKey ) { modifiers += 'ctrl-'; }
+        if ( event.metaKey ) { modifiers += 'meta-'; }
+    }
+    // However, on Windows, shift-delete is apparently "cut" (WTF right?), so
+    // we want to let the browser handle shift-delete.
+    if ( event.shiftKey ) { modifiers += 'shift-'; }
+
+    key = modifiers + key;
+
+    if ( this._keyHandlers[ key ] ) {
+        this._keyHandlers[ key ]( this, event, range );
+    } else if ( key.length === 1 && !range.collapsed ) {
+        // Record undo checkpoint.
+        this._recordUndoState( range );
+        this._getRangeAndRemoveBookmark( range );
+        // Delete the selection
+        deleteContentsOfRange( range );
+        this._ensureBottomLine();
+        this.setSelection( range );
+        this._updatePath( range, true );
+    }
+};
+
 var mapKeyTo = function ( method ) {
     return function ( self, event ) {
         event.preventDefault();
@@ -55,6 +126,14 @@ var afterDelete = function ( self, range ) {
             fixCursor( parent );
             // Move cursor into text node
             moveRangeBoundariesDownTree( range );
+        }
+        // If you delete the last character in the sole <div> in Chrome,
+        // it removes the div and replaces it with just a <br> inside the
+        // body. Detach the <br>; the _ensureBottomLine call will insert a new
+        // block.
+        if ( node.nodeName === 'BODY' &&
+                ( node = node.firstChild ) && node.nodeName === 'BR' ) {
+            detach( node );
         }
         self._ensureBottomLine();
         self.setSelection( range );
@@ -275,7 +354,25 @@ var keyHandlers = {
         // Otherwise, leave to browser but check afterwards whether it has
         // left behind an empty inline tag.
         else {
-            self.setSelection( range );
+            // But first check if the cursor is just before an IMG tag. If so,
+            // delete it ourselves, because the browser won't if it is not
+            // inline.
+            var originalRange = range.cloneRange(),
+                cursorContainer, cursorOffset, nodeAfterCursor;
+            moveRangeBoundariesUpTree( range, self._body );
+            cursorContainer = range.endContainer;
+            cursorOffset = range.endOffset;
+            if ( cursorContainer.nodeType === ELEMENT_NODE ) {
+                nodeAfterCursor = cursorContainer.childNodes[ cursorOffset ];
+                if ( nodeAfterCursor && nodeAfterCursor.nodeName === 'IMG' ) {
+                    event.preventDefault();
+                    detach( nodeAfterCursor );
+                    moveRangeBoundariesDownTree( range );
+                    afterDelete( self, range );
+                    return;
+                }
+            }
+            self.setSelection( originalRange );
             setTimeout( function () { afterDelete( self ); }, 0 );
         }
     },
@@ -342,6 +439,18 @@ if ( isMac && isGecko && win.getSelection().modify ) {
     keyHandlers[ 'meta-right' ] = function ( self, event ) {
         event.preventDefault();
         self._sel.modify( 'move', 'forward', 'lineboundary' );
+    };
+}
+
+// System standard for page up/down on Mac is to just scroll, not move the
+// cursor. On Linux/Windows, it should move the cursor, but some browsers don't
+// implement this natively. Override to support it.
+if ( !isMac ) {
+    keyHandlers.pageup = function ( self ) {
+        self.moveCursorToStart();
+    };
+    keyHandlers.pagedown = function ( self ) {
+        self.moveCursorToEnd();
     };
 }
 

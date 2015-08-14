@@ -39,7 +39,9 @@ Installation and usage
 Advanced usage
 --------------
 
-If you load the library into a top-level document (rather than an iframe), it will not turn the page into an editable document, but will instead add a function named `Squire` to the global scope. Call `new Squire( document )`, with the `document` from an iframe to instantiate multiple rich text areas on the same page efficiently.
+If you load the library into a top-level document (rather than an iframe), or load it in an iframe without the `data-squireinit="true"` attribute on its `<html>` element, it will not turn the page into an editable document, but will instead add a constructor named `Squire` to the global scope.
+
+Call `new Squire( document )`, with the `document` from an iframe to instantiate multiple rich text areas on the same page efficiently. Note, for compatibility with all browsers (particularly Firefox), you MUST wait for the iframe's `onload` event to fire before instantiating Squire.
 
 ### Setting the default block style
 
@@ -51,7 +53,7 @@ pass a set of attributes to apply to each default block:
         blockAttributes: { style: 'font-size: 16px;' }
     })
 
-If using the simple setup, call `editor.setConfig(…);` with your 
+If using the simple setup, call `editor.setConfig(…);` with your
 config object instead. Be sure to do this *before* calling `editor.setHTML()`.
 
 ### Determining button state
@@ -188,6 +190,20 @@ Changes the current selection/cursor position.
 The method takes one argument:
 
 * **range**: The [W3C Range object](https://developer.mozilla.org/en-US/docs/Web/API/Range) representing the desired selection.
+
+Returns self (the Squire instance).
+
+### moveCursorToStart
+
+Removes any current selection and moves the cursor to the very beginning of the
+document.
+
+Returns self (the Squire instance).
+
+### moveCursorToEnd
+
+Removes any current selection and moves the cursor to the very end of the
+document.
 
 Returns self (the Squire instance).
 
@@ -387,5 +403,11 @@ Returns self (the Squire instance).
 ### decreaseListLevel
 
 Decreases by 1 the nesting level of any at-least-partially selected blocks which are part of a list.
+
+Returns self (the Squire instance).
+
+### removeAllFormatting
+
+Removes all formatting from the selection. Block elements (list items, table cells, etc.) are kept as separate blocks.
 
 Returns self (the Squire instance).
