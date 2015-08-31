@@ -181,7 +181,7 @@ Returns the path through the DOM tree from the `<body>` element to the current c
 
 ### getFontInfo
 
-Returns an object containing the font-family and font-size information for the element the cursor is in, if any was set. It uses style declarations to detect this, and so will not detect FONT tags. If a selection has been made, it will return an empty object.
+Returns an object containing the font-family and font-size information for the element the cursor is in, if any was set. It uses style declarations to detect this, and so will not detect FONT tags. If a selection across multiple elements has been made, it will return an empty object.
 
 ### getSelection
 

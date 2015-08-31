@@ -2842,14 +2842,15 @@ proto.getFontInfo = function ( range ) {
         return {};
     }
 
-    var element, fontInfo = {};
+    var fontInfo = {},
+        element;
 
-    if ( range.collapsed ) {
+    if ( range.collapsed || range.startContainer === range.endContainer ) {
         element = range.commonAncestorContainer;
-        if (element.nodeType === TEXT_NODE) {
+        if ( element.nodeType === TEXT_NODE ) {
             element = element.parentNode;
         }
-        while ( !fontInfo.family && !fontInfo.size && element && element.nodeName !== 'BODY' ) {
+        while ( !( fontInfo.family && fontInfo.size ) && element && element.nodeName !== 'BODY' ) {
             if ( element.style.fontFamily ) {
                 fontInfo.family = element.style.fontFamily;
             }
