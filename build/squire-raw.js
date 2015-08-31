@@ -2835,6 +2835,34 @@ proto.hasFormat = function ( tag, attributes, range ) {
     return seenNode;
 };
 
+// Extracts the font-family and font-size (if any) of the element
+// holding the cursor. If there's a selection, returns an empty object.
+proto.getFontInfo = function ( range ) {
+    if ( !range && !( range = this.getSelection() ) ) {
+        return {};
+    }
+
+    var fontInfo = {},
+        element;
+
+    if ( range.collapsed || range.startContainer === range.endContainer ) {
+        element = range.commonAncestorContainer;
+        if ( element.nodeType === TEXT_NODE ) {
+            element = element.parentNode;
+        }
+        while ( !( fontInfo.family && fontInfo.size ) && element && element.nodeName !== 'BODY' ) {
+            if ( element.style.fontFamily && !fontInfo.family ) {
+                fontInfo.family = element.style.fontFamily;
+            }
+            if ( element.style.fontSize && !fontInfo.size ) {
+                fontInfo.size = element.style.fontSize;
+            }
+            element = element.parentNode;
+        }
+    }
+    return fontInfo;
+ };
+
 proto._addFormat = function ( tag, attributes, range ) {
     // If the range is collapsed we simply insert the node by wrapping
     // it round the range and focus it.
