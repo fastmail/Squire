@@ -2851,10 +2851,10 @@ proto.getFontInfo = function ( range ) {
             element = element.parentNode;
         }
         while ( !( fontInfo.family && fontInfo.size ) && element && element.nodeName !== 'BODY' ) {
-            if ( element.style.fontFamily ) {
+            if ( element.style.fontFamily && !fontInfo.family ) {
                 fontInfo.family = element.style.fontFamily;
             }
-            if ( element.style.fontSize ) {
+            if ( element.style.fontSize && !fontInfo.size ) {
                 fontInfo.size = element.style.fontSize;
             }
             element = element.parentNode;
