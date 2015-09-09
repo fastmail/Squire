@@ -2825,10 +2825,9 @@ proto.hasFormat = function ( tag, attributes, range ) {
 
     var seenNode = false;
     while ( node = walker.nextNode() ) {
-        if ( !getNearest( node, tag, attributes ) ) {
-            return false;
+        if ( getNearest( node, tag, attributes ) ) {
+            seenNode = true;
         }
-        seenNode = true;
     }
 
     return seenNode;
