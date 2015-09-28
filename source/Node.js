@@ -11,7 +11,7 @@ var leafNodeNames = {
 function every ( nodeList, fn ) {
     var l = nodeList.length;
     while ( l-- ) {
-        if ( !fn( nodeList[l] ) ) {
+        if ( !fn( nodeList[ l ] ) ) {
             return false;
         }
     }
@@ -31,15 +31,6 @@ function hasTagAttributes ( node, tag, attributes ) {
     }
     return true;
 }
-function areAlike ( node, node2 ) {
-    return !isLeaf( node ) && (
-        node.nodeType === node2.nodeType &&
-        node.nodeName === node2.nodeName &&
-        node.className === node2.className &&
-        ( ( !node.style && !node2.style ) ||
-          node.style.cssText === node2.style.cssText )
-    );
-}
 
 function isLeaf ( node ) {
     return node.nodeType === ELEMENT_NODE &&
@@ -57,6 +48,16 @@ function isContainer ( node ) {
     var type = node.nodeType;
     return ( type === ELEMENT_NODE || type === DOCUMENT_FRAGMENT_NODE ) &&
         !isInline( node ) && !isBlock( node );
+}
+
+function areAlike ( node, node2 ) {
+    return !isLeaf( node ) && (
+        node.nodeType === node2.nodeType &&
+        node.nodeName === node2.nodeName &&
+        node.className === node2.className &&
+        ( ( !node.style && !node2.style ) ||
+          node.style.cssText === node2.style.cssText )
+    );
 }
 
 function getBlockWalker ( node ) {
@@ -152,7 +153,7 @@ function createElement ( doc, tag, props, children ) {
     }
     if ( children ) {
         for ( i = 0, l = children.length; i < l; i += 1 ) {
-            el.appendChild( children[i] );
+            el.appendChild( children[ i ] );
         }
     }
     return el;
@@ -239,7 +240,7 @@ function fixContainer ( container ) {
         config = getSquireInstance( doc )._config;
 
     for ( i = 0, l = children.length; i < l; i += 1 ) {
-        child = children[i];
+        child = children[ i ];
         isBR = child.nodeName === 'BR';
         if ( !isBR && isInline( child ) ) {
             if ( !wrapper ) {
@@ -334,7 +335,7 @@ function mergeInlines ( node, range ) {
         frags = [],
         child, prev, len;
     while ( l-- ) {
-        child = children[l];
+        child = children[ l ];
         prev = l && children[ l - 1 ];
         if ( l && isInline( child ) && areAlike( child, prev ) &&
                 !leafNodeNames[ child.nodeName ] ) {

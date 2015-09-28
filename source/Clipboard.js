@@ -34,13 +34,13 @@ var onPaste = function ( event ) {
         event.preventDefault();
         l = items.length;
         while ( l-- ) {
-            item = items[l];
+            item = items[ l ];
             type = item.type;
             if ( type === 'text/html' ) {
                 /*jshint loopfunc: true */
                 item.getAsString( function ( html ) {
                     self.insertHTML( html, true );
-                });
+                } );
                 /*jshint loopfunc: false */
                 return;
             }
@@ -60,16 +60,16 @@ var onPaste = function ( event ) {
                     fireDrop = true;
                 }
                 /*jshint loopfunc: false */
-            });
+            } );
             if ( fireDrop ) {
                 this.fireEvent( 'drop', {
                     dataTransfer: clipboardData
-                });
+                } );
             }
         } else if ( plainItem ) {
             item.getAsString( function ( text ) {
                 self.insertPlainText( text, true );
-            });
+            } );
         }
         return;
     }
@@ -89,9 +89,9 @@ var onPaste = function ( event ) {
         // Abiword on Linux copies a plain text and html version, but the HTML
         // version is the empty string! So always try to get HTML, but if none,
         // insert plain text instead.
-        if (( data = clipboardData.getData( 'text/html' ) )) {
+        if ( ( data = clipboardData.getData( 'text/html' ) ) ) {
             this.insertHTML( data, true );
-        } else if (( data = clipboardData.getData( 'text/plain' ) )) {
+        } else if ( ( data = clipboardData.getData( 'text/plain' ) ) ) {
             this.insertPlainText( data, true );
         }
         return;
@@ -117,7 +117,7 @@ var onPaste = function ( event ) {
             ( body.scrollTop +
                 ( startBlock ? startBlock.getBoundingClientRect().top : 0 ) ) +
             'px; right: 150%; width: 1px; height: 1px;'
-    });
+    } );
     body.appendChild( pasteArea );
     range.selectNodeContents( pasteArea );
     this.setSelection( range );

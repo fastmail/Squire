@@ -5,7 +5,7 @@ if ( typeof exports === 'object' ) {
 } else if ( typeof define === 'function' && define.amd ) {
     define( function () {
         return Squire;
-    });
+    } );
 } else {
     win.Squire = Squire;
 

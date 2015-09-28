@@ -6,7 +6,7 @@ function getSquireInstance ( doc ) {
     var l = instances.length,
         instance;
     while ( l-- ) {
-        instance = instances[l];
+        instance = instances[ l ];
         if ( instance._doc === doc ) {
             return instance;
         }
@@ -73,7 +73,7 @@ function Squire ( doc, config ) {
             attributes: true,
             characterData: true,
             subtree: true
-        });
+        } );
         this._mutation = mutation;
     } else {
         this.addEventListener( 'keyup', this._keyUpDetectChange );
@@ -141,7 +141,7 @@ function Squire ( doc, config ) {
 var proto = Squire.prototype;
 
 proto.setConfig = function ( config ) {
-    config = mergeObjects({
+    config = mergeObjects( {
         blockTag: 'DIV',
         blockAttributes: null,
         tagAttributes: {
@@ -203,7 +203,7 @@ proto.fireEvent = function ( type, event ) {
         handlers = handlers.slice();
         l = handlers.length;
         while ( l-- ) {
-            obj = handlers[l];
+            obj = handlers[ l ];
             try {
                 if ( obj.handleEvent ) {
                     obj.handleEvent( event );
@@ -236,7 +236,7 @@ proto.destroy = function () {
     }
     var l = instances.length;
     while ( l-- ) {
-        if ( instances[l] === this ) {
+        if ( instances[ l ] === this ) {
             instances.splice( l, 1 );
         }
     }
@@ -249,10 +249,10 @@ proto.handleEvent = function ( event ) {
 proto.addEventListener = function ( type, fn ) {
     var handlers = this._events[ type ];
     if ( !fn ) {
-        this.didError({
+        this.didError( {
             name: 'Squire: addEventListener with null or undefined fn',
             message: 'Event type: ' + type
-        });
+        } );
         return this;
     }
     if ( !handlers ) {
@@ -271,7 +271,7 @@ proto.removeEventListener = function ( type, fn ) {
     if ( handlers ) {
         l = handlers.length;
         while ( l-- ) {
-            if ( handlers[l] === fn ) {
+            if ( handlers[ l ] === fn ) {
                 handlers.splice( l, 1 );
             }
         }
@@ -360,7 +360,7 @@ proto.getSelectedText = function () {
     var range = this.getSelection(),
         walker = new TreeWalker(
             range.commonAncestorContainer,
-            SHOW_TEXT|SHOW_ELEMENT,
+            SHOW_TEXT | SHOW_ELEMENT,
             function ( node ) {
                 return isNodeContainedInRange( range, node, true );
             }
@@ -501,11 +501,11 @@ proto._saveRangeToBookmark = function ( range ) {
     var startNode = this.createElement( 'INPUT', {
             id: startSelectionId,
             type: 'hidden'
-        }),
+        } ),
         endNode = this.createElement( 'INPUT', {
             id: endSelectionId,
             type: 'hidden'
-        }),
+        } ),
         temp;
 
     insertNodeInRange( range, startNode );
@@ -581,7 +581,7 @@ proto._keyUpDetectChange = function ( event ) {
     // 3. The key pressed is not in range 33<=x<=45 (navigation keys)
     if ( !event.ctrlKey && !event.metaKey && !event.altKey &&
             ( code < 16 || code > 20 ) &&
-            ( code < 33 || code > 45 ) )  {
+            ( code < 33 || code > 45 ) ) {
         this._docWasChanged();
     }
 };
@@ -596,7 +596,7 @@ proto._docWasChanged = function () {
         this.fireEvent( 'undoStateChange', {
             canUndo: true,
             canRedo: false
-        });
+        } );
     }
     this.fireEvent( 'input' );
 };
@@ -610,7 +610,7 @@ proto._recordUndoState = function ( range ) {
             undoStack = this._undoStack;
 
         // Truncate stack if longer (i.e. if has been previously undone)
-        if ( undoIndex < this._undoStackLength) {
+        if ( undoIndex < this._undoStackLength ) {
             undoStack.length = this._undoStackLength = undoIndex;
         }
 
@@ -640,7 +640,7 @@ proto.undo = function () {
         this.fireEvent( 'undoStateChange', {
             canUndo: this._undoIndex !== 0,
             canRedo: true
-        });
+        } );
         this.fireEvent( 'input' );
     }
     return this;
@@ -661,7 +661,7 @@ proto.redo = function () {
         this.fireEvent( 'undoStateChange', {
             canUndo: true,
             canRedo: undoIndex + 2 < undoStackLength
-        });
+        } );
         this.fireEvent( 'input' );
     }
     return this;
@@ -771,10 +771,10 @@ proto._addFormat = function ( tag, attributes, range ) {
         // and adding other styles is harmless.
         walker = new TreeWalker(
             range.commonAncestorContainer,
-            SHOW_TEXT|SHOW_ELEMENT,
+            SHOW_TEXT | SHOW_ELEMENT,
             function ( node ) {
                 return ( node.nodeType === TEXT_NODE ||
-                                                    node.nodeName === 'BR'||
+                                                    node.nodeName === 'BR' ||
                                                     node.nodeName === 'IMG' ) &&
                     isNodeContainedInRange( range, node, true );
             },
@@ -891,7 +891,7 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
                 // Ignore bookmarks and empty text nodes
                 if ( node.nodeName !== 'INPUT' &&
                         ( !isText || node.data ) ) {
-                    toWrap.push([ exemplar, node ]);
+                    toWrap.push( [ exemplar, node ] );
                 }
                 return;
             }
@@ -899,11 +899,11 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
             // Split any partially selected text nodes.
             if ( isText ) {
                 if ( node === endContainer && endOffset !== node.length ) {
-                    toWrap.push([ exemplar, node.splitText( endOffset ) ]);
+                    toWrap.push( [ exemplar, node.splitText( endOffset ) ] );
                 }
                 if ( node === startContainer && startOffset ) {
                     node.splitText( startOffset );
-                    toWrap.push([ exemplar, node ]);
+                    toWrap.push( [ exemplar, node ] );
                 }
             }
             // If not a text node, recurse onto all children.
@@ -926,21 +926,21 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
     if ( !partial ) {
         formatTags.forEach( function ( node ) {
             examineNode( node, node );
-        });
+        } );
     }
 
     // Now wrap unselected nodes in the tag
     toWrap.forEach( function ( item ) {
         // [ exemplar, node ] tuple
-        var el = item[0].cloneNode( false ),
-            node = item[1];
+        var el = item[ 0 ].cloneNode( false ),
+            node = item[ 1 ];
         replaceWith( node, el );
         el.appendChild( node );
-    });
+    } );
     // and remove old formatting tags.
     formatTags.forEach( function ( el ) {
         replaceWith( el, empty( el ) );
-    });
+    } );
 
     // Merge adjacent inlines:
     this._getRangeAndRemoveBookmark( range );
@@ -1103,30 +1103,30 @@ var increaseBlockQuoteLevel = function ( frag ) {
     return this.createElement( 'BLOCKQUOTE',
         this._config.tagAttributes.blockquote, [
             frag
-        ]);
+        ] );
 };
 
 var decreaseBlockQuoteLevel = function ( frag ) {
     var blockquotes = frag.querySelectorAll( 'blockquote' );
     Array.prototype.filter.call( blockquotes, function ( el ) {
         return !getNearest( el.parentNode, 'BLOCKQUOTE' );
-    }).forEach( function ( el ) {
+    } ).forEach( function ( el ) {
         replaceWith( el, empty( el ) );
-    });
+    } );
     return frag;
 };
 
-var removeBlockQuote = function (/* frag */) {
-    return this.createDefaultBlock([
+var removeBlockQuote = function ( /* frag */ ) {
+    return this.createDefaultBlock( [
         this.createElement( 'INPUT', {
             id: startSelectionId,
             type: 'hidden'
-        }),
+        } ),
         this.createElement( 'INPUT', {
             id: endSelectionId,
             type: 'hidden'
-        })
-    ]);
+        } )
+    ] );
 };
 
 var makeList = function ( self, frag, type ) {
@@ -1155,7 +1155,7 @@ var makeList = function ( self, frag, type ) {
                     node,
                     self.createElement( type, listAttrs, [
                         newLi
-                    ])
+                    ] )
                 );
             }
             newLi.appendChild( node );
@@ -1185,12 +1185,12 @@ var removeList = function ( frag ) {
     var lists = frag.querySelectorAll( 'UL, OL' ),
         i, l, ll, list, listFrag, children, child;
     for ( i = 0, l = lists.length; i < l; i += 1 ) {
-        list = lists[i];
+        list = lists[ i ];
         listFrag = empty( list );
         children = listFrag.childNodes;
         ll = children.length;
         while ( ll-- ) {
-            child = children[ll];
+            child = children[ ll ];
             replaceWith( child, empty( child ) );
         }
         fixContainer( listFrag );
@@ -1207,7 +1207,7 @@ var increaseListLevel = function ( frag ) {
         listItemAttrs = tagAttributes.li,
         listAttrs;
     for ( i = 0, l = items.length; i < l; i += 1 ) {
-        item = items[i];
+        item = items[ i ];
         if ( !isContainer( item.firstChild ) ) {
             // type => 'UL' or 'OL'
             type = item.parentNode.nodeName;
@@ -1219,7 +1219,7 @@ var increaseListLevel = function ( frag ) {
                     item,
                     this.createElement( 'LI', listItemAttrs, [
                         newParent = this.createElement( type, listAttrs )
-                    ])
+                    ] )
                 );
             }
             newParent.appendChild( item );
@@ -1232,7 +1232,7 @@ var decreaseListLevel = function ( frag ) {
     var items = frag.querySelectorAll( 'LI' );
     Array.prototype.filter.call( items, function ( el ) {
         return !isContainer( el.firstChild );
-    }).forEach( function ( item ) {
+    } ).forEach( function ( item ) {
         var parent = item.parentNode,
             newParent = parent.parentNode,
             first = item.firstChild,
@@ -1313,7 +1313,7 @@ proto.getHTML = function ( withBookMark ) {
     if ( useTextFixer ) {
         l = brs.length;
         while ( l-- ) {
-            detach( brs[l] );
+            detach( brs[ l ] );
         }
     }
     if ( range ) {
@@ -1419,9 +1419,9 @@ proto.insertElement = function ( el, range ) {
 };
 
 proto.insertImage = function ( src, attributes ) {
-    var img = this.createElement( 'IMG', mergeObjects({
+    var img = this.createElement( 'IMG', mergeObjects( {
         src: src
-    }, attributes ));
+    }, attributes ) );
     this.insertElement( img );
     return img;
 };
@@ -1440,18 +1440,18 @@ var addLinks = function ( frag ) {
         parent = node.parentNode;
         while ( match = linkRegExp.exec( data ) ) {
             index = match.index;
-            endIndex = index + match[0].length;
+            endIndex = index + match[ 0 ].length;
             if ( index ) {
                 child = doc.createTextNode( data.slice( 0, index ) );
                 parent.insertBefore( child, node );
             }
             child = doc.createElement( 'A' );
             child.textContent = data.slice( index, endIndex );
-            child.href = match[1] ?
-                /^(?:ht|f)tps?:/.test( match[1] ) ?
-                    match[1] :
-                    'http://' + match[1] :
-                'mailto:' + match[2];
+            child.href = match[ 1 ] ?
+                /^(?:ht|f)tps?:/.test( match[ 1 ] ) ?
+                    match[ 1 ] :
+                    'http://' + match[ 1 ] :
+                'mailto:' + match[ 2 ];
             parent.insertBefore( child, node );
             node.data = data = data.slice( endIndex );
         }
@@ -1519,11 +1519,11 @@ proto.insertPlainText = function ( plainText, isPaste ) {
     var lines = plainText.split( '\n' ),
         i, l;
     for ( i = 1, l = lines.length - 1; i < l; i += 1 ) {
-        lines[i] = '<DIV>' +
-            lines[i].split( '&' ).join( '&amp;' )
-                    .split( '<' ).join( '&lt;'  )
-                    .split( '>' ).join( '&gt;'  )
-                    .replace( / (?= )/g, '&nbsp;' ) +
+        lines[ i ] = '<DIV>' +
+            lines[ i ].split( '&' ).join( '&amp;' )
+                      .split( '<' ).join( '&lt;'  )
+                      .split( '>' ).join( '&gt;'  )
+                      .replace( / (?= )/g, '&nbsp;' ) +
         '</DIV>';
     }
     return this.insertHTML( lines.join( '' ), isPaste );
@@ -1543,7 +1543,7 @@ proto.addStyles = function ( styles ) {
         var head = this._doc.documentElement.firstChild,
             style = this.createElement( 'STYLE', {
                 type: 'text/css'
-            });
+            } );
         style.appendChild( this._doc.createTextNode( styles ) );
         head.appendChild( style );
     }
@@ -1582,7 +1582,7 @@ proto.makeLink = function ( url, attributes ) {
     }
     attributes.href = url;
 
-    this.changeFormat({
+    this.changeFormat( {
         tag: 'A',
         attributes: attributes
     }, {
@@ -1598,7 +1598,7 @@ proto.removeLink = function () {
 };
 
 proto.setFontFace = function ( name ) {
-    this.changeFormat({
+    this.changeFormat( {
         tag: 'SPAN',
         attributes: {
             'class': 'font',
@@ -1607,11 +1607,11 @@ proto.setFontFace = function ( name ) {
     }, {
         tag: 'SPAN',
         attributes: { 'class': 'font' }
-    });
+    } );
     return this.focus();
 };
 proto.setFontSize = function ( size ) {
-    this.changeFormat({
+    this.changeFormat( {
         tag: 'SPAN',
         attributes: {
             'class': 'size',
@@ -1621,12 +1621,12 @@ proto.setFontSize = function ( size ) {
     }, {
         tag: 'SPAN',
         attributes: { 'class': 'size' }
-    });
+    } );
     return this.focus();
 };
 
 proto.setTextColour = function ( colour ) {
-    this.changeFormat({
+    this.changeFormat( {
         tag: 'SPAN',
         attributes: {
             'class': 'colour',
@@ -1635,12 +1635,12 @@ proto.setTextColour = function ( colour ) {
     }, {
         tag: 'SPAN',
         attributes: { 'class': 'colour' }
-    });
+    } );
     return this.focus();
 };
 
 proto.setHighlightColour = function ( colour ) {
-    this.changeFormat({
+    this.changeFormat( {
         tag: 'SPAN',
         attributes: {
             'class': 'highlight',
@@ -1649,7 +1649,7 @@ proto.setHighlightColour = function ( colour ) {
     }, {
         tag: 'SPAN',
         attributes: { 'class': 'highlight' }
-    });
+    } );
     return this.focus();
 };
 
@@ -1659,7 +1659,7 @@ proto.setTextAlignment = function ( alignment ) {
             .split( /\s+/ )
             .filter( function ( klass ) {
                 return !( /align/.test( klass ) );
-            })
+            } )
             .join( ' ' ) +
             ' align-' + alignment ).trim();
         block.style.textAlign = alignment;
@@ -1684,10 +1684,10 @@ function removeFormatting ( self, root, clean ) {
                 continue;
             }
         } else if ( isBlock( node ) ) {
-            clean.appendChild( self.createDefaultBlock([
+            clean.appendChild( self.createDefaultBlock( [
                 removeFormatting(
                     self, node, self._doc.createDocumentFragment() )
-            ]));
+            ] ) );
             continue;
         }
         removeFormatting( self, node, clean );
