@@ -1541,9 +1541,14 @@ proto.insertHTML = function ( html, isPaste ) {
         frag = this._doc.createDocumentFragment(),
         div = this.createElement( 'DIV' );
 
-    // Parse HTML into DOM tree
-    div.innerHTML = html;
-    frag.appendChild( empty( div ) );
+    if ( this.hasFormat( 'pre' ) || this.hasFormat( 'code' ) ) {
+        // Insert unparsed in text node
+        frag.appendChild( this._doc.createTextNode( html ) );
+    } else {
+        // Parse HTML into DOM tree
+        div.innerHTML = html;
+        frag.appendChild( empty( div ) );
+    }
 
     // Record undo checkpoint
     this.saveUndoState( range );
