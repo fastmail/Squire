@@ -17,7 +17,7 @@ var spanToSemantic = {
             return createElement( doc, 'SPAN', {
                 'class': 'highlight',
                 style: 'background-color: ' + colour
-            });
+            } );
         }
     },
     color: {
@@ -26,7 +26,7 @@ var spanToSemantic = {
             return createElement( doc, 'SPAN', {
                 'class': 'colour',
                 style: 'color:' + colour
-            });
+            } );
         }
     },
     fontWeight: {
@@ -47,7 +47,7 @@ var spanToSemantic = {
             return createElement( doc, 'SPAN', {
                 'class': 'font',
                 style: 'font-family:' + family
-            });
+            } );
         }
     },
     fontSize: {
@@ -56,7 +56,7 @@ var spanToSemantic = {
             return createElement( doc, 'SPAN', {
                 'class': 'size',
                 style: 'font-size:' + size
-            });
+            } );
         }
     }
 };
@@ -112,7 +112,7 @@ var stylesRewriters = {
             fontSpan = createElement( doc, 'SPAN', {
                 'class': 'font',
                 style: 'font-family:' + face
-            });
+            } );
             newTreeTop = fontSpan;
             newTreeBottom = fontSpan;
         }
@@ -120,7 +120,7 @@ var stylesRewriters = {
             sizeSpan = createElement( doc, 'SPAN', {
                 'class': 'size',
                 style: 'font-size:' + fontSizes[ size ] + 'px'
-            });
+            } );
             if ( !newTreeTop ) {
                 newTreeTop = sizeSpan;
             }
@@ -136,7 +136,7 @@ var stylesRewriters = {
             colourSpan = createElement( doc, 'SPAN', {
                 'class': 'colour',
                 style: 'color:' + colour
-            });
+            } );
             if ( !newTreeTop ) {
                 newTreeTop = colourSpan;
             }
@@ -156,7 +156,7 @@ var stylesRewriters = {
         var el = createElement( node.ownerDocument, 'SPAN', {
             'class': 'font',
             style: 'font-family:menlo,consolas,"courier new",monospace'
-        });
+        } );
         parent.replaceChild( el, node );
         el.appendChild( empty( node ) );
         return el;
@@ -167,9 +167,9 @@ var allowedBlock = /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)|BLOCKQUOTE|CAPTION|D(?:[DLT
 
 var blacklist = /^(?:HEAD|META|STYLE)/;
 
-var walker = new TreeWalker( null, SHOW_TEXT|SHOW_ELEMENT, function () {
+var walker = new TreeWalker( null, SHOW_TEXT | SHOW_ELEMENT, function () {
     return true;
-});
+} );
 
 /*
     Two purposes:
@@ -190,7 +190,7 @@ var cleanTree = function cleanTree ( node ) {
     walker.root = nonInlineParent;
 
     for ( i = 0, l = children.length; i < l; i += 1 ) {
-        child = children[i];
+        child = children[ i ];
         nodeName = child.nodeName;
         nodeType = child.nodeType;
         rewriter = stylesRewriters[ nodeName ];
@@ -277,7 +277,7 @@ var removeEmptyInlines = function removeEmptyInlines ( root ) {
         l = children.length,
         child;
     while ( l-- ) {
-        child = children[l];
+        child = children[ l ];
         if ( child.nodeType === ELEMENT_NODE && !isLeaf( child ) ) {
             removeEmptyInlines( child );
             if ( isInline( child ) && !child.firstChild ) {
@@ -303,7 +303,7 @@ var isLineBreak = function ( br ) {
         block = block.parentNode;
     }
     walker = new TreeWalker(
-        block, SHOW_ELEMENT|SHOW_TEXT, notWSTextNode );
+        block, SHOW_ELEMENT | SHOW_TEXT, notWSTextNode );
     walker.currentNode = br;
     return !!walker.nextNode();
 };
@@ -326,10 +326,10 @@ var cleanupBRs = function ( root ) {
     // therefore seem to not be a line break. But in its original context it
     // was, so we should also convert it to a block split.
     for ( i = 0; i < l; i += 1 ) {
-        brBreaksLine[i] = isLineBreak( brs[i] );
+        brBreaksLine[ i ] = isLineBreak( brs[ i ] );
     }
     while ( l-- ) {
-        br = brs[l];
+        br = brs[ l ];
         // Cleanup may have removed it
         parent = br.parentNode;
         if ( !parent ) { continue; }
@@ -337,7 +337,7 @@ var cleanupBRs = function ( root ) {
         // anything useful. We'll add it back later if required by the
         // browser. If it breaks a line, wrap the content in div tags
         // and replace the brs.
-        if ( !brBreaksLine[l] ) {
+        if ( !brBreaksLine[ l ] ) {
             detach( br );
         } else if ( !isInline( parent ) ) {
             fixContainer( parent );

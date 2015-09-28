@@ -66,7 +66,7 @@ var insertNodeInRange = function ( range, node ) {
 
     childCount = children.length;
 
-    if ( startOffset === childCount) {
+    if ( startOffset === childCount ) {
         startContainer.appendChild( node );
     } else {
         startContainer.insertBefore( node, children[ startOffset ] );
@@ -185,7 +185,7 @@ var insertTreeFragmentIntoRange = function ( range, frag ) {
         children = frag.childNodes,
         l = children.length;
     while ( l-- ) {
-        if ( !isInline( children[l] ) ) {
+        if ( !isInline( children[ l ] ) ) {
             allInline = false;
             break;
         }
@@ -451,7 +451,7 @@ var getEndBlockOfRange = function ( range ) {
 };
 
 var contentWalker = new TreeWalker( null,
-    SHOW_TEXT|SHOW_ELEMENT,
+    SHOW_TEXT | SHOW_ELEMENT,
     function ( node ) {
         return node.nodeType === TEXT_NODE ?
             notWS.test( node.data ) :

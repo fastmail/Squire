@@ -1,6 +1,22 @@
 {
-    "disallowSpacesInsideParentheses": false,
-    "disallowSpacesInFunctionDeclaration": {
-        "beforeOpeningRoundBrace": false
-    }
+    "requireCamelCaseOrUpperCaseIdentifiers": true,
+    "requireCapitalizedConstructors": true,
+    "requireCurlyBraces": true,
+    "requireDotNotation": true,
+    "requireLineBreakAfterVariableAssignment": true,
+    "requireLineFeedAtFileEnd": true,
+    "requireSpaceAfterBinaryOperators": true,
+    "requireSpaceBeforeBinaryOperators": true,
+    "requireSpaceBeforeBlockStatements": true,
+    "requireSpaceBetweenArguments": true,
+    "requireSpaceBeforeKeywords": true,
+    "requireSpacesInConditionalExpression": true,
+    "requireSpacesInForStatement": true,
+    "requireSpacesInFunction": {
+        "beforeOpeningRoundBrace": true,
+        "beforeOpeningCurlyBrace": true
+    },
+    "requireSpacesInsideBrackets": true,
+    "requireSpacesInsideParentheses": "all",
+    "validateQuoteMarks": "'"
 }

@@ -3,4 +3,4 @@
 
 ( function ( doc, undefined ) {
 
-"use strict";
+'use strict';
