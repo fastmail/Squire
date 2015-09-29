@@ -478,6 +478,15 @@ if ( !isMac ) {
     };
 }
 
+keyHandlers[ ctrlKey + 'shift-m' ] = function ( self, event, range ) {
+    event.preventDefault();
+    if ( self.hasFormat( 'pre', null, range ) ) {
+        self.removePreformatted();
+    } else {
+        self.makePreformatted();
+    }
+};
+
 keyHandlers[ ctrlKey + 'b' ] = mapKeyToFormat( 'B' );
 keyHandlers[ ctrlKey + 'i' ] = mapKeyToFormat( 'I' );
 keyHandlers[ ctrlKey + 'u' ] = mapKeyToFormat( 'U' );
