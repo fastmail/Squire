@@ -1,20 +1,22 @@
-/*global expect, describe, afterEach, beforeEach, it */
-expect = expect.clone()
+/*global unexpected, describe, afterEach, beforeEach, it, Squire */
+(function () {
+'use strict';
+var expect = unexpected.clone()
+    .installPlugin(unexpected.dom)
     .addType({
         name: 'SquireRTE',
         base: 'object',
         identify: function (value) {
             return value instanceof Squire;
         },
-        inspect: function (value) {
-            return 'Squire RTE: ' + value.getHTML();
+        inspect: function (value, depth, output) {
+            return output.text('Squire RTE: ').code(value.getHTML(), 'html');
         }
     })
-    .addAssertion('[not] to contain HTML', function (expect, editor, expectedValue) {
-        this.errorMode = 'bubble';
-        var actualHTML = editor.getHTML().replace(/<br>/g, '');
+    .addAssertion('SquireRTE', '[not] to contain HTML', function (expect, editor, expectedValue) {
+        expect.errorMode ='nested';
         // BR tags are inconsistent across browsers. Removing them allows cross-browser testing.
-        expect(actualHTML, '[not] to be', expectedValue);
+        expect(editor.getHTML().replace(/<br>/g, ''), '[not] to be', expectedValue);
     });
 
 describe('Squire RTE', function () {
@@ -27,8 +29,8 @@ describe('Squire RTE', function () {
 
     function selectAll(editor) {
         var range = doc.createRange();
-        range.setStart(doc.body.childNodes.item(0), 0);
-        range.setEnd(doc.body.childNodes.item(0), doc.body.childNodes.item(0).childNodes.length);
+        range.setStart(doc.body, 0);
+        range.setEnd(doc.body, doc.body.childNodes.length);
         editor.setSelection(range);
     }
 
@@ -195,9 +197,48 @@ describe('Squire RTE', function () {
         });
     });
 
+    describe('makePreformatted', function () {
+        it('adds a PRE element around text on same line', function () {
+            var startHTML = '<div>one two three four five</div>';
+            editor.setHTML(startHTML);
+            expect(editor, 'to contain HTML', startHTML);
+            editor.moveCursorToStart();
+            editor.makePreformatted();
+            expect(editor, 'to contain HTML', '<pre>one two three four five</pre><div></div>');
+        });
+
+        it('adds an empty PRE element', function () {
+            var startHTML = '<div></div><div>one two three four five</div>';
+            editor.setHTML(startHTML);
+            expect(editor, 'to contain HTML', startHTML);
+            editor.moveCursorToStart();
+            editor.makePreformatted();
+            expect(editor, 'to contain HTML', '<pre>\n</pre><div>one two three four five</div>');
+        });
+
+        it('wraps PRE tag around plain-text-ified contents of blocks', function () {
+            var startHTML = '<div>one two</div><p>three four</p><blockquote>five</blockquote>';
+            editor.setHTML(startHTML);
+            expect(editor, 'to contain HTML', startHTML);
+            selectAll(editor);
+            editor.makePreformatted();
+            expect(editor, 'to contain HTML', '<pre>one two\nthree four\nfive</pre>');
+        });
+
+        it('expands existing PRE tags to encompass selection', function () {
+            var startHTML = '<div>abc</div><div></div><pre>one two three four five</pre><div></div>';
+            editor.setHTML(startHTML);
+            expect(editor, 'to contain HTML', startHTML);
+            selectAll(editor);
+            editor.makePreformatted();
+            expect(editor, 'to contain HTML', '<pre>abc\n\none two three four five\n</pre>');
+        });
+    });
+
     afterEach(function () {
         editor = null;
         var iframe = document.getElementById('testFrame');
         iframe.src = 'blank.html';
     });
 });
+})();
