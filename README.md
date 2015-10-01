@@ -419,6 +419,18 @@ Decreases by 1 the nesting level of any at-least-partially selected blocks which
 
 Returns self (the Squire instance).
 
+### makePreformatted
+
+Turns the selection into preformatted text. This is a monospaced segment, which will keep previously formatted plain text consistent.
+
+Returns self (the Squire instance).
+
+### removePreformatted
+
+Turns selected preformatted text into regular HTML again, maintaining lines. Will split preformatted elements to do so.
+
+Returns self (the Squire instance).
+
 ### removeAllFormatting
 
 Removes all formatting from the selection. Block elements (list items, table cells, etc.) are kept as separate blocks.
