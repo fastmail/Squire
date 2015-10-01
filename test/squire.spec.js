@@ -16,7 +16,7 @@ var expect = unexpected.clone()
     .addAssertion('SquireRTE', '[not] to contain HTML', function (expect, editor, expectedValue) {
         expect.errorMode ='nested';
         // BR tags are inconsistent across browsers. Removing them allows cross-browser testing.
-        expect(editor.getHTML().replace(/<br>/g, ''), '[not] to be', expectedValue);
+        expect(editor.getHTML().replace(/<br>/g, ''), '[not] to contain', expectedValue);
     });
 
 describe('Squire RTE', function () {
@@ -29,8 +29,8 @@ describe('Squire RTE', function () {
 
     function selectAll(editor) {
         var range = doc.createRange();
-        range.setStart(doc.body, 0);
-        range.setEnd(doc.body, doc.body.childNodes.length);
+        range.setStart(doc.body.childNodes[0], 0);
+        range.setEnd(doc.body.childNodes[doc.body.childNodes.length - 1], doc.body.childNodes[doc.body.childNodes.length - 1].childNodes.length);
         editor.setSelection(range);
     }
 
@@ -204,7 +204,7 @@ describe('Squire RTE', function () {
             expect(editor, 'to contain HTML', startHTML);
             editor.moveCursorToStart();
             editor.makePreformatted();
-            expect(editor, 'to contain HTML', '<pre>one two three four five</pre><div></div>');
+            expect(editor, 'to contain HTML', '<pre>one two three four five</pre>');
         });
 
         it('adds an empty PRE element', function () {
@@ -232,6 +232,41 @@ describe('Squire RTE', function () {
             selectAll(editor);
             editor.makePreformatted();
             expect(editor, 'to contain HTML', '<pre>abc\n\none two three four five\n</pre>');
+        });
+    });
+
+    describe('removePreformatted', function () {
+        it('replaces selected PRE tags with their HTML-ified content', function () {
+            var startHTML = '<pre>abc\n\none two three four five\n</pre>';
+            editor.setHTML(startHTML);
+            expect(editor, 'to contain HTML', startHTML);
+            selectAll(editor);
+            editor.removePreformatted();
+            expect(editor, 'to contain HTML', '<div>abc</div><div></div><div>one two three four five</div><div></div>');
+        });
+
+        it('cuts the beginning off PRE tags', function () {
+            var startHTML = '<pre>abc\n\none two three four five\n</pre>';
+            editor.setHTML(startHTML);
+            expect(editor, 'to contain HTML', startHTML);
+            var range = doc.createRange();
+            range.setStart(doc.querySelector('pre').childNodes[0], 0);
+            range.setEnd(doc.querySelector('pre').childNodes[0], 18);
+            editor.setSelection(range);
+            editor.removePreformatted();
+            expect(editor, 'to contain HTML', '<div>abc</div><div></div><div>one two three</div><pre> four five\n</pre>');
+        });
+
+        it('cuts the end off PRE tags', function () {
+            var startHTML = '<pre>abc\n\none two three four five\n</pre>';
+            editor.setHTML(startHTML);
+            expect(editor, 'to contain HTML', startHTML);
+            var range = doc.createRange();
+            range.setStart(doc.querySelector('pre').childNodes[0], 18);
+            range.setEnd(doc.querySelector('pre').childNodes[0], 29);
+            editor.setSelection(range);
+            editor.removePreformatted();
+            expect(editor, 'to contain HTML', '<pre>abc\n\none two three</pre><div> four five</div>');
         });
     });
 
