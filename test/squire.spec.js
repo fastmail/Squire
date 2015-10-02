@@ -79,10 +79,28 @@ describe('Squire RTE', function () {
             expect(editor.hasFormat('b'), 'to be true');
         });
 
+        it('returns true when range covers start of format, even in weird cases', function () {
+            var range = doc.createRange();
+            var prev = doc.querySelector('b').previousSibling;
+            range.setStart(prev, prev.length);
+            range.setEnd(doc.querySelector('b').childNodes[0], 8);
+            editor.setSelection(range);
+            expect(editor.hasFormat('b'), 'to be true');
+        });
+
         it('returns true when range covers end of format', function () {
             var range = doc.createRange();
             range.setStart(doc.querySelector('b').childNodes[0], 2);
             range.setEndAfter(doc.querySelector('b'));
+            editor.setSelection(range);
+            expect(editor.hasFormat('b'), 'to be true');
+        });
+
+        it('returns true when range covers end of format, even in weird cases', function () {
+            var range = doc.createRange();
+            range.setStart(doc.querySelector('b').childNodes[0], 2);
+            var next = doc.querySelector('b').nextSibling;
+            range.setEnd(next, 0);
             editor.setSelection(range);
             expect(editor.hasFormat('b'), 'to be true');
         });
