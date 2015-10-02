@@ -22,7 +22,7 @@ var expect = unexpected.clone()
 describe('Squire RTE', function () {
     var doc, editor;
     beforeEach(function () {
-        var iframe = document.getElementById('testFrame');
+        var iframe = document.querySelector('#testFrame');
         doc = iframe.contentDocument;
         editor = new Squire(doc);
     });
@@ -272,7 +272,7 @@ describe('Squire RTE', function () {
 
     afterEach(function () {
         editor = null;
-        var iframe = document.getElementById('testFrame');
+        var iframe = document.querySelector('#testFrame');
         iframe.src = 'blank.html';
     });
 });

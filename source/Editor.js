@@ -1358,8 +1358,8 @@ var makePreformatted = function ( frag ) {
 
 var removePreformatted = function ( frag ) {
     var range = this._doc.createRange();
-    var startRangeMarker = frag.getElementById( startSelectionId );
-    var endRangeMarker = frag.getElementById( endSelectionId );
+    var startRangeMarker = frag.querySelector( '#' + startSelectionId );
+    var endRangeMarker = frag.querySelector( '#' + endSelectionId );
     if (!startRangeMarker || !endRangeMarker) { return frag; }
 
     range.setStartBefore( startRangeMarker );
