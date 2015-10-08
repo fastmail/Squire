@@ -759,7 +759,17 @@ var extractContentsOfRange = function ( range, common ) {
     range.setStart( startContainer, startOffset );
     range.collapse( true );
 
-    fixCursor( common );
+    // Socrata Edit:
+    // When there is a single block-level element in the editor and it's format is
+    // modified (Ex: changing a paragraph to a blockquote)
+    // - It is removed
+    // - This function is run
+    // - The newly formatted block is added
+    // This leads to an empty node being inserted by fixCursor while the body is
+    // empty. Instead, only run fixCursor if there are children in `common`
+    if ( common.childElementCount > 0 ) {
+        fixCursor( common );
+    }
 
     return frag;
 };
@@ -3389,8 +3399,12 @@ var decreaseListLevel = function ( frag ) {
 proto._ensureBottomLine = function () {
     var body = this._body,
         last = body.lastElementChild;
-    if ( !last ||
-            last.nodeName !== this._config.blockTag || !isBlock( last ) ) {
+
+    // Socrata Edit:
+    // This used to insert an extra block unless the last element was the same
+    // as the default block. Now it only adds if there is no block level last
+    // element.
+    if ( !last || !isBlock( last ) ) {
         body.appendChild( this.createDefaultBlock() );
     }
 };
