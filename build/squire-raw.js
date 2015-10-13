@@ -2813,7 +2813,7 @@ proto.hasFormat = function ( tag, attributes, range ) {
     if ( !range.collapsed &&
             range.endContainer.nodeType === TEXT_NODE &&
             range.endOffset === 0 &&
-            range.endContainer.nextSibling ) {
+            range.endContainer.previousSibling ) {
         range.setEndAfter( range.endContainer.previousSibling );
     }
 
