@@ -381,15 +381,14 @@ var keyHandlers = {
         self._removeZWS();
         // If no selection and in an empty block
         if ( range.collapsed &&
-                rangeDoesStartAtBlockBoundary( range ) &&
-                rangeDoesEndAtBlockBoundary( range ) ) {
+                rangeDoesStartAtBlockBoundary( range ) ) {
             node = getStartBlockOfRange( range );
             // Iterate through the block's parents
             while ( parent = node.parentNode ) {
                 // If we find a UL or OL (so are in a list, node must be an LI)
                 if ( parent.nodeName === 'UL' || parent.nodeName === 'OL' ) {
                     // AND the LI is not the first in the list
-                    if ( node.previousSibling ) {
+                    if ( node.previousSibling || node.parentNode.nodeName === 'LI' ) {
                         // Then increase the list level
                         event.preventDefault();
                         self.modifyBlocks( increaseListLevel, range );
