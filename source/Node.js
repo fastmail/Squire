@@ -1,6 +1,6 @@
 /*jshint strict:false, undef:false, unused:false */
 
-var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|FN|EL)|EM|FONT|HR|I(?:NPUT|MG|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:U[BP]|PAN|TR(?:IKE|ONG)|MALL|AMP)?|U|VAR|WBR)$/;
+var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|U|VAR|WBR)$/;
 
 var leafNodeNames = {
     BR: 1,
@@ -32,7 +32,7 @@ function hasTagAttributes ( node, tag, attributes ) {
     return true;
 }
 function areAlike ( node, node2 ) {
-    return (
+    return !isLeaf( node ) && (
         node.nodeType === node2.nodeType &&
         node.nodeName === node2.nodeName &&
         node.className === node2.className &&
@@ -49,11 +49,13 @@ function isInline ( node ) {
     return inlineNodeNames.test( node.nodeName );
 }
 function isBlock ( node ) {
-    return node.nodeType === ELEMENT_NODE &&
+    var type = node.nodeType;
+    return ( type === ELEMENT_NODE || type === DOCUMENT_FRAGMENT_NODE ) &&
         !isInline( node ) && every( node.childNodes, isInline );
 }
 function isContainer ( node ) {
-    return node.nodeType === ELEMENT_NODE &&
+    var type = node.nodeType;
+    return ( type === ELEMENT_NODE || type === DOCUMENT_FRAGMENT_NODE ) &&
         !isInline( node ) && !isBlock( node );
 }
 
@@ -82,7 +84,7 @@ function getNearest ( node, tag, attributes ) {
 
 function getPath ( node ) {
     var parent = node.parentNode,
-        path, id, className, classNames;
+        path, id, className, classNames, dir;
     if ( !parent || node.nodeType !== ELEMENT_NODE ) {
         path = parent ? getPath( parent ) : '';
     } else {
@@ -96,6 +98,9 @@ function getPath ( node ) {
             classNames.sort();
             path += '.';
             path += classNames.join( '.' );
+        }
+        if ( dir = node.dir ) {
+            path += '[dir=' + dir + ']';
         }
     }
     return path;
@@ -160,14 +165,11 @@ function fixCursor ( node ) {
     // cursor to appear.
     var doc = node.ownerDocument,
         root = node,
-        fixer, child, instance;
+        fixer, child;
 
     if ( node.nodeName === 'BODY' ) {
         if ( !( child = node.firstChild ) || child.nodeName === 'BR' ) {
-            instance = getSquireInstance( doc );
-            fixer = instance ?
-                instance.createDefaultBlock() :
-                createElement( doc, 'DIV' );
+            fixer = getSquireInstance( doc ).createDefaultBlock();
             if ( child ) {
                 node.replaceChild( fixer, child );
             }
@@ -228,17 +230,25 @@ function fixContainer ( container ) {
     var children = container.childNodes,
         doc = container.ownerDocument,
         wrapper = null,
-        i, l, child, isBR;
+        i, l, child, isBR,
+        config = getSquireInstance( doc )._config;
+
     for ( i = 0, l = children.length; i < l; i += 1 ) {
         child = children[i];
         isBR = child.nodeName === 'BR';
         if ( !isBR && isInline( child ) ) {
-            if ( !wrapper ) { wrapper = createElement( doc, 'DIV' ); }
+            if ( !wrapper ) {
+                 wrapper = createElement( doc,
+                    config.blockTag, config.blockAttributes );
+            }
             wrapper.appendChild( child );
             i -= 1;
             l -= 1;
         } else if ( isBR || wrapper ) {
-            if ( !wrapper ) { wrapper = createElement( doc, 'DIV' ); }
+            if ( !wrapper ) {
+                wrapper = createElement( doc,
+                    config.blockTag, config.blockAttributes );
+            }
             fixCursor( wrapper );
             if ( isBR ) {
                 container.replaceChild( wrapper, child );
