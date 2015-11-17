@@ -1459,6 +1459,7 @@ proto.insertHTML = function ( html, isPaste ) {
         }
 
         if ( isPaste ) {
+            alert('?');
             this.fireEvent( 'willPaste', event );
         }
 
