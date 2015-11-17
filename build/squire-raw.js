@@ -3556,7 +3556,9 @@ proto.insertHTML = function ( html, isPaste ) {
         div = this.createElement( 'DIV' );
 
     // Parse HTML into DOM tree
+    alert('wtf');
     div.innerHTML = html;
+    alert('...');
     frag.appendChild( empty( div ) );
 
     // Record undo checkpoint
@@ -3584,7 +3586,8 @@ proto.insertHTML = function ( html, isPaste ) {
         }
 
         if ( isPaste ) {
-            alert('?');
+            console.log(event);
+            console.log(html);
             this.fireEvent( 'willPaste', event );
         }
 
