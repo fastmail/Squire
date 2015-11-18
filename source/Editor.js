@@ -1426,6 +1426,15 @@ var addLinks = function ( frag ) {
 // insertTreeFragmentIntoRange will delete the selection so that it is replaced
 // by the html being inserted.
 proto.insertHTML = function ( html, isPaste ) {
+
+    if ( isPaste ) {
+        var event = {
+            string: html
+        };
+        this.fireEvent( 'startPaste', event );
+        html = event.string;
+    }
+
     var range = this.getSelection(),
         frag = this._doc.createDocumentFragment(),
         div = this.createElement( 'DIV' );
@@ -1459,7 +1468,6 @@ proto.insertHTML = function ( html, isPaste ) {
         }
 
         if ( isPaste ) {
-            event.string = html;
             this.fireEvent( 'willPaste', event );
         }
 
