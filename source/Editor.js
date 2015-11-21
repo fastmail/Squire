@@ -57,8 +57,7 @@ function Squire ( doc, config ) {
     this.addEventListener( 'mouseup', this._updatePathOnEvent );
     
     // Prevents redirecting dropped files, event can then be captured with editor.addEventListener in the host document
-    this.addEventListener('dragover', this.addEventListener('dragover', this.preventDefaultEvent);
-        this.addEventListener('drop', this.preventDefaultEvent);
+    this.addEventListener('dragover', this.preventDefaultEvent);
     this.addEventListener('drop', this.preventDefaultEvent);
 
     win.addEventListener( 'focus', this, false );
