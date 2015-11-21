@@ -57,12 +57,9 @@ function Squire ( doc, config ) {
     this.addEventListener( 'mouseup', this._updatePathOnEvent );
     
     // Prevents redirecting dropped files, event can then be captured with editor.addEventListener in the host document
-    this.addEventListener('dragover', function(event) {
-        event.preventDefault();
-    });
-    this.addEventListener('drop', function(){
-        event.preventDefault();
-    });
+    this.addEventListener('dragover', this.addEventListener('dragover', this.preventDefaultEvent);
+        this.addEventListener('drop', this.preventDefaultEvent);
+    this.addEventListener('drop', this.preventDefaultEvent);
 
     win.addEventListener( 'focus', this, false );
     win.addEventListener( 'blur', this, false );
@@ -184,6 +181,10 @@ proto.didError = function ( error ) {
 
 proto.getDocument = function () {
     return this._doc;
+};
+
+proto.preventDefaultEvent = function(event) {
+    event.preventDefault();
 };
 
 // --- Events ---
