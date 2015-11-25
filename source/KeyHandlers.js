@@ -175,7 +175,7 @@ var keyHandlers = {
             return;
         }
 
-        if ( /^PRE|CODE|SAMP$/.test( block.nodeName ) ) {
+        if ( block.nodeName === 'PRE' ) {
             if ( !getNodeAfter( range.endContainer, range.endOffset ).nodeValue[ range.endOffset ] ) {
                 insertNodeInRange( range, self._doc.createTextNode( '\n\n' ) );
             } else {

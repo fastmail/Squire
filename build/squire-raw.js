@@ -1326,7 +1326,7 @@ var keyHandlers = {
             return;
         }
 
-        if ( /^PRE|CODE|SAMP$/.test( block.nodeName ) ) {
+        if ( block.nodeName === 'PRE' ) {
             if ( !getNodeAfter( range.endContainer, range.endOffset ).nodeValue[ range.endOffset ] ) {
                 insertNodeInRange( range, self._doc.createTextNode( '\n\n' ) );
             } else {
@@ -3554,12 +3554,13 @@ var getTextFromHTMLFragment = function ( self, frag ) {
 
 var makePreformatted = function ( frag ) {
     return this.createElement( 'PRE',
-        this._config.tagAttributes.pre, [
+        this._config.tagAttributes.pre,
+        [
             this.createElement( 'INPUT', { id: startSelectionId, type: 'hidden' } ),
             getTextFromHTMLFragment( this, frag ),
             this.createElement( 'INPUT', { id: endSelectionId, type: 'hidden' } ),
             this._doc.createTextNode( '\n' )
-        ] );
+        ]);
 };
 
 var removePreformatted = function ( frag ) {
@@ -3573,12 +3574,12 @@ var removePreformatted = function ( frag ) {
     range.setStartBefore( startRangeMarker );
     range.setEndAfter( endRangeMarker );
 
-    var preElems = frag.querySelectorAll('pre');
+    var preElems = frag.querySelectorAll( 'pre' );
     if ( preElems.length === 0 ) {
         return frag;
     } else {
         var firstPre = preElems[0],
-            lastPre = preElems[preElems.length - 1],
+            lastPre = preElems[ preElems.length - 1 ],
             startContainer = range.startContainer,
             startOffset = range.startOffset,
             endContainer = range.endContainer,
@@ -3628,7 +3629,7 @@ var removePreformatted = function ( frag ) {
             split( startContainer, startOffset, firstPre.parentNode );
             splitElems.push( startContainer );
         }
-        preElems = frag.querySelectorAll('pre');
+        preElems = frag.querySelectorAll( 'pre' );
         range.setStartBefore( startRangeMarker );
         range.setEndAfter( endRangeMarker );
         var self = this,
@@ -3643,7 +3644,7 @@ var removePreformatted = function ( frag ) {
                         // replace all text nodes with HTMLified version of text content (1 DIV per line)
                         var nodeLines = childNode.nodeValue.split( '\n' );
                         /*jshint loopfunc: true*/
-                        nodeLines.forEach( function (line) {
+                        nodeLines.forEach( function ( line ) {
                             if ( !line ) { return; }
                             var div = self.createDefaultBlock( [ self._doc.createTextNode ( line ) ] );
                             replacement.appendChild( div );
