@@ -1327,10 +1327,14 @@ var keyHandlers = {
         }
 
         if ( /^PRE|CODE|SAMP$/.test( block.nodeName ) ) {
+            if ( !getNodeAfter( range.endContainer, range.endOffset ).nodeValue[ range.endOffset ] ) {
+                insertNodeInRange( range, self._doc.createTextNode( '\n\n' ) );
+            } else {
+                insertNodeInRange( range, self._doc.createTextNode( '\n' ) );
+            }
             // Inside a preformatted block, insert a linebreak, and done.
-            insertNodeInRange( range, self._doc.createTextNode( '\n' ) );
-            range.collapse( false );
             block.normalize();
+            range.collapse( false );
             self.setSelection( range );
             self._updatePath( range, true );
             return;
@@ -3545,7 +3549,7 @@ var getTextFromHTMLFragment = function ( self, frag ) {
         // Strip down to text only
         lines.push( node.textContent );
     }
-    return self._doc.createTextNode( lines.join( '\n' ) || '\n' );
+    return self._doc.createTextNode( lines.join( '\n' ) || '' );
 };
 
 var makePreformatted = function ( frag ) {
@@ -3553,7 +3557,8 @@ var makePreformatted = function ( frag ) {
         this._config.tagAttributes.pre, [
             this.createElement( 'INPUT', { id: startSelectionId, type: 'hidden' } ),
             getTextFromHTMLFragment( this, frag ),
-            this.createElement( 'INPUT', { id: endSelectionId, type: 'hidden' } )
+            this.createElement( 'INPUT', { id: endSelectionId, type: 'hidden' } ),
+            this._doc.createTextNode( '\n' )
         ] );
 };
 

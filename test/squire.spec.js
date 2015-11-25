@@ -204,7 +204,7 @@ describe('Squire RTE', function () {
             expect(editor, 'to contain HTML', startHTML);
             editor.moveCursorToStart();
             editor.makePreformatted();
-            expect(editor, 'to contain HTML', '<pre>one two three four five</pre>');
+            expect(editor, 'to contain HTML', '<pre>one two three four five\n</pre>');
         });
 
         it('adds an empty PRE element', function () {
@@ -222,7 +222,7 @@ describe('Squire RTE', function () {
             expect(editor, 'to contain HTML', startHTML);
             selectAll(editor);
             editor.makePreformatted();
-            expect(editor, 'to contain HTML', '<pre>one two\nthree four\nfive</pre>');
+            expect(editor, 'to contain HTML', '<pre>one two\nthree four\nfive\n</pre>');
         });
 
         it('expands existing PRE tags to encompass selection', function () {
@@ -231,7 +231,7 @@ describe('Squire RTE', function () {
             expect(editor, 'to contain HTML', startHTML);
             selectAll(editor);
             editor.makePreformatted();
-            expect(editor, 'to contain HTML', '<pre>abc\n\none two three four five\n</pre>');
+            expect(editor, 'to contain HTML', '<pre>abc\n\none two three four five\n\n</pre>');
         });
     });
 

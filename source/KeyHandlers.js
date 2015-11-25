@@ -176,10 +176,14 @@ var keyHandlers = {
         }
 
         if ( /^PRE|CODE|SAMP$/.test( block.nodeName ) ) {
+            if ( !getNodeAfter( range.endContainer, range.endOffset ).nodeValue[ range.endOffset ] ) {
+                insertNodeInRange( range, self._doc.createTextNode( '\n\n' ) );
+            } else {
+                insertNodeInRange( range, self._doc.createTextNode( '\n' ) );
+            }
             // Inside a preformatted block, insert a linebreak, and done.
-            insertNodeInRange( range, self._doc.createTextNode( '\n' ) );
-            range.collapse( false );
             block.normalize();
+            range.collapse( false );
             self.setSelection( range );
             self._updatePath( range, true );
             return;
