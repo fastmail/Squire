@@ -1352,7 +1352,9 @@ var getTextFromHTMLFragment = function ( self, frag ) {
 var makePreformatted = function ( frag ) {
     return this.createElement( 'PRE',
         this._config.tagAttributes.pre, [
-            getTextFromHTMLFragment( this, frag )
+            this.createElement( 'DIV', { id: startSelectionId } ),
+            getTextFromHTMLFragment( this, frag ),
+            this.createElement( 'DIV', { id: endSelectionId } )
         ] );
 };
 
