@@ -242,7 +242,7 @@ describe('Squire RTE', function () {
             expect(editor, 'to contain HTML', startHTML);
             selectAll(editor);
             editor.removePreformatted();
-            expect(editor, 'to contain HTML', '<div>abc</div><div></div><div>one two three four five</div><div></div>');
+            expect(editor, 'to contain HTML', '<div>abc</div><div>one two three four five</div>');
         });
 
         it('cuts the beginning off PRE tags', function () {
@@ -254,7 +254,7 @@ describe('Squire RTE', function () {
             range.setEnd(doc.querySelector('pre').childNodes[0], 18);
             editor.setSelection(range);
             editor.removePreformatted();
-            expect(editor, 'to contain HTML', '<div>abc</div><div></div><div>one two three</div><pre> four five\n</pre>');
+            expect(editor, 'to contain HTML', '<div>abc</div><div>one two three</div><pre> four five\n</pre>');
         });
 
         it('cuts the end off PRE tags', function () {
@@ -267,6 +267,40 @@ describe('Squire RTE', function () {
             editor.setSelection(range);
             editor.removePreformatted();
             expect(editor, 'to contain HTML', '<pre>abc\n\none two three</pre><div> four five</div>');
+        });
+
+        describe('with collapsed selection', function () {
+            beforeEach(function () {
+                var startHTML = '<pre>abc\n\none two three four five\nxyz</pre>';
+                editor.setHTML(startHTML);
+            });
+
+            it('expands selection to the whole line', function () {
+                var range = doc.createRange();
+                range.setStart(doc.querySelector('pre').childNodes[0], 24);
+                range.setEnd(doc.querySelector('pre').childNodes[0], 24);
+                editor.setSelection(range);
+                editor.removePreformatted();
+                expect(editor, 'to contain HTML', '<pre>abc\n</pre><div>one two three four five</div><pre>xyz</pre>');
+            });
+
+            it('... even when on first line of tag', function () {
+                var range = doc.createRange();
+                range.setStart(doc.querySelector('pre').childNodes[0], 2);
+                range.setEnd(doc.querySelector('pre').childNodes[0], 2);
+                editor.setSelection(range);
+                editor.removePreformatted();
+                expect(editor, 'to contain HTML', '<div>abc</div><pre>\none two three four five\nxyz</pre>');
+            });
+
+            it('... or on last line of tag', function () {
+                var range = doc.createRange();
+                range.setStart(doc.querySelector('pre').childNodes[0], 31);
+                range.setEnd(doc.querySelector('pre').childNodes[0], 31);
+                editor.setSelection(range);
+                editor.removePreformatted();
+                expect(editor, 'to contain HTML', '<pre>abc\n\none two three four five</pre><div>xyz</div>');
+            });
         });
     });
 
