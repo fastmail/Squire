@@ -698,7 +698,7 @@ var insertNodeInRange = function ( range, node ) {
 
     childCount = children.length;
 
-    if ( startOffset === childCount) {
+    if ( startOffset === childCount ) {
         startContainer.appendChild( node );
     } else {
         startContainer.insertBefore( node, children[ startOffset ] );
@@ -1390,18 +1390,6 @@ var keyHandlers = {
         range = self._createRange( nodeAfterSplit, 0 );
         self.setSelection( range );
         self._updatePath( range, true );
-
-        // Scroll into view
-        if ( nodeAfterSplit.nodeType === TEXT_NODE ) {
-            nodeAfterSplit = nodeAfterSplit.parentNode;
-        }
-        var doc = self._doc,
-            body = self._body;
-        if ( nodeAfterSplit.offsetTop + nodeAfterSplit.offsetHeight >
-                ( doc.documentElement.scrollTop || body.scrollTop ) +
-                body.offsetHeight ) {
-            nodeAfterSplit.scrollIntoView( false );
-        }
     },
     backspace: function ( self, event, range ) {
         self._removeZWS();
@@ -1528,10 +1516,8 @@ var keyHandlers = {
     tab: function ( self, event, range ) {
         var node, parent;
         self._removeZWS();
-        // If no selection and in an empty block
-        if ( range.collapsed &&
-                rangeDoesStartAtBlockBoundary( range ) &&
-                rangeDoesEndAtBlockBoundary( range ) ) {
+        // If no selection and at start of block
+        if ( range.collapsed && rangeDoesStartAtBlockBoundary( range ) ) {
             node = getStartBlockOfRange( range );
             // Iterate through the block's parents
             while ( parent = node.parentNode ) {
@@ -1546,6 +1532,18 @@ var keyHandlers = {
                     break;
                 }
                 node = parent;
+            }
+        }
+    },
+    'shift-tab': function ( self, event, range ) {
+        self._removeZWS();
+        // If no selection and at start of block
+        if ( range.collapsed && rangeDoesStartAtBlockBoundary( range ) ) {
+            // Break list
+            var node = range.startContainer;
+            if ( getNearest( node, 'UL' ) || getNearest( node, 'OL' ) ) {
+                event.preventDefault();
+                self.modifyBlocks( decreaseListLevel, range );
             }
         }
     },
@@ -1632,7 +1630,7 @@ var spanToSemantic = {
         replace: function ( doc, colour ) {
             return createElement( doc, 'SPAN', {
                 'class': 'highlight',
-                style: 'background-color: ' + colour
+                style: 'background-color:' + colour
             });
         }
     },
@@ -2163,7 +2161,6 @@ function Squire ( doc, config ) {
 
     this._events = {};
 
-    this._sel = win.getSelection();
     this._lastSelection = null;
 
     // IE loses selection state of iframe on blur, so make sure we
@@ -2426,6 +2423,25 @@ proto._createRange =
     return domRange;
 };
 
+proto.scrollRangeIntoView = function ( range ) {
+    var win = this._win;
+    var top = range.getBoundingClientRect().top;
+    var height = win.innerHeight;
+    var node, parent;
+    if ( !top ) {
+        node = this._doc.createElement( 'SPAN' );
+        range = range.cloneRange();
+        insertNodeInRange( range, node );
+        top = node.getBoundingClientRect().top;
+        parent = node.parentNode;
+        parent.removeChild( node );
+        parent.normalize();
+    }
+    if ( top > height ) {
+        win.scrollBy( 0, top - height + 20 );
+    }
+};
+
 proto._moveCursorTo = function ( toStart ) {
     var body = this._body,
         range = this._createRange( body, toStart ? 0 : body.childNodes.length );
@@ -2449,17 +2465,24 @@ proto.setSelection = function ( range ) {
         if ( isIOS ) {
             this._win.focus();
         }
-        var sel = this._sel;
-        sel.removeAllRanges();
-        sel.addRange( range );
+        var sel = this._getWindowSelection();
+        if ( sel ) {
+            sel.removeAllRanges();
+            sel.addRange( range );
+            this.scrollRangeIntoView( range );
+        }
     }
     return this;
 };
 
+proto._getWindowSelection = function () {
+    return this._win.getSelection() || null;
+};
+
 proto.getSelection = function () {
-    var sel = this._sel,
+    var sel = this._getWindowSelection(),
         selection, startContainer, endContainer;
-    if ( sel.rangeCount ) {
+    if ( sel && sel.rangeCount ) {
         selection  = sel.getRangeAt( 0 ).cloneRange();
         startContainer = selection.startContainer;
         endContainer = selection.endContainer;
@@ -2544,6 +2567,7 @@ var removeZWS = function ( root ) {
                     parent = node.parentNode;
                     parent.removeChild( node );
                     node = parent;
+                    walker.currentNode = parent;
                 } while ( isInline( node ) && !getLength( node ) );
                 break;
             } else {
@@ -2705,7 +2729,7 @@ proto._keyUpDetectChange = function ( event ) {
     // 3. The key pressed is not in range 33<=x<=45 (navigation keys)
     if ( !event.ctrlKey && !event.metaKey && !event.altKey &&
             ( code < 16 || code > 20 ) &&
-            ( code < 33 || code > 45 ) )  {
+            ( code < 33 || code > 45 ) ) {
         this._docWasChanged();
     }
 };
@@ -2734,7 +2758,7 @@ proto._recordUndoState = function ( range ) {
             undoStack = this._undoStack;
 
         // Truncate stack if longer (i.e. if has been previously undone)
-        if ( undoIndex < this._undoStackLength) {
+        if ( undoIndex < this._undoStackLength ) {
             undoStack.length = this._undoStackLength = undoIndex;
         }
 
@@ -2803,6 +2827,20 @@ proto.hasFormat = function ( tag, attributes, range ) {
         return false;
     }
 
+    // Sanitize range to prevent weird IE artifacts
+    if ( !range.collapsed &&
+            range.startContainer.nodeType === TEXT_NODE &&
+            range.startOffset === range.startContainer.length &&
+            range.startContainer.nextSibling ) {
+        range.setStartBefore( range.startContainer.nextSibling );
+    }
+    if ( !range.collapsed &&
+            range.endContainer.nodeType === TEXT_NODE &&
+            range.endOffset === 0 &&
+            range.endContainer.previousSibling ) {
+        range.setEndAfter( range.endContainer.previousSibling );
+    }
+
     // If the common ancestor is inside the tag we require, we definitely
     // have the format.
     var root = range.commonAncestorContainer,
@@ -2838,10 +2876,13 @@ proto.hasFormat = function ( tag, attributes, range ) {
 // holding the cursor. If there's a selection, returns an empty object.
 proto.getFontInfo = function ( range ) {
     var fontInfo = {
-            family: undefined,
-            size: undefined
-        },
-        element, style;
+        color: undefined,
+        backgroundColor: undefined,
+        family: undefined,
+        size: undefined
+    };
+    var seenAttributes = 0;
+    var element, style;
 
     if ( !range && !( range = this.getSelection() ) ) {
         return fontInfo;
@@ -2852,13 +2893,22 @@ proto.getFontInfo = function ( range ) {
         if ( element.nodeType === TEXT_NODE ) {
             element = element.parentNode;
         }
-        while ( !( fontInfo.family && fontInfo.size ) &&
-                element && ( style = element.style ) ) {
+        while ( seenAttributes < 4 && element && ( style = element.style ) ) {
+            if ( !fontInfo.color ) {
+                fontInfo.color = style.color;
+                seenAttributes += 1;
+            }
+            if ( !fontInfo.backgroundColor ) {
+                fontInfo.backgroundColor = style.backgroundColor;
+                seenAttributes += 1;
+            }
             if ( !fontInfo.family ) {
                 fontInfo.family = style.fontFamily;
+                seenAttributes += 1;
             }
             if ( !fontInfo.size ) {
                 fontInfo.size = style.fontSize;
+                seenAttributes += 1;
             }
             element = element.parentNode;
         }
@@ -2898,9 +2948,9 @@ proto._addFormat = function ( tag, attributes, range ) {
             SHOW_TEXT|SHOW_ELEMENT,
             function ( node ) {
                 return ( node.nodeType === TEXT_NODE ||
-                                                    node.nodeName === 'BR'||
-                                                    node.nodeName === 'IMG' ) &&
-                    isNodeContainedInRange( range, node, true );
+                        node.nodeName === 'BR' ||
+                        node.nodeName === 'IMG'
+                    ) && isNodeContainedInRange( range, node, true );
             },
             false
         );
@@ -3641,14 +3691,18 @@ proto.insertHTML = function ( html, isPaste ) {
 
 proto.insertPlainText = function ( plainText, isPaste ) {
     var lines = plainText.split( '\n' ),
-        i, l;
-    for ( i = 1, l = lines.length - 1; i < l; i += 1 ) {
-        lines[i] = '<DIV>' +
-            lines[i].split( '&' ).join( '&amp;' )
-                    .split( '<' ).join( '&lt;'  )
-                    .split( '>' ).join( '&gt;'  )
-                    .replace( / (?= )/g, '&nbsp;' ) +
-        '</DIV>';
+        i, l, line;
+    for ( i = 0, l = lines.length; i < l; i += 1 ) {
+        line = lines[i];
+        line = line.split( '&' ).join( '&amp;' )
+                   .split( '<' ).join( '&lt;'  )
+                   .split( '>' ).join( '&gt;'  )
+                   .replace( / (?= )/g, '&nbsp;' );
+        // Wrap all but first/last lines in <div></div>
+        if ( i && i + 1 < l ) {
+            line = '<DIV>' + ( line || '<BR>' ) + '</DIV>';
+        }
+        lines[i] = line;
     }
     return this.insertHTML( lines.join( '' ), isPaste );
 };
@@ -3754,7 +3808,7 @@ proto.setTextColour = function ( colour ) {
         tag: 'SPAN',
         attributes: {
             'class': 'colour',
-            style: 'color: ' + colour
+            style: 'color:' + colour
         }
     }, {
         tag: 'SPAN',
@@ -3768,7 +3822,7 @@ proto.setHighlightColour = function ( colour ) {
         tag: 'SPAN',
         attributes: {
             'class': 'highlight',
-            style: 'background-color: ' + colour
+            style: 'background-color:' + colour
         }
     }, {
         tag: 'SPAN',
