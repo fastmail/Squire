@@ -12,8 +12,9 @@
   <div id="mocha"></div>
   <script>
     mocha.setup('bdd');
-    var expect = weknowhow.expect;
+    var unexpected = weknowhow.expect;
   </script>
+  <script src="../node_modules/unexpected-dom/unexpected-dom.js"></script>
   <script src="squire.spec.js"></script>
   <script>
       mocha.run();

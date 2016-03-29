@@ -1326,6 +1326,20 @@ var keyHandlers = {
             return;
         }
 
+        if ( block.nodeName === 'PRE' ) {
+            if ( !getNodeAfter( range.endContainer, range.endOffset ).nodeValue[ range.endOffset ] ) {
+                insertNodeInRange( range, self._doc.createTextNode( '\n\n' ) );
+            } else {
+                insertNodeInRange( range, self._doc.createTextNode( '\n' ) );
+            }
+            // Inside a preformatted block, insert a linebreak, and done.
+            block.normalize();
+            range.collapse( false );
+            self.setSelection( range );
+            self._updatePath( range, true );
+            return;
+        }
+
         // If in a list, we'll split the LI instead.
         if ( parent = getNearest( block, 'LI' ) ) {
             block = parent;
@@ -1618,6 +1632,15 @@ if ( !isMac ) {
         self.moveCursorToEnd();
     };
 }
+
+keyHandlers[ ctrlKey + 'shift-m' ] = function ( self, event, range ) {
+    event.preventDefault();
+    if ( self.hasFormat( 'pre', null, range ) ) {
+        self.removePreformatted();
+    } else {
+        self.makePreformatted();
+    }
+};
 
 keyHandlers[ ctrlKey + 'b' ] = mapKeyToFormat( 'B' );
 keyHandlers[ ctrlKey + 'i' ] = mapKeyToFormat( 'I' );
@@ -3518,6 +3541,127 @@ var decreaseListLevel = function ( frag ) {
     return frag;
 };
 
+var getTextFromHTMLFragment = function ( self, frag ) {
+    var walker = getBlockWalker( frag ),
+        lines = [],
+        node;
+    while ( node = walker.nextNode() ) {
+        // Strip down to text only
+        lines.push( node.textContent );
+    }
+    return self._doc.createTextNode( lines.join( '\n' ) || '' );
+};
+
+var makePreformatted = function ( frag ) {
+    return this.createElement( 'PRE',
+        this._config.tagAttributes.pre,
+        [
+            this.createElement( 'INPUT', { id: startSelectionId, type: 'hidden' } ),
+            getTextFromHTMLFragment( this, frag ),
+            this.createElement( 'INPUT', { id: endSelectionId, type: 'hidden' } ),
+            this._doc.createTextNode( '\n' )
+        ]);
+};
+
+var removePreformatted = function ( frag ) {
+    var range = this._doc.createRange();
+    var startRangeMarker = frag.querySelector( '#' + startSelectionId );
+    var endRangeMarker = frag.querySelector( '#' + endSelectionId );
+    if ( !startRangeMarker || !endRangeMarker ) {
+        return frag;
+    }
+
+    range.setStartBefore( startRangeMarker );
+    range.setEndAfter( endRangeMarker );
+
+    var preElems = frag.querySelectorAll( 'pre' );
+    if ( preElems.length === 0 ) {
+        return frag;
+    } else {
+        var firstPre = preElems[0],
+            lastPre = preElems[ preElems.length - 1 ],
+            startContainer = range.startContainer,
+            startOffset = range.startOffset,
+            endContainer = range.endContainer,
+            endOffset = range.endOffset,
+            splitElems = [];
+        if ( startRangeMarker.nextSibling === endRangeMarker ) {
+            // Collapsed selection - expand to the whole line
+            var beforeStart = startRangeMarker.previousSibling,
+                newNode;
+            if ( beforeStart && beforeStart.nodeType === TEXT_NODE ) {
+                var lineStartOffset = beforeStart.nodeValue.lastIndexOf( '\n' );
+                if ( lineStartOffset !== -1 ) {
+                    newNode = beforeStart.splitText( lineStartOffset );
+                    beforeStart.parentNode.insertBefore( startRangeMarker, newNode );
+                } else {
+                    beforeStart.parentNode.insertBefore( startRangeMarker, beforeStart );
+                }
+                range.setStartBefore( startRangeMarker );
+                startOffset = range.startOffset;
+                startContainer = range.startContainer;
+            }
+            var afterEnd = endRangeMarker.nextSibling;
+            if ( afterEnd && afterEnd.nodeType === TEXT_NODE ) {
+                var lineEndOffset = afterEnd.nodeValue.indexOf( '\n' );
+                if ( lineEndOffset !== -1 ) {
+                    newNode = afterEnd.splitText( lineEndOffset + 1 );
+                    afterEnd.parentNode.insertBefore( endRangeMarker, newNode );
+                } else {
+                    if ( afterEnd.nextSibling ) {
+                        afterEnd.parentNode.insertBefore( endRangeMarker, afterEnd.nextSibling );
+                    } else {
+                        afterEnd.parentNode.appendChild( endRangeMarker );
+                    }
+                }
+                range.setEndBefore( endRangeMarker );
+                endOffset = range.endOffset;
+                endContainer = range.endContainer;
+            }
+            startContainer.normalize();
+        }
+        if ( getNearest( endContainer, 'PRE' ) === lastPre &&
+                endOffset < endContainer.childNodes.length - 1 ) {
+            splitElems.push( split( endContainer, endOffset, lastPre.parentNode ) );
+        }
+        if ( getNearest( startContainer, 'PRE' ) === firstPre &&
+                startOffset > 0 ) {
+            split( startContainer, startOffset, firstPre.parentNode );
+            splitElems.push( startContainer );
+        }
+        preElems = frag.querySelectorAll( 'pre' );
+        range.setStartBefore( startRangeMarker );
+        range.setEndAfter( endRangeMarker );
+        var self = this,
+            node, elemsInRange;
+        for ( var i = 0; i < preElems.length; i += 1 ) {
+            node = preElems[i];
+            if ( isNodeContainedInRange( range, node, true ) ) {
+                var replacement = this._doc.createDocumentFragment(),
+                    childNode;
+                while ( childNode = node.childNodes[0] ) {
+                    if ( childNode.nodeType === TEXT_NODE ) {
+                        // replace all text nodes with HTMLified version of text content (1 DIV per line)
+                        var nodeLines = childNode.nodeValue.split( '\n' );
+                        /*jshint loopfunc: true*/
+                        nodeLines.forEach( function ( line ) {
+                            if ( !line ) { return; }
+                            var div = self.createDefaultBlock( [ self._doc.createTextNode ( line ) ] );
+                            replacement.appendChild( div );
+                        });
+                        /*jshint loopfunc: false*/
+                        node.removeChild( childNode );
+                    } else {
+                        replacement.appendChild( childNode );
+                    }
+                }
+                replaceWith( node, replacement );
+            }
+        }
+        return frag;
+    }
+};
+
 proto._ensureBottomLine = function () {
     var body = this._body,
         last = body.lastElementChild;
@@ -3723,7 +3867,13 @@ proto.insertHTML = function ( html, isPaste ) {
 
     // Parse HTML into DOM tree
     div.innerHTML = html;
-    frag.appendChild( empty( div ) );
+    // If range is entirely inside PRE tag
+    if ( getNearest( range.commonAncestorContainer, 'PRE' ) ) {
+        // Insert unparsed in text node
+        frag.appendChild( getTextFromHTMLFragment( this, div ) );
+    } else {
+        frag.appendChild( empty( div ) );
+    }
 
     // Record undo checkpoint
     this.saveUndoState( range );
@@ -4043,6 +4193,8 @@ proto.makeUnorderedList = command( 'modifyBlocks', makeUnorderedList );
 proto.makeOrderedList = command( 'modifyBlocks', makeOrderedList );
 proto.removeList = command( 'modifyBlocks', removeList );
 
+proto.makePreformatted = command( 'modifyBlocks', makePreformatted );
+proto.removePreformatted = command( 'modifyBlocks', removePreformatted );
 proto.increaseListLevel = command( 'modifyBlocks', increaseListLevel );
 proto.decreaseListLevel = command( 'modifyBlocks', decreaseListLevel );
 
