@@ -1989,7 +1989,7 @@ var onCut = function ( event ) {
     this.saveUndoState( range );
 
     // Edge only seems to support setting plain text as of 2016-03-11.
-    if ( !isEdge && clipboardData ) {
+    if ( !isEdge && !isIOS && clipboardData ) {
         moveRangeBoundariesUpTree( range, body );
         node.appendChild( deleteContentsOfRange( range, body ) );
         clipboardData.setData( 'text/html', node.innerHTML );
@@ -2016,7 +2016,7 @@ var onCopy = function ( event ) {
     var node = this.createElement( 'div' );
 
     // Edge only seems to support setting plain text as of 2016-03-11.
-    if ( !isEdge && clipboardData ) {
+    if ( !isEdge && !isIOS && clipboardData ) {
         node.appendChild( range.cloneContents() );
         clipboardData.setData( 'text/html', node.innerHTML );
         clipboardData.setData( 'text/plain',
