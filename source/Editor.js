@@ -629,6 +629,17 @@ proto._recordUndoState = function ( range ) {
     }
 };
 
+proto.saveUndoState = function ( range ) {
+    if ( range === undefined ) {
+        range = this.getSelection();
+    }
+    if ( !this._isInUndoState ) {
+        this._recordUndoState( range );
+        this._getRangeAndRemoveBookmark( range );
+    }
+    return this;
+};
+
 proto.undo = function () {
     // Sanity check: must not be at beginning of the history stack
     if ( this._undoIndex !== 0 || !this._isInUndoState ) {
