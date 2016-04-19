@@ -1,20 +1,54 @@
 /*jshint strict:false, undef:false, unused:false */
 
-var onCut = function () {
-    // Save undo checkpoint
+var onCut = function ( event ) {
+    var clipboardData = event.clipboardData;
     var range = this.getSelection();
+    var node = this.createElement( 'div' );
+    var root = this._root;
     var self = this;
-    this._recordUndoState( range );
-    this._getRangeAndRemoveBookmark( range );
+
+    // Save undo checkpoint
+    this.saveUndoState( range );
+
+    // Edge only seems to support setting plain text as of 2016-03-11.
+    // Mobile Safari flat out doesn't work:
+    // https://bugs.webkit.org/show_bug.cgi?id=143776
+    if ( !isEdge && !isIOS && clipboardData ) {
+        moveRangeBoundariesUpTree( range, root );
+        node.appendChild( deleteContentsOfRange( range, root ) );
+        clipboardData.setData( 'text/html', node.innerHTML );
+        clipboardData.setData( 'text/plain',
+            node.innerText || node.textContent );
+        event.preventDefault();
+    } else {
+        setTimeout( function () {
+            try {
+                // If all content removed, ensure div at start of root.
+                self._ensureBottomLine();
+            } catch ( error ) {
+                self.didError( error );
+            }
+        }, 0 );
+    }
+
     this.setSelection( range );
-    setTimeout( function () {
-        try {
-            // If all content removed, ensure div at start of body.
-            self._ensureBottomLine();
-        } catch ( error ) {
-            self.didError( error );
-        }
-    }, 0 );
+};
+
+var onCopy = function ( event ) {
+    var clipboardData = event.clipboardData;
+    var range = this.getSelection();
+    var node = this.createElement( 'div' );
+
+    // Edge only seems to support setting plain text as of 2016-03-11.
+    // Mobile Safari flat out doesn't work:
+    // https://bugs.webkit.org/show_bug.cgi?id=143776
+    if ( !isEdge && !isIOS && clipboardData ) {
+        node.appendChild( range.cloneContents() );
+        clipboardData.setData( 'text/html', node.innerHTML );
+        clipboardData.setData( 'text/plain',
+            node.innerText || node.textContent );
+        event.preventDefault();
+    }
 };
 
 var onPaste = function ( event ) {
@@ -24,13 +58,14 @@ var onPaste = function ( event ) {
         hasImage = false,
         plainItem = null,
         self = this,
-        l, item, type, data;
+        l, item, type, types, data;
 
     // Current HTML5 Clipboard interface
     // ---------------------------------
     // https://html.spec.whatwg.org/multipage/interaction.html
 
-    if ( items ) {
+    // Edge only provides access to plain text as of 2016-03-11.
+    if ( !isEdge && items ) {
         event.preventDefault();
         l = items.length;
         while ( l-- ) {
@@ -81,42 +116,51 @@ var onPaste = function ( event ) {
     // rather than text/html; even from a webpage in Safari. The only way
     // to get an HTML version is to fallback to letting the browser insert
     // the content. Same for getting image data. *Sigh*.
-    if ( clipboardData && (
-            indexOf.call( clipboardData.types, 'text/html' ) > -1 || (
-            indexOf.call( clipboardData.types, 'text/plain' ) > -1 &&
-            indexOf.call( clipboardData.types, 'text/rtf' ) < 0 ) ) ) {
+    //
+    // Firefox is even worse: it doesn't even let you know that there might be
+    // an RTF version on the clipboard, but it will also convert to HTML if you
+    // let the browser insert the content. I've filed
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1254028
+    types = clipboardData && clipboardData.types;
+    if ( !isEdge && types && (
+            indexOf.call( types, 'text/html' ) > -1 || (
+                !isGecko &&
+                indexOf.call( types, 'text/plain' ) > -1 &&
+                indexOf.call( types, 'text/rtf' ) < 0 )
+            )) {
         event.preventDefault();
         // Abiword on Linux copies a plain text and html version, but the HTML
         // version is the empty string! So always try to get HTML, but if none,
-        // insert plain text instead.
+        // insert plain text instead. On iOS, Facebook (and possibly other
+        // apps?) copy links as type text/uri-list, but also insert a **blank**
+        // text/plain item onto the clipboard. Why? Who knows.
         if (( data = clipboardData.getData( 'text/html' ) )) {
             this.insertHTML( data, true );
-        } else if (( data = clipboardData.getData( 'text/plain' ) )) {
+        } else if (
+                ( data = clipboardData.getData( 'text/plain' ) ) ||
+                ( data = clipboardData.getData( 'text/uri-list' ) ) ) {
             this.insertPlainText( data, true );
         }
         return;
     }
 
-    // No interface :(
-    // ---------------
+    // No interface. Includes all versions of IE :(
+    // --------------------------------------------
 
     this._awaitingPaste = true;
 
-    var body = this._body,
+    var body = this._doc.body,
         range = this.getSelection(),
         startContainer = range.startContainer,
         startOffset = range.startOffset,
         endContainer = range.endContainer,
-        endOffset = range.endOffset,
-        startBlock = getStartBlockOfRange( range );
+        endOffset = range.endOffset;
 
     // We need to position the pasteArea in the visible portion of the screen
     // to stop the browser auto-scrolling.
     var pasteArea = this.createElement( 'DIV', {
-        style: 'position: absolute; overflow: hidden; top:' +
-            ( body.scrollTop +
-                ( startBlock ? startBlock.getBoundingClientRect().top : 0 ) ) +
-            'px; right: 150%; width: 1px; height: 1px;'
+        contenteditable: 'true',
+        style: 'position:fixed; overflow:hidden; top:0; right:100%; width:1px; height:1px;'
     });
     body.appendChild( pasteArea );
     range.selectNodeContents( pasteArea );
