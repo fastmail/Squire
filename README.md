@@ -181,7 +181,12 @@ Returns the path through the DOM tree from the `<body>` element to the current c
 
 ### getFontInfo
 
-Returns an object containing the font-family and font-size information for the element the cursor is in, if any was set. It uses style declarations to detect this, and so will not detect FONT tags. If a selection across multiple elements has been made, it will return an empty object.
+Returns an object containing the active font family, size, colour and background colour for the the current cursor position, if any are set. The property names are respectively `family`, `size`, `color` and `backgroundColor`. It looks at style attributes to detect this, so will not detect `<FONT>` tags or non-inline styles. If a selection across multiple elements has been made, it will return an empty object.
+
+### getCursorPosition
+
+Returns a bounding client rect (top/left/right/bottom properties relative to
+the viewport) for the current selection/cursor.
 
 ### getSelection
 
@@ -208,6 +213,15 @@ Returns self (the Squire instance).
 
 Removes any current selection and moves the cursor to the very end of the
 document.
+
+Returns self (the Squire instance).
+
+### saveUndoState
+
+Saves an undo checkpoint with the current editor state. Methods that modify the
+state (e.g. bold/setHighlightColour/modifyBlocks) will automatically save undo
+checkpoints; you only need this method if you want to modify the DOM outside of
+one of these methods, and you want to save an undo checkpoint first.
 
 Returns self (the Squire instance).
 
