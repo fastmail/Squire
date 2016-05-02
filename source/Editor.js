@@ -195,16 +195,16 @@ proto.getRoot = function () {
     return this._root;
 };
 
-proto.modifyDocument = function(modificationCallback) {
+proto.modifyDocument = function ( modificationCallback ) {
     this._ignoreAllChanges = true;
-    if(this._mutation) {
+    if( this._mutation ) {
             this._mutation.disconnect();
     }
 
     modificationCallback();
 
     this._ignoreAllChanges = false;
-    if(this._mutation) {
+    if( this._mutation ) {
         this._mutation.observe( this._root, {
             childList: true,
             attributes: true,
@@ -669,7 +669,7 @@ proto._keyUpDetectChange = function ( event ) {
 };
 
 proto._docWasChanged = function () {
-    if(this._ignoreAllChanges) {
+    if( this._ignoreAllChanges ) {
         return;
     }
 
