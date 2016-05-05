@@ -64,6 +64,7 @@ function Squire ( root, config ) {
     this._undoStackLength = 0;
     this._isInUndoState = false;
     this._ignoreChange = false;
+    this._ignoreAllChanges = false;
 
     if ( canObserveMutations ) {
         mutation = new MutationObserver( this._docWasChanged.bind( this ) );
@@ -159,7 +160,8 @@ proto.setConfig = function ( config ) {
             blockquote: null,
             ul: null,
             ol: null,
-            li: null
+            li: null,
+            a: null
         }
     }, config );
 
@@ -194,14 +196,32 @@ proto.getRoot = function () {
     return this._root;
 };
 
+proto.modifyDocument = function ( modificationCallback ) {
+    this._ignoreAllChanges = true;
+    if ( this._mutation ) {
+        this._mutation.disconnect();
+    }
+
+    modificationCallback();
+
+    this._ignoreAllChanges = false;
+    if ( this._mutation ) {
+        this._mutation.observe( this._root, {
+            childList: true,
+            attributes: true,
+            characterData: true,
+            subtree: true
+        });
+    }
+};
+
 // --- Events ---
 
 // Subscribing to these events won't automatically add a listener to the
 // document node, since these events are fired in a custom manner by the
 // editor code.
 var customEvents = {
-    pathChange: 1, select: 1, input: 1, undoStateChange: 1,
-    dragover: 1, drop: 1
+    pathChange: 1, select: 1, input: 1, undoStateChange: 1
 };
 
 proto.fireEvent = function ( type, event ) {
@@ -649,6 +669,10 @@ proto._keyUpDetectChange = function ( event ) {
 };
 
 proto._docWasChanged = function () {
+    if ( this._ignoreAllChanges ) {
+        return;
+    }
+
     if ( canObserveMutations && this._ignoreChange ) {
         this._ignoreChange = false;
         return;
@@ -1518,6 +1542,11 @@ proto.insertElement = function ( el, range ) {
     this.focus();
     this.setSelection( range );
     this._updatePath( range );
+
+    if ( !canObserveMutations ) {
+        this._docWasChanged();
+    }
+
     return this;
 };
 
@@ -1531,12 +1560,13 @@ proto.insertImage = function ( src, attributes ) {
 
 var linkRegExp = /\b((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))|([\w\-.%+]+@(?:[\w\-]+\.)+[A-Z]{2,}\b)/i;
 
-var addLinks = function ( frag, root ) {
+var addLinks = function ( frag, root, self ) {
     var doc = frag.ownerDocument,
         walker = new TreeWalker( frag, SHOW_TEXT,
                 function ( node ) {
             return !getNearest( node, root, 'A' );
         }, false ),
+        defaultAttributes = self._config.tagAttributes.a,
         node, data, parent, match, index, endIndex, child;
     while ( node = walker.nextNode() ) {
         data = node.data;
@@ -1548,13 +1578,14 @@ var addLinks = function ( frag, root ) {
                 child = doc.createTextNode( data.slice( 0, index ) );
                 parent.insertBefore( child, node );
             }
-            child = doc.createElement( 'A' );
+            child = self.createElement( 'A', mergeObjects({
+                href: match[1] ?
+                    /^(?:ht|f)tps?:/.test( match[1] ) ?
+                        match[1] :
+                        'http://' + match[1] :
+                    'mailto:' + match[2]
+            }, defaultAttributes ));
             child.textContent = data.slice( index, endIndex );
-            child.href = match[1] ?
-                /^(?:ht|f)tps?:/.test( match[1] ) ?
-                    match[1] :
-                    'http://' + match[1] :
-                'mailto:' + match[2];
             parent.insertBefore( child, node );
             node.data = data = data.slice( endIndex );
         }
@@ -1587,14 +1618,14 @@ proto.insertHTML = function ( html, isPaste ) {
             defaultPrevented: false
         };
 
-        addLinks( frag, root );
+        addLinks( frag, frag, this );
         cleanTree( frag );
-        cleanupBRs( frag, root );
+        cleanupBRs( frag, null );
         removeEmptyInlines( frag );
         frag.normalize();
 
-        while ( node = getNextBlock( node, root ) ) {
-            fixCursor( node, root );
+        while ( node = getNextBlock( node, frag ) ) {
+            fixCursor( node, null );
         }
 
         if ( isPaste ) {
@@ -1687,6 +1718,7 @@ proto.makeLink = function ( url, attributes ) {
     if ( !attributes ) {
         attributes = {};
     }
+    mergeObjects( attributes, this._config.tagAttributes.a );
     attributes.href = url;
 
     this.changeFormat({
