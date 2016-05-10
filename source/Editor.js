@@ -57,8 +57,8 @@ function Squire ( doc, config ) {
     this.addEventListener( 'keyup', this._updatePathOnEvent );
     this.addEventListener( 'mouseup', this._updatePathOnEvent );
 
-    win.addEventListener( 'focus', this, false );
-    win.addEventListener( 'blur', this, false );
+    this.addEventListener( 'focus', this, false );
+    this.addEventListener( 'blur', this, false );
 
     this._undoIndex = -1;
     this._undoStack = [];
@@ -224,8 +224,8 @@ proto.destroy = function () {
         doc = this._doc,
         events = this._events,
         type;
-    win.removeEventListener( 'focus', this, false );
-    win.removeEventListener( 'blur', this, false );
+    this.removeEventListener( 'focus', this, false );
+    this.removeEventListener( 'blur', this, false );
     for ( type in events ) {
         if ( !customEvents[ type ] ) {
             doc.removeEventListener( type, this, true );
