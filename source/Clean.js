@@ -10,7 +10,7 @@ var fontSizes = {
     7: 48
 };
 
-var spanToSemantic = {
+var nodeToSemantic = {
     backgroundColor: {
         regexp: notWS,
         replace: function ( doc, colour ) {
@@ -58,7 +58,13 @@ var spanToSemantic = {
                 style: 'font-size:' + size
             });
         }
-    }
+    },
+    textDecoration: {
+        regexp: /^underline/i,
+        replace: function ( doc ) {
+            return createElement( doc, 'U' );
+        }
+    },
 };
 
 var replaceWithTag = function ( tag ) {
@@ -70,37 +76,42 @@ var replaceWithTag = function ( tag ) {
     };
 };
 
-var stylesRewriters = {
-    SPAN: function ( span, parent ) {
-        var style = span.style,
-            doc = span.ownerDocument,
-            attr, converter, css, newTreeBottom, newTreeTop, el;
+var replaceStyles = function ( node, parent ) {
+    var style = node.style,
+        doc = node.ownerDocument,
+        attr, converter, css, newTreeBottom, newTreeTop, el;
 
-        for ( attr in spanToSemantic ) {
-            converter = spanToSemantic[ attr ];
-            css = style[ attr ];
-            if ( css && converter.regexp.test( css ) ) {
-                el = converter.replace( doc, css );
-                if ( newTreeBottom ) {
-                    newTreeBottom.appendChild( el );
-                }
-                newTreeBottom = el;
-                if ( !newTreeTop ) {
-                    newTreeTop = el;
-                }
+    for ( attr in nodeToSemantic ) {
+        converter = nodeToSemantic[ attr ];
+        css = style[ attr ];
+        if ( css && converter.regexp.test( css ) ) {
+            el = converter.replace( doc, css );
+            if ( newTreeBottom ) {
+                newTreeBottom.appendChild( el );
+            }
+            newTreeBottom = el;
+            if ( !newTreeTop ) {
+                newTreeTop = el;
             }
         }
+    }
 
-        if ( newTreeTop ) {
-            newTreeBottom.appendChild( empty( span ) );
-            parent.replaceChild( newTreeTop, span );
-        }
+    if ( newTreeTop ) {
+        newTreeBottom.appendChild( empty( node ) );
+        node.innerHTML = '';
+        node.appendChild( newTreeTop );
+    }
 
-        return newTreeBottom || span;
-    },
+    return newTreeBottom || node;
+};
+
+var stylesRewriters = {
+    SPAN: replaceStyles,
+    P: replaceStyles,
     STRONG: replaceWithTag( 'B' ),
     EM: replaceWithTag( 'I' ),
     STRIKE: replaceWithTag( 'S' ),
+    INS: replaceWithTag( 'U' ),
     FONT: function ( node, parent ) {
         var face = node.face,
             size = node.size,
