@@ -86,20 +86,24 @@ var replaceStyles = function ( node, parent ) {
         css = style[ attr ];
         if ( css && converter.regexp.test( css ) ) {
             el = converter.replace( doc, css );
-            if ( newTreeBottom ) {
-                newTreeBottom.appendChild( el );
-            }
-            newTreeBottom = el;
-            if ( !newTreeTop ) {
-                newTreeTop = el;
+            //No need to clean node that is already clean
+            if(el.style.cssText !== style.cssText) {
+                if ( newTreeBottom ) {
+                    newTreeBottom.appendChild( el );
+                }
+                newTreeBottom = el;
+                if ( !newTreeTop ) {
+                    newTreeTop = el;
+                }
+
+                node.style[ attr ] = '';
             }
         }
     }
 
     if ( newTreeTop ) {
-        newTreeBottom.appendChild( empty( node ) );
-        node.innerHTML = '';
-        node.appendChild( newTreeTop );
+        newTreeBottom.appendChild( node.cloneNode(true) );
+        parent.replaceChild( newTreeTop, node );
     }
 
     return newTreeBottom || node;
