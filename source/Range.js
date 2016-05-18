@@ -473,7 +473,7 @@ var rangeDoesStartAtBlockBoundary = function ( range, root ) {
     } else {
         contentWalker.currentNode = getNodeAfter( startContainer, startOffset );
 
-        if( !contentWalker.currentNode ) {
+        if ( !contentWalker.currentNode ) {
             contentWalker.currentNode = startContainer;
         }
     }
