@@ -1131,6 +1131,10 @@ var rangeDoesStartAtBlockBoundary = function ( range, root ) {
         contentWalker.currentNode = startContainer;
     } else {
         contentWalker.currentNode = getNodeAfter( startContainer, startOffset );
+
+        if ( !contentWalker.currentNode ) {
+            contentWalker.currentNode = startContainer;
+        }
     }
 
     // Otherwise, look for any previous content in the same block.
@@ -2642,6 +2646,7 @@ proto.getSelection = function () {
 };
 
 function enableRestoreSelection () {
+    this.getSelection();
     this._restoreSelection = true;
 }
 function disableRestoreSelection () {
