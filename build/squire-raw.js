@@ -2228,10 +2228,11 @@ var onPaste = function ( event ) {
     }, 0 );
 };
 
-// On Windows you can drag an drop text.
+// On Windows you can drag an drop text. We can't handle this ourselves, because
+// as far as I can see, there's no way to get the drop insertion point. So just
+// save an undo state and hope for the best.
 var onDrop = function ( event ) {
-    var dataTransfer = event.dataTransfer;
-    var types = dataTransfer.types;
+    var types = event.dataTransfer.types;
     var l = types.length;
     var hasPlain = false;
     var hasHTML = false;
@@ -2247,15 +2248,8 @@ var onDrop = function ( event ) {
             return;
         }
     }
-    if ( hasHTML ) {
-        event.preventDefault();
-        this.insertHTML( dataTransfer.getData( 'text/html' ), true );
-        return;
-    }
-    if ( hasPlain ) {
-        event.preventDefault();
-        this.insertPlainText( dataTransfer.getData( 'text/plain' ), true );
-        return;
+    if ( hasHTML || hasPlain ) {
+        this.saveUndoState();
     }
 };
 
