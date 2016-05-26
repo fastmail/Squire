@@ -1139,7 +1139,8 @@ var rangeDoesStartAtBlockBoundary = function ( range, root ) {
         // The cursor was right at the end of the document
         if ( !nodeAfterCursor ) {
             nodeAfterCursor = getNodeBefore( startContainer, startOffset );
-            if ( node.nodeType === TEXT_NODE && node.length ) {
+            if ( nodeAfterCursor.nodeType === TEXT_NODE &&
+                    nodeAfterCursor.length ) {
                 return false;
             }
         }
