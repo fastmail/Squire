@@ -2228,6 +2228,37 @@ var onPaste = function ( event ) {
     }, 0 );
 };
 
+// On Windows you can drag an drop text.
+var onDrop = function ( event ) {
+    var dataTransfer = event.dataTransfer;
+    var types = dataTransfer.types;
+    var l = types.length;
+    var hasPlain = false;
+    var hasHTML = false;
+    while ( l-- ) {
+        switch ( types[l] ) {
+        case 'text/plain':
+            hasPlain = true;
+            break;
+        case 'text/html':
+            hasHTML = true;
+            break;
+        default:
+            return;
+        }
+    }
+    if ( hasHTML ) {
+        event.preventDefault();
+        this.insertHTML( dataTransfer.getData( 'text/html' ), true );
+        return;
+    }
+    if ( hasPlain ) {
+        event.preventDefault();
+        this.insertPlainText( dataTransfer.getData( 'text/plain' ), true );
+        return;
+    }
+};
+
 var instances = [];
 
 function getSquireInstance ( doc ) {
@@ -2328,6 +2359,7 @@ function Squire ( root, config ) {
     this.addEventListener( isIElt11 ? 'beforecut' : 'cut', onCut );
     this.addEventListener( 'copy', onCopy );
     this.addEventListener( isIElt11 ? 'beforepaste' : 'paste', onPaste );
+    this.addEventListener( 'drop', onDrop );
 
     // Opera does not fire keydown repeatedly.
     this.addEventListener( isPresto ? 'keypress' : 'keydown', onKey );
