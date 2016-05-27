@@ -56,8 +56,12 @@ function Squire ( root, config ) {
     this._lastFocusNode = null;
     this._path = '';
 
-    this.addEventListener( 'keyup', this._updatePathOnEvent );
-    this.addEventListener( 'mouseup', this._updatePathOnEvent );
+    if ( 'onselectionchange' in doc ) {
+        this.addEventListener( 'selectionchange', this._updatePathOnEvent );
+    } else {
+        this.addEventListener( 'keyup', this._updatePathOnEvent );
+        this.addEventListener( 'mouseup', this._updatePathOnEvent );
+    }
 
     this._undoIndex = -1;
     this._undoStack = [];
@@ -96,6 +100,7 @@ function Squire ( root, config ) {
     this.addEventListener( isIElt11 ? 'beforecut' : 'cut', onCut );
     this.addEventListener( 'copy', onCopy );
     this.addEventListener( isIElt11 ? 'beforepaste' : 'paste', onPaste );
+    this.addEventListener( 'drop', onDrop );
 
     // Opera does not fire keydown repeatedly.
     this.addEventListener( isPresto ? 'keypress' : 'keydown', onKey );
@@ -255,18 +260,15 @@ proto.fireEvent = function ( type, event ) {
 };
 
 proto.destroy = function () {
-    var root = this._root,
-        events = this._events,
-        type;
+    var l = instances.length;
+    var events = this._events;
+    var type;
     for ( type in events ) {
-        if ( !customEvents[ type ] ) {
-            root.removeEventListener( type, this, true );
-        }
+        this.removeEventListener( type );
     }
     if ( this._mutation ) {
         this._mutation.disconnect();
     }
-    var l = instances.length;
     while ( l-- ) {
         if ( instances[l] === this ) {
             instances.splice( l, 1 );
@@ -280,6 +282,7 @@ proto.handleEvent = function ( event ) {
 
 proto.addEventListener = function ( type, fn ) {
     var handlers = this._events[ type ];
+    var target = this._root;
     if ( !fn ) {
         this.didError({
             name: 'Squire: addEventListener with null or undefined fn',
@@ -290,7 +293,10 @@ proto.addEventListener = function ( type, fn ) {
     if ( !handlers ) {
         handlers = this._events[ type ] = [];
         if ( !customEvents[ type ] ) {
-            this._root.addEventListener( type, this, true );
+            if ( type === 'selectionchange' ) {
+                target = this._doc;
+            }
+            target.addEventListener( type, this, true );
         }
     }
     handlers.push( fn );
@@ -298,19 +304,27 @@ proto.addEventListener = function ( type, fn ) {
 };
 
 proto.removeEventListener = function ( type, fn ) {
-    var handlers = this._events[ type ],
-        l;
+    var handlers = this._events[ type ];
+    var target = this._root;
+    var l;
     if ( handlers ) {
-        l = handlers.length;
-        while ( l-- ) {
-            if ( handlers[l] === fn ) {
-                handlers.splice( l, 1 );
+        if ( fn ) {
+            l = handlers.length;
+            while ( l-- ) {
+                if ( handlers[l] === fn ) {
+                    handlers.splice( l, 1 );
+                }
             }
+        } else {
+            handlers.length = 0;
         }
         if ( !handlers.length ) {
             delete this._events[ type ];
             if ( !customEvents[ type ] ) {
-                this._root.removeEventListener( type, this, true );
+                if ( type === 'selectionchange' ) {
+                    target = this._doc;
+                }
+                target.removeEventListener( type, this, true );
             }
         }
     }
@@ -428,7 +442,6 @@ proto.getSelection = function () {
 };
 
 function enableRestoreSelection () {
-    this.getSelection();
     this._restoreSelection = true;
 }
 function disableRestoreSelection () {
@@ -1597,9 +1610,23 @@ var addLinks = function ( frag, root, self ) {
 // insertTreeFragmentIntoRange will delete the selection so that it is replaced
 // by the html being inserted.
 proto.insertHTML = function ( html, isPaste ) {
-    var range = this.getSelection(),
-        frag = this._doc.createDocumentFragment(),
-        div = this.createElement( 'DIV' );
+    var range = this.getSelection();
+    var frag = this._doc.createDocumentFragment();
+    var div = this.createElement( 'DIV' );
+    var startFragmentIndex, endFragmentIndex;
+    var root, node, event;
+
+    // Edge doesn't just copy the fragment, but includes the surrounding guff
+    // including the full <head> of the page. Need to strip this out. In the
+    // future should probably run all pastes through DOMPurify, but this will
+    // do for now
+    if ( isPaste ) {
+        startFragmentIndex = html.indexOf( '<!--StartFragment-->' );
+        endFragmentIndex = html.lastIndexOf( '<!--EndFragment-->' );
+        if ( startFragmentIndex > -1 && endFragmentIndex > -1 ) {
+            html = html.slice( startFragmentIndex + 20, endFragmentIndex );
+        }
+    }
 
     // Parse HTML into DOM tree
     div.innerHTML = html;
@@ -1609,9 +1636,9 @@ proto.insertHTML = function ( html, isPaste ) {
     this.saveUndoState( range );
 
     try {
-        var root = this._root;
-        var node = frag;
-        var event = {
+        root = this._root;
+        node = frag;
+        event = {
             fragment: frag,
             preventDefault: function () {
                 this.defaultPrevented = true;
@@ -1650,18 +1677,35 @@ proto.insertHTML = function ( html, isPaste ) {
     return this;
 };
 
+var escapeHTMLFragement = function ( text ) {
+    return text.split( '&' ).join( '&amp;' )
+               .split( '<' ).join( '&lt;'  )
+               .split( '>' ).join( '&gt;'  )
+               .split( '"' ).join( '&quot;'  );
+};
+
 proto.insertPlainText = function ( plainText, isPaste ) {
-    var lines = plainText.split( '\n' ),
-        i, l, line;
+    var lines = plainText.split( '\n' );
+    var config = this._config;
+    var tag = config.blockTag;
+    var attributes = config.blockAttributes;
+    var closeBlock  = '</' + tag + '>';
+    var openBlock = '<' + tag;
+    var attr, i, l, line;
+
+    for ( attr in attributes ) {
+        openBlock += ' ' + attr + '="' +
+            escapeHTMLFragement( attributes[ attr ] ) +
+        '"';
+    }
+    openBlock += '>';
+
     for ( i = 0, l = lines.length; i < l; i += 1 ) {
         line = lines[i];
-        line = line.split( '&' ).join( '&amp;' )
-                   .split( '<' ).join( '&lt;'  )
-                   .split( '>' ).join( '&gt;'  )
-                   .replace( / (?= )/g, '&nbsp;' );
+        line = escapeHTMLFragement( line ).replace( / (?= )/g, '&nbsp;' );
         // Wrap all but first/last lines in <div></div>
         if ( i && i + 1 < l ) {
-            line = '<DIV>' + ( line || '<BR>' ) + '</DIV>';
+            line = openBlock + ( line || '<BR>' ) + closeBlock;
         }
         lines[i] = line;
     }
