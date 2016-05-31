@@ -207,7 +207,7 @@ var onPaste = function ( event ) {
     }, 0 );
 };
 
-// On Windows you can drag an drop text. We can't handle this ourselves, because
+// On Windows and Macs you can drag an drop text. We can't handle this ourselves, because
 // as far as I can see, there's no way to get the drop insertion point. So just
 // save an undo state and hope for the best.
 var onDrop = function ( event ) {
@@ -218,16 +218,32 @@ var onDrop = function ( event ) {
     while ( l-- ) {
         switch ( types[l] ) {
         case 'text/plain':
+        case 'Text': // IE Specific
             hasPlain = true;
             break;
         case 'text/html':
             hasHTML = true;
             break;
         default:
-            return;
+            break;
         }
     }
+
     if ( hasHTML || hasPlain ) {
+        var range = this.getSelection();
         this.saveUndoState();
+        this.setSelection( range );
+
+        // Wait until the drop occurs then clean it. Ideally we would only do this
+        // for HTML drops, but some browsers send HTML as text/plain.
+        var self = this;
+        setTimeout( function () {
+            try {
+                cleanTree( self._root );
+                addLinks( self._root, self._root, self );
+            } catch ( error ) {
+                self.didError( error );
+            }
+        }, 0 );
     }
 };
