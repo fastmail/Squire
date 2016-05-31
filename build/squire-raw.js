@@ -171,10 +171,12 @@ TreeWalker.prototype.previousPONode = function () {
     }
 };
 
-var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|U|VAR|WBR)$/;
+var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:FRAME|MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|U|VAR|WBR)$/;
 
 var leafNodeNames = {
     BR: 1,
+    HR: 1,
+    IFRAME: 1,
     IMG: 1,
     INPUT: 1
 };
@@ -227,6 +229,7 @@ function areAlike ( node, node2 ) {
     return !isLeaf( node ) && (
         node.nodeType === node2.nodeType &&
         node.nodeName === node2.nodeName &&
+        node.nodeName !== 'A' &&
         node.className === node2.className &&
         ( ( !node.style && !node2.style ) ||
           node.style.cssText === node2.style.cssText )
@@ -1095,7 +1098,7 @@ var getEndBlockOfRange = function ( range, root ) {
         block = container;
     } else {
         block = getNodeAfter( container, range.endOffset );
-        if ( !block ) {
+        if ( !block || !isOrContains( root, block ) ) {
             block = root;
             while ( child = block.lastChild ) {
                 block = child;
@@ -1117,8 +1120,9 @@ var contentWalker = new TreeWalker( null,
 );
 
 var rangeDoesStartAtBlockBoundary = function ( range, root ) {
-    var startContainer = range.startContainer,
-        startOffset = range.startOffset;
+    var startContainer = range.startContainer;
+    var startOffset = range.startOffset;
+    var nodeAfterCursor;
 
     // If in the middle or end of a text node, we're not at the boundary.
     contentWalker.root = null;
@@ -1126,12 +1130,24 @@ var rangeDoesStartAtBlockBoundary = function ( range, root ) {
         if ( startOffset ) {
             return false;
         }
-        contentWalker.currentNode = startContainer;
+        nodeAfterCursor = startContainer;
     } else {
-        contentWalker.currentNode = getNodeAfter( startContainer, startOffset );
+        nodeAfterCursor = getNodeAfter( startContainer, startOffset );
+        if ( nodeAfterCursor && !isOrContains( root, nodeAfterCursor ) ) {
+            nodeAfterCursor = null;
+        }
+        // The cursor was right at the end of the document
+        if ( !nodeAfterCursor ) {
+            nodeAfterCursor = getNodeBefore( startContainer, startOffset );
+            if ( nodeAfterCursor.nodeType === TEXT_NODE &&
+                    nodeAfterCursor.length ) {
+                return false;
+            }
+        }
     }
 
     // Otherwise, look for any previous content in the same block.
+    contentWalker.currentNode = nodeAfterCursor;
     contentWalker.root = getStartBlockOfRange( range, root );
 
     return !contentWalker.previousNode();
@@ -1328,7 +1344,7 @@ var keyHandlers = {
         // Remove any zws so we don't think there's content in an empty
         // block.
         self._recordUndoState( range );
-        addLinks( range.startContainer );
+        addLinks( range.startContainer, root, self );
         self._removeZWS();
         self._getRangeAndRemoveBookmark( range );
 
@@ -1594,7 +1610,7 @@ var keyHandlers = {
     space: function ( self, _, range ) {
         var node, parent;
         self._recordUndoState( range );
-        addLinks( range.startContainer );
+        addLinks( range.startContainer, self._root, self );
         self._getRangeAndRemoveBookmark( range );
 
         // If the cursor is at the end of a link (<a>foo|</a>) then move it
@@ -1674,7 +1690,7 @@ var fontSizes = {
     7: 48
 };
 
-var spanToSemantic = {
+var styleToSemantic = {
     backgroundColor: {
         regexp: notWS,
         replace: function ( doc, colour ) {
@@ -1722,6 +1738,12 @@ var spanToSemantic = {
                 style: 'font-size:' + size
             });
         }
+    },
+    textDecoration: {
+        regexp: /^underline/i,
+        replace: function ( doc ) {
+            return createElement( doc, 'U' );
+        }
     }
 };
 
@@ -1734,36 +1756,45 @@ var replaceWithTag = function ( tag ) {
     };
 };
 
-var stylesRewriters = {
-    SPAN: function ( span, parent ) {
-        var style = span.style,
-            doc = span.ownerDocument,
-            attr, converter, css, newTreeBottom, newTreeTop, el;
+var replaceStyles = function ( node, parent ) {
+    var style = node.style;
+    var doc = node.ownerDocument;
+    var attr, converter, css, newTreeBottom, newTreeTop, el;
 
-        for ( attr in spanToSemantic ) {
-            converter = spanToSemantic[ attr ];
-            css = style[ attr ];
-            if ( css && converter.regexp.test( css ) ) {
-                el = converter.replace( doc, css );
-                if ( newTreeBottom ) {
-                    newTreeBottom.appendChild( el );
-                }
-                newTreeBottom = el;
-                if ( !newTreeTop ) {
-                    newTreeTop = el;
-                }
+    for ( attr in styleToSemantic ) {
+        converter = styleToSemantic[ attr ];
+        css = style[ attr ];
+        if ( css && converter.regexp.test( css ) ) {
+            el = converter.replace( doc, css );
+            if ( !newTreeTop ) {
+                newTreeTop = el;
             }
+            if ( newTreeBottom ) {
+                newTreeBottom.appendChild( el );
+            }
+            newTreeBottom = el;
+            node.style[ attr ] = '';
         }
+    }
 
-        if ( newTreeTop ) {
-            newTreeBottom.appendChild( empty( span ) );
-            parent.replaceChild( newTreeTop, span );
+    if ( newTreeTop ) {
+        newTreeBottom.appendChild( empty( node ) );
+        if ( node.nodeName === 'SPAN' ) {
+            parent.replaceChild( newTreeTop, node );
+        } else {
+            node.appendChild( newTreeTop );
         }
+    }
 
-        return newTreeBottom || span;
-    },
+    return newTreeBottom || node;
+};
+
+var stylesRewriters = {
+    P: replaceStyles,
+    SPAN: replaceStyles,
     STRONG: replaceWithTag( 'B' ),
     EM: replaceWithTag( 'I' ),
+    INS: replaceWithTag( 'U' ),
     STRIKE: replaceWithTag( 'S' ),
     FONT: function ( node, parent ) {
         var face = node.face,
@@ -2212,6 +2243,31 @@ var onPaste = function ( event ) {
     }, 0 );
 };
 
+// On Windows you can drag an drop text. We can't handle this ourselves, because
+// as far as I can see, there's no way to get the drop insertion point. So just
+// save an undo state and hope for the best.
+var onDrop = function ( event ) {
+    var types = event.dataTransfer.types;
+    var l = types.length;
+    var hasPlain = false;
+    var hasHTML = false;
+    while ( l-- ) {
+        switch ( types[l] ) {
+        case 'text/plain':
+            hasPlain = true;
+            break;
+        case 'text/html':
+            hasHTML = true;
+            break;
+        default:
+            return;
+        }
+    }
+    if ( hasHTML || hasPlain ) {
+        this.saveUndoState();
+    }
+};
+
 var instances = [];
 
 function getSquireInstance ( doc ) {
@@ -2268,14 +2324,19 @@ function Squire ( root, config ) {
     this._lastFocusNode = null;
     this._path = '';
 
-    this.addEventListener( 'keyup', this._updatePathOnEvent );
-    this.addEventListener( 'mouseup', this._updatePathOnEvent );
+    if ( 'onselectionchange' in doc ) {
+        this.addEventListener( 'selectionchange', this._updatePathOnEvent );
+    } else {
+        this.addEventListener( 'keyup', this._updatePathOnEvent );
+        this.addEventListener( 'mouseup', this._updatePathOnEvent );
+    }
 
     this._undoIndex = -1;
     this._undoStack = [];
     this._undoStackLength = 0;
     this._isInUndoState = false;
     this._ignoreChange = false;
+    this._ignoreAllChanges = false;
 
     if ( canObserveMutations ) {
         mutation = new MutationObserver( this._docWasChanged.bind( this ) );
@@ -2307,6 +2368,7 @@ function Squire ( root, config ) {
     this.addEventListener( isIElt11 ? 'beforecut' : 'cut', onCut );
     this.addEventListener( 'copy', onCopy );
     this.addEventListener( isIElt11 ? 'beforepaste' : 'paste', onPaste );
+    this.addEventListener( 'drop', onDrop );
 
     // Opera does not fire keydown repeatedly.
     this.addEventListener( isPresto ? 'keypress' : 'keydown', onKey );
@@ -2371,7 +2433,8 @@ proto.setConfig = function ( config ) {
             blockquote: null,
             ul: null,
             ol: null,
-            li: null
+            li: null,
+            a: null
         }
     }, config );
 
@@ -2406,14 +2469,32 @@ proto.getRoot = function () {
     return this._root;
 };
 
+proto.modifyDocument = function ( modificationCallback ) {
+    this._ignoreAllChanges = true;
+    if ( this._mutation ) {
+        this._mutation.disconnect();
+    }
+
+    modificationCallback();
+
+    this._ignoreAllChanges = false;
+    if ( this._mutation ) {
+        this._mutation.observe( this._root, {
+            childList: true,
+            attributes: true,
+            characterData: true,
+            subtree: true
+        });
+    }
+};
+
 // --- Events ---
 
 // Subscribing to these events won't automatically add a listener to the
 // document node, since these events are fired in a custom manner by the
 // editor code.
 var customEvents = {
-    pathChange: 1, select: 1, input: 1, undoStateChange: 1,
-    dragover: 1, drop: 1
+    pathChange: 1, select: 1, input: 1, undoStateChange: 1
 };
 
 proto.fireEvent = function ( type, event ) {
@@ -2447,18 +2528,15 @@ proto.fireEvent = function ( type, event ) {
 };
 
 proto.destroy = function () {
-    var root = this._root,
-        events = this._events,
-        type;
+    var l = instances.length;
+    var events = this._events;
+    var type;
     for ( type in events ) {
-        if ( !customEvents[ type ] ) {
-            root.removeEventListener( type, this, true );
-        }
+        this.removeEventListener( type );
     }
     if ( this._mutation ) {
         this._mutation.disconnect();
     }
-    var l = instances.length;
     while ( l-- ) {
         if ( instances[l] === this ) {
             instances.splice( l, 1 );
@@ -2472,6 +2550,7 @@ proto.handleEvent = function ( event ) {
 
 proto.addEventListener = function ( type, fn ) {
     var handlers = this._events[ type ];
+    var target = this._root;
     if ( !fn ) {
         this.didError({
             name: 'Squire: addEventListener with null or undefined fn',
@@ -2482,7 +2561,10 @@ proto.addEventListener = function ( type, fn ) {
     if ( !handlers ) {
         handlers = this._events[ type ] = [];
         if ( !customEvents[ type ] ) {
-            this._root.addEventListener( type, this, true );
+            if ( type === 'selectionchange' ) {
+                target = this._doc;
+            }
+            target.addEventListener( type, this, true );
         }
     }
     handlers.push( fn );
@@ -2490,19 +2572,27 @@ proto.addEventListener = function ( type, fn ) {
 };
 
 proto.removeEventListener = function ( type, fn ) {
-    var handlers = this._events[ type ],
-        l;
+    var handlers = this._events[ type ];
+    var target = this._root;
+    var l;
     if ( handlers ) {
-        l = handlers.length;
-        while ( l-- ) {
-            if ( handlers[l] === fn ) {
-                handlers.splice( l, 1 );
+        if ( fn ) {
+            l = handlers.length;
+            while ( l-- ) {
+                if ( handlers[l] === fn ) {
+                    handlers.splice( l, 1 );
+                }
             }
+        } else {
+            handlers.length = 0;
         }
         if ( !handlers.length ) {
             delete this._events[ type ];
             if ( !customEvents[ type ] ) {
-                this._root.removeEventListener( type, this, true );
+                if ( type === 'selectionchange' ) {
+                    target = this._doc;
+                }
+                target.removeEventListener( type, this, true );
             }
         }
     }
@@ -2861,6 +2951,10 @@ proto._keyUpDetectChange = function ( event ) {
 };
 
 proto._docWasChanged = function () {
+    if ( this._ignoreAllChanges ) {
+        return;
+    }
+
     if ( canObserveMutations && this._ignoreChange ) {
         this._ignoreChange = false;
         return;
@@ -3730,6 +3824,11 @@ proto.insertElement = function ( el, range ) {
     this.focus();
     this.setSelection( range );
     this._updatePath( range );
+
+    if ( !canObserveMutations ) {
+        this._docWasChanged();
+    }
+
     return this;
 };
 
@@ -3743,12 +3842,13 @@ proto.insertImage = function ( src, attributes ) {
 
 var linkRegExp = /\b((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))|([\w\-.%+]+@(?:[\w\-]+\.)+[A-Z]{2,}\b)/i;
 
-var addLinks = function ( frag, root ) {
+var addLinks = function ( frag, root, self ) {
     var doc = frag.ownerDocument,
         walker = new TreeWalker( frag, SHOW_TEXT,
                 function ( node ) {
             return !getNearest( node, root, 'A' );
         }, false ),
+        defaultAttributes = self._config.tagAttributes.a,
         node, data, parent, match, index, endIndex, child;
     while ( node = walker.nextNode() ) {
         data = node.data;
@@ -3760,13 +3860,14 @@ var addLinks = function ( frag, root ) {
                 child = doc.createTextNode( data.slice( 0, index ) );
                 parent.insertBefore( child, node );
             }
-            child = doc.createElement( 'A' );
+            child = self.createElement( 'A', mergeObjects({
+                href: match[1] ?
+                    /^(?:ht|f)tps?:/.test( match[1] ) ?
+                        match[1] :
+                        'http://' + match[1] :
+                    'mailto:' + match[2]
+            }, defaultAttributes ));
             child.textContent = data.slice( index, endIndex );
-            child.href = match[1] ?
-                /^(?:ht|f)tps?:/.test( match[1] ) ?
-                    match[1] :
-                    'http://' + match[1] :
-                'mailto:' + match[2];
             parent.insertBefore( child, node );
             node.data = data = data.slice( endIndex );
         }
@@ -3777,9 +3878,23 @@ var addLinks = function ( frag, root ) {
 // insertTreeFragmentIntoRange will delete the selection so that it is replaced
 // by the html being inserted.
 proto.insertHTML = function ( html, isPaste ) {
-    var range = this.getSelection(),
-        frag = this._doc.createDocumentFragment(),
-        div = this.createElement( 'DIV' );
+    var range = this.getSelection();
+    var frag = this._doc.createDocumentFragment();
+    var div = this.createElement( 'DIV' );
+    var startFragmentIndex, endFragmentIndex;
+    var root, node, event;
+
+    // Edge doesn't just copy the fragment, but includes the surrounding guff
+    // including the full <head> of the page. Need to strip this out. In the
+    // future should probably run all pastes through DOMPurify, but this will
+    // do for now
+    if ( isPaste ) {
+        startFragmentIndex = html.indexOf( '<!--StartFragment-->' );
+        endFragmentIndex = html.lastIndexOf( '<!--EndFragment-->' );
+        if ( startFragmentIndex > -1 && endFragmentIndex > -1 ) {
+            html = html.slice( startFragmentIndex + 20, endFragmentIndex );
+        }
+    }
 
     // Parse HTML into DOM tree
     div.innerHTML = html;
@@ -3789,9 +3904,9 @@ proto.insertHTML = function ( html, isPaste ) {
     this.saveUndoState( range );
 
     try {
-        var root = this._root;
-        var node = frag;
-        var event = {
+        root = this._root;
+        node = frag;
+        event = {
             fragment: frag,
             preventDefault: function () {
                 this.defaultPrevented = true;
@@ -3799,14 +3914,14 @@ proto.insertHTML = function ( html, isPaste ) {
             defaultPrevented: false
         };
 
-        addLinks( frag, root );
+        addLinks( frag, frag, this );
         cleanTree( frag );
-        cleanupBRs( frag, root );
+        cleanupBRs( frag, null );
         removeEmptyInlines( frag );
         frag.normalize();
 
-        while ( node = getNextBlock( node, root ) ) {
-            fixCursor( node, root );
+        while ( node = getNextBlock( node, frag ) ) {
+            fixCursor( node, null );
         }
 
         if ( isPaste ) {
@@ -3830,18 +3945,35 @@ proto.insertHTML = function ( html, isPaste ) {
     return this;
 };
 
+var escapeHTMLFragement = function ( text ) {
+    return text.split( '&' ).join( '&amp;' )
+               .split( '<' ).join( '&lt;'  )
+               .split( '>' ).join( '&gt;'  )
+               .split( '"' ).join( '&quot;'  );
+};
+
 proto.insertPlainText = function ( plainText, isPaste ) {
-    var lines = plainText.split( '\n' ),
-        i, l, line;
+    var lines = plainText.split( '\n' );
+    var config = this._config;
+    var tag = config.blockTag;
+    var attributes = config.blockAttributes;
+    var closeBlock  = '</' + tag + '>';
+    var openBlock = '<' + tag;
+    var attr, i, l, line;
+
+    for ( attr in attributes ) {
+        openBlock += ' ' + attr + '="' +
+            escapeHTMLFragement( attributes[ attr ] ) +
+        '"';
+    }
+    openBlock += '>';
+
     for ( i = 0, l = lines.length; i < l; i += 1 ) {
         line = lines[i];
-        line = line.split( '&' ).join( '&amp;' )
-                   .split( '<' ).join( '&lt;'  )
-                   .split( '>' ).join( '&gt;'  )
-                   .replace( / (?= )/g, '&nbsp;' );
+        line = escapeHTMLFragement( line ).replace( / (?= )/g, '&nbsp;' );
         // Wrap all but first/last lines in <div></div>
         if ( i && i + 1 < l ) {
-            line = '<DIV>' + ( line || '<BR>' ) + '</DIV>';
+            line = openBlock + ( line || '<BR>' ) + closeBlock;
         }
         lines[i] = line;
     }
@@ -3899,6 +4031,7 @@ proto.makeLink = function ( url, attributes ) {
     if ( !attributes ) {
         attributes = {};
     }
+    mergeObjects( attributes, this._config.tagAttributes.a );
     attributes.href = url;
 
     this.changeFormat({
