@@ -42,6 +42,7 @@ function Squire ( root, config ) {
 
     this._events = {};
 
+    this._isFocused = false;
     this._lastSelection = null;
 
     // IE loses selection state of iframe on blur, so make sure we
@@ -55,6 +56,7 @@ function Squire ( root, config ) {
     this._lastAnchorNode = null;
     this._lastFocusNode = null;
     this._path = '';
+    this._willUpdatePath = false;
 
     if ( 'onselectionchange' in doc ) {
         this.addEventListener( 'selectionchange', this._updatePathOnEvent );
@@ -83,13 +85,11 @@ function Squire ( root, config ) {
         this.addEventListener( 'keyup', this._keyUpDetectChange );
     }
 
-    // On blur, restore focus except if there is any change to the content, or
-    // the user taps or clicks to focus a specific point. Can't actually use
-    // click event because focus happens before click, so use
-    // mousedown/touchstart
+    // On blur, restore focus except if the user taps or clicks to focus a
+    // specific point. Can't actually use click event because focus happens
+    // before click, so use mousedown/touchstart
     this._restoreSelection = false;
     this.addEventListener( 'blur', enableRestoreSelection );
-    this.addEventListener( 'input', disableRestoreSelection );
     this.addEventListener( 'mousedown', disableRestoreSelection );
     this.addEventListener( 'touchstart', disableRestoreSelection );
     this.addEventListener( 'focus', restoreSelection );
@@ -167,6 +167,10 @@ proto.setConfig = function ( config ) {
             ol: null,
             li: null,
             a: null
+        },
+        undo: {
+            documentSizeThreshold: -1, // -1 means no threshold
+            undoLimit: -1 // -1 means no limit
         }
     }, config );
 
@@ -230,8 +234,26 @@ var customEvents = {
 };
 
 proto.fireEvent = function ( type, event ) {
-    var handlers = this._events[ type ],
-        l, obj;
+    var handlers = this._events[ type ];
+    var isFocused, l, obj;
+    // UI code, especially modal views, may be monitoring for focus events and
+    // immediately removing focus. In certain conditions, this can cause the
+    // focus event to fire after the blur event, which can cause an infinite
+    // loop. So we detect whether we're actually focused/blurred before firing.
+    if ( /^(?:focus|blur)/.test( type ) ) {
+        isFocused = isOrContains( this._root, this._doc.activeElement );
+        if ( type === 'focus' ) {
+            if ( !isFocused || this._isFocused ) {
+                return this;
+            }
+            this._isFocused = true;
+        } else {
+            if ( isFocused || !this._isFocused ) {
+                return this;
+            }
+            this._isFocused = false;
+        }
+    }
     if ( handlers ) {
         if ( !event ) {
             event = {};
@@ -263,6 +285,7 @@ proto.destroy = function () {
     var l = instances.length;
     var events = this._events;
     var type;
+
     for ( type in events ) {
         this.removeEventListener( type );
     }
@@ -274,6 +297,11 @@ proto.destroy = function () {
             instances.splice( l, 1 );
         }
     }
+
+    // Destroy undo stack
+    this._undoIndex = -1;
+    this._undoStack = [];
+    this._undoStackLength = 0;
 };
 
 proto.handleEvent = function ( event ) {
@@ -394,20 +422,24 @@ var getWindowSelection = function ( self ) {
 
 proto.setSelection = function ( range ) {
     if ( range ) {
-        // If we're setting selection, that automatically, and synchronously, // triggers a focus event. Don't want a reentrant call to setSelection.
-        this._restoreSelection = false;
         this._lastSelection = range;
-        // iOS bug: if you don't focus the iframe before setting the
-        // selection, you can end up in a state where you type but the input
-        // doesn't get directed into the contenteditable area but is instead
-        // lost in a black hole. Very strange.
-        if ( isIOS ) {
-            this._win.focus();
-        }
-        var sel = getWindowSelection( this );
-        if ( sel ) {
-            sel.removeAllRanges();
-            sel.addRange( range );
+        // If we're setting selection, that automatically, and synchronously, // triggers a focus event. So just store the selection and mark it as
+        // needing restore on focus.
+        if ( !this._isFocused ) {
+            enableRestoreSelection.call( this );
+        } else {
+            // iOS bug: if you don't focus the iframe before setting the
+            // selection, you can end up in a state where you type but the input
+            // doesn't get directed into the contenteditable area but is instead
+            // lost in a black hole. Very strange.
+            if ( isIOS ) {
+                this._win.focus();
+            }
+            var sel = getWindowSelection( this );
+            if ( sel ) {
+                sel.removeAllRanges();
+                sel.addRange( range );
+            }
         }
     }
     return this;
@@ -560,8 +592,18 @@ proto._updatePath = function ( range, force ) {
     }
 };
 
+// selectionchange is fired synchronously in IE when removing current selection
+// and when setting new selection; keyup/mouseup may have processing we want
+// to do first. Either way, send to next event loop.
 proto._updatePathOnEvent = function () {
-    this._updatePath( this.getSelection() );
+    var self = this;
+    if ( !self._willUpdatePath ) {
+        self._willUpdatePath = true;
+        setTimeout( function () {
+            self._willUpdatePath = false;
+            self._updatePath( self.getSelection() );
+        }, 0 );
+    }
 };
 
 // --- Focus ---
@@ -706,19 +748,37 @@ proto._recordUndoState = function ( range ) {
     // Don't record if we're already in an undo state
     if ( !this._isInUndoState ) {
         // Advance pointer to new position
-        var undoIndex = this._undoIndex += 1,
-            undoStack = this._undoStack;
+        var undoIndex = this._undoIndex += 1;
+        var undoStack = this._undoStack;
+        var undoConfig = this._config.undo;
+        var undoThreshold = undoConfig.documentSizeThreshold;
+        var undoLimit = undoConfig.undoLimit;
+        var html;
 
         // Truncate stack if longer (i.e. if has been previously undone)
         if ( undoIndex < this._undoStackLength ) {
             undoStack.length = this._undoStackLength = undoIndex;
         }
 
-        // Write out data
+        // Get data
         if ( range ) {
             this._saveRangeToBookmark( range );
         }
-        undoStack[ undoIndex ] = this._getHTML();
+        html = this._getHTML();
+
+        // If this document is above the configured size threshold,
+        // limit the number of saved undo states.
+        // Threshold is in bytes, JS uses 2 bytes per character
+        if ( undoThreshold > -1 && html.length * 2 > undoThreshold ) {
+            if ( undoLimit > -1 && undoIndex > undoLimit ) {
+                undoStack.splice( 0, undoIndex - undoLimit );
+                undoIndex = this._undoIndex = undoLimit;
+                this._undoStackLength = undoLimit;
+            }
+        }
+
+        // Save data
+        undoStack[ undoIndex ] = html;
         this._undoStackLength += 1;
         this._isInUndoState = true;
     }
@@ -1105,7 +1165,7 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
 proto.changeFormat = function ( add, remove, range, partial ) {
     // Normalise the arguments and get selection
     if ( !range && !( range = this.getSelection() ) ) {
-        return;
+        return this;
     }
 
     // Save undo checkpoint
@@ -1516,6 +1576,7 @@ proto.setHTML = function ( html ) {
     // anything calls getSelection before first focus, we have a range
     // to return.
     this._lastSelection = range;
+    enableRestoreSelection.call( this );
     this._updatePath( range, true );
 
     return this;
@@ -1611,26 +1672,34 @@ var addLinks = function ( frag, root, self ) {
 // by the html being inserted.
 proto.insertHTML = function ( html, isPaste ) {
     var range = this.getSelection();
-    var frag = this._doc.createDocumentFragment();
-    var div = this.createElement( 'DIV' );
+    var doc = this._doc;
     var startFragmentIndex, endFragmentIndex;
-    var root, node, event;
+    var div, frag, root, node, event;
 
     // Edge doesn't just copy the fragment, but includes the surrounding guff
-    // including the full <head> of the page. Need to strip this out. In the
-    // future should probably run all pastes through DOMPurify, but this will
-    // do for now
-    if ( isPaste ) {
-        startFragmentIndex = html.indexOf( '<!--StartFragment-->' );
-        endFragmentIndex = html.lastIndexOf( '<!--EndFragment-->' );
-        if ( startFragmentIndex > -1 && endFragmentIndex > -1 ) {
-            html = html.slice( startFragmentIndex + 20, endFragmentIndex );
+    // including the full <head> of the page. Need to strip this out. If
+    // available use DOMPurify to parse and sanitise.
+    if ( typeof DOMPurify !== 'undefined' && DOMPurify.isSupported ) {
+        frag = DOMPurify.sanitize( html, {
+            WHOLE_DOCUMENT: false,
+            RETURN_DOM: true,
+            RETURN_DOM_FRAGMENT: true
+        });
+        frag = doc.importNode( frag, true );
+    } else {
+        if ( isPaste ) {
+            startFragmentIndex = html.indexOf( '<!--StartFragment-->' );
+            endFragmentIndex = html.lastIndexOf( '<!--EndFragment-->' );
+            if ( startFragmentIndex > -1 && endFragmentIndex > -1 ) {
+                html = html.slice( startFragmentIndex + 20, endFragmentIndex );
+            }
         }
+        // Parse HTML into DOM tree
+        div = this.createElement( 'DIV' );
+        div.innerHTML = html;
+        frag = doc.createDocumentFragment();
+        frag.appendChild( empty( div ) );
     }
-
-    // Parse HTML into DOM tree
-    div.innerHTML = html;
-    frag.appendChild( empty( div ) );
 
     // Record undo checkpoint
     this.saveUndoState( range );
@@ -1782,27 +1851,27 @@ proto.removeLink = function () {
 };
 
 proto.setFontFace = function ( name ) {
-    this.changeFormat({
+    this.changeFormat( name ? {
         tag: 'SPAN',
         attributes: {
             'class': 'font',
             style: 'font-family: ' + name + ', sans-serif;'
         }
-    }, {
+    } : null, {
         tag: 'SPAN',
         attributes: { 'class': 'font' }
     });
     return this.focus();
 };
 proto.setFontSize = function ( size ) {
-    this.changeFormat({
+    this.changeFormat( size ? {
         tag: 'SPAN',
         attributes: {
             'class': 'size',
             style: 'font-size: ' +
                 ( typeof size === 'number' ? size + 'px' : size )
         }
-    }, {
+    } : null, {
         tag: 'SPAN',
         attributes: { 'class': 'size' }
     });
@@ -1810,13 +1879,13 @@ proto.setFontSize = function ( size ) {
 };
 
 proto.setTextColour = function ( colour ) {
-    this.changeFormat({
+    this.changeFormat( colour ? {
         tag: 'SPAN',
         attributes: {
             'class': 'colour',
             style: 'color:' + colour
         }
-    }, {
+    } : null, {
         tag: 'SPAN',
         attributes: { 'class': 'colour' }
     });
@@ -1824,13 +1893,13 @@ proto.setTextColour = function ( colour ) {
 };
 
 proto.setHighlightColour = function ( colour ) {
-    this.changeFormat({
+    this.changeFormat( colour ? {
         tag: 'SPAN',
         attributes: {
             'class': 'highlight',
             style: 'background-color:' + colour
         }
-    }, {
+    } : colour, {
         tag: 'SPAN',
         attributes: { 'class': 'highlight' }
     });
