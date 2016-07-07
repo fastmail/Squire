@@ -208,7 +208,13 @@ describe('Squire RTE', function () {
         });
 
         it('returns the path to the selection', function () {
-            editor.insertHTML('<b>Bold Text</b>');
+            var range = doc.createRange();
+            range.setStart(doc.body.childNodes.item(0).childNodes.item(1), 0);
+            range.setEnd(doc.body.childNodes.item(0).childNodes.item(1), 0);
+            editor.setSelection(range);
+
+            //Manually tell it to update the path
+            editor._updatePath(range);
             expect(editor.getPath(), 'to be', 'DIV>B');
         });
 
