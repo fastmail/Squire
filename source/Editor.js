@@ -14,16 +14,20 @@ function getSquireInstance ( doc ) {
     return null;
 }
 
-function mergeObjects ( base, extras ) {
+function mergeObjects ( base, extras, mayOverride ) {
     var prop, value;
     if ( !base ) {
         base = {};
     }
-    for ( prop in extras ) {
-        value = extras[ prop ];
-        base[ prop ] = ( value && value.constructor === Object ) ?
-            mergeObjects( base[ prop ], value ) :
-            value;
+    if ( extras ) {
+        for ( prop in extras ) {
+            if ( mayOverride || !( prop in base ) ) {
+                value = extras[ prop ];
+                base[ prop ] = ( value && value.constructor === Object ) ?
+                    mergeObjects( base[ prop ], value, mayOverride ) :
+                    value;
+            }
+        }
     }
     return base;
 }
@@ -168,11 +172,12 @@ proto.setConfig = function ( config ) {
             li: null,
             a: null
         },
+        leafNodeNames: leafNodeNames,
         undo: {
             documentSizeThreshold: -1, // -1 means no threshold
             undoLimit: -1 // -1 means no limit
         }
-    }, config );
+    }, config, true );
 
     // Users may specify block tag in lower case
     config.blockTag = config.blockTag.toUpperCase();
@@ -392,12 +397,7 @@ proto.getCursorPosition = function ( range ) {
         rect = node.getBoundingClientRect();
         parent = node.parentNode;
         parent.removeChild( node );
-        mergeInlines( parent, {
-            startContainer: range.startContainer,
-            endContainer: range.endContainer,
-            startOffset: range.startOffset,
-            endOffset: range.endOffset
-        });
+        mergeInlines( parent, range );
     }
     return rect;
 };
@@ -427,6 +427,16 @@ proto.setSelection = function ( range ) {
         // needing restore on focus.
         if ( !this._isFocused ) {
             enableRestoreSelection.call( this );
+        } else if ( isAndroid && !this._restoreSelection ) {
+            // Android closes the keyboard on removeAllRanges() and doesn't
+            // open it again when addRange() is called, sigh.
+            // Since Android doesn't trigger a focus event in setSelection(),
+            // use a blur/focus dance to work around this by letting the
+            // selection be restored on focus.
+            // Need to check for !this._restoreSelection to avoid infinite loop
+            enableRestoreSelection.call( this );
+            this.blur();
+            this.focus();
         } else {
             // iOS bug: if you don't focus the iframe before setting the
             // selection, you can end up in a state where you type but the input
@@ -537,13 +547,18 @@ proto.getPath = function () {
 
 // WebKit bug: https://bugs.webkit.org/show_bug.cgi?id=15256
 
-var removeZWS = function ( root ) {
+// Walk down the tree starting at the root and remove any ZWS. If the node only
+// contained ZWS space then remove it too. We may want to keep one ZWS node at
+// the bottom of the tree so the block can be selected. Define that node as the
+// keepNode.
+var removeZWS = function ( root, keepNode ) {
     var walker = new TreeWalker( root, SHOW_TEXT, function () {
             return true;
         }, false ),
         parent, node, index;
     while ( node = walker.nextNode() ) {
-        while ( ( index = node.data.indexOf( ZWS ) ) > -1 ) {
+        while ( ( index = node.data.indexOf( ZWS ) ) > -1  &&
+                ( !keepNode || node.parentNode !== keepNode ) ) {
             if ( node.length === 1 ) {
                 do {
                     parent = node.parentNode;
@@ -610,11 +625,21 @@ proto._updatePathOnEvent = function () {
 
 proto.focus = function () {
     this._root.focus();
+
+    if ( isIE ) {
+        this.fireEvent( 'focus' );
+    }
+
     return this;
 };
 
 proto.blur = function () {
     this._root.blur();
+
+    if ( isIE ) {
+        this.fireEvent( 'blur' );
+    }
+
     return this;
 };
 
@@ -660,38 +685,31 @@ proto._getRangeAndRemoveBookmark = function ( range ) {
     if ( start && end ) {
         var startContainer = start.parentNode,
             endContainer = end.parentNode,
-            collapsed;
-
-        var _range = {
-            startContainer: startContainer,
-            endContainer: endContainer,
-            startOffset: indexOf.call( startContainer.childNodes, start ),
-            endOffset: indexOf.call( endContainer.childNodes, end )
-        };
+            startOffset = indexOf.call( startContainer.childNodes, start ),
+            endOffset = indexOf.call( endContainer.childNodes, end );
 
         if ( startContainer === endContainer ) {
-            _range.endOffset -= 1;
+            endOffset -= 1;
         }
 
         detach( start );
         detach( end );
 
-        // Merge any text nodes we split
-        mergeInlines( startContainer, _range );
-        if ( startContainer !== endContainer ) {
-            mergeInlines( endContainer, _range );
-        }
-
         if ( !range ) {
             range = this._doc.createRange();
         }
-        range.setStart( _range.startContainer, _range.startOffset );
-        range.setEnd( _range.endContainer, _range.endOffset );
-        collapsed = range.collapsed;
+        range.setStart( startContainer, startOffset );
+        range.setEnd( endContainer, endOffset );
+
+        // Merge any text nodes we split
+        mergeInlines( startContainer, range );
+        if ( startContainer !== endContainer ) {
+            mergeInlines( endContainer, range );
+        }
 
         // If we didn't split a text node, we should move into any adjacent
         // text node to current selection point
-        if ( collapsed ) {
+        if ( range.collapsed ) {
             startContainer = range.startContainer;
             if ( startContainer.nodeType === TEXT_NODE ) {
                 endContainer = startContainer.childNodes[ range.startOffset ];
@@ -948,13 +966,21 @@ proto._addFormat = function ( tag, attributes, range ) {
     // it round the range and focus it.
     var root = this._root;
     var el, walker, startContainer, endContainer, startOffset, endOffset,
-        node, needsFormat;
+        node, needsFormat, block;
 
     if ( range.collapsed ) {
         el = fixCursor( this.createElement( tag, attributes ), root );
         insertNodeInRange( range, el );
         range.setStart( el.firstChild, el.firstChild.length );
         range.collapse( true );
+
+        // Clean up any previous formats that may have been set on this block
+        // that are unused.
+        block = el;
+        while ( isInline( block ) ) {
+            block = block.parentNode;
+        }
+        removeZWS( block, el );
     }
     // Otherwise we find all the textnodes in the range (splitting
     // partially selected nodes) and if they're not already formatted
@@ -969,8 +995,8 @@ proto._addFormat = function ( tag, attributes, range ) {
         // to apply when the user types something in the block, which is
         // presumably what was intended.
         //
-        // IMG tags are included because we may want to create a link around them,
-        // and adding other styles is harmless.
+        // IMG tags are included because we may want to create a link around
+        // them, and adding other styles is harmless.
         walker = new TreeWalker(
             range.commonAncestorContainer,
             SHOW_TEXT|SHOW_ELEMENT,
@@ -1149,15 +1175,7 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
     if ( fixer ) {
         range.collapse( false );
     }
-    var _range = {
-        startContainer: range.startContainer,
-        startOffset: range.startOffset,
-        endContainer: range.endContainer,
-        endOffset: range.endOffset
-    };
-    mergeInlines( root, _range );
-    range.setStart( _range.startContainer, _range.startOffset );
-    range.setEnd( _range.endContainer, _range.endOffset );
+    mergeInlines( root, range );
 
     return range;
 };
@@ -1628,7 +1646,7 @@ proto.insertElement = function ( el, range ) {
 proto.insertImage = function ( src, attributes ) {
     var img = this.createElement( 'IMG', mergeObjects({
         src: src
-    }, attributes ));
+    }, attributes, true ));
     this.insertElement( img );
     return img;
 };
@@ -1659,7 +1677,7 @@ var addLinks = function ( frag, root, self ) {
                         match[1] :
                         'http://' + match[1] :
                     'mailto:' + match[2]
-            }, defaultAttributes ));
+            }, defaultAttributes, false ));
             child.textContent = data.slice( index, endIndex );
             parent.insertBefore( child, node );
             node.data = data = data.slice( endIndex );
@@ -1740,6 +1758,10 @@ proto.insertHTML = function ( html, isPaste ) {
 
         this.setSelection( range );
         this._updatePath( range, true );
+        // Safari sometimes loses focus after paste. Weird.
+        if ( isPaste ) {
+            this.focus();
+        }
     } catch ( error ) {
         this.didError( error );
     }
@@ -1828,12 +1850,13 @@ proto.makeLink = function ( url, attributes ) {
             this._doc.createTextNode( url.slice( protocolEnd ) )
         );
     }
-
-    if ( !attributes ) {
-        attributes = {};
-    }
-    mergeObjects( attributes, this._config.tagAttributes.a );
-    attributes.href = url;
+    attributes = mergeObjects(
+        mergeObjects({
+            href: url
+        }, attributes, true ),
+        this._config.tagAttributes.a,
+        false
+    );
 
     this.changeFormat({
         tag: 'A',
@@ -1986,7 +2009,7 @@ proto.removeAllFormatting = function ( range ) {
     var cleanNodes = doc.createDocumentFragment();
     var nodeAfterSplit = split( endContainer, endOffset, stopNode, root );
     var nodeInSplit = split( startContainer, startOffset, stopNode, root );
-    var nextNode, _range, childNodes;
+    var nextNode, childNodes;
 
     // Then replace contents in split with a cleaned version of the same:
     // blocks become default blocks, text and leaf nodes survive, everything
@@ -2013,15 +2036,9 @@ proto.removeAllFormatting = function ( range ) {
     }
 
     // Merge text nodes at edges, if possible
-    _range = {
-        startContainer: stopNode,
-        startOffset: startOffset,
-        endContainer: stopNode,
-        endOffset: endOffset
-    };
-    mergeInlines( stopNode, _range );
-    range.setStart( _range.startContainer, _range.startOffset );
-    range.setEnd( _range.endContainer, _range.endOffset );
+    range.setStart( stopNode, startOffset );
+    range.setEnd( stopNode, endOffset );
+    mergeInlines( stopNode, range );
 
     // And move back down the tree
     moveRangeBoundariesDownTree( range );
