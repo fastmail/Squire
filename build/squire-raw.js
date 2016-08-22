@@ -1616,12 +1616,9 @@ var keyHandlers = {
             while ( parent = node.parentNode ) {
                 // If we find a UL or OL (so are in a list, node must be an LI)
                 if ( parent.nodeName === 'UL' || parent.nodeName === 'OL' ) {
-                    // AND the LI is not the first in the list
-                    if ( node.previousSibling ) {
-                        // Then increase the list level
-                        event.preventDefault();
-                        self.modifyBlocks( increaseListLevel, range );
-                    }
+                    // Then increase the list level
+                    event.preventDefault();
+                    self.modifyBlocks( increaseListLevel, range );
                     break;
                 }
                 node = parent;
@@ -3733,18 +3730,18 @@ var makeOrderedList = function ( frag ) {
 
 var removeList = function ( frag ) {
     var lists = frag.querySelectorAll( 'UL, OL' ),
-        i, l, ll, list, listFrag, children, child;
+        items =  frag.querySelectorAll( 'LI' ),
+        i, l, list, listFrag, item;
     for ( i = 0, l = lists.length; i < l; i += 1 ) {
         list = lists[i];
         listFrag = empty( list );
-        children = listFrag.childNodes;
-        ll = children.length;
-        while ( ll-- ) {
-            child = children[ll];
-            replaceWith( child, empty( child ) );
-        }
         fixContainer( listFrag, this._root );
         replaceWith( list, listFrag );
+    }
+
+    for ( i = 0, l = items.length; i < l; i += 1 ) {
+        item = items[i];
+        replaceWith( item, empty( item ) );
     }
     return frag;
 };
@@ -3754,7 +3751,6 @@ var increaseListLevel = function ( frag ) {
         i, l, item,
         type, newParent,
         tagAttributes = this._config.tagAttributes,
-        listItemAttrs = tagAttributes.li,
         listAttrs;
     for ( i = 0, l = items.length; i < l; i += 1 ) {
         item = items[i];
@@ -3765,11 +3761,11 @@ var increaseListLevel = function ( frag ) {
             if ( !newParent || !( newParent = newParent.lastChild ) ||
                     newParent.nodeName !== type ) {
                 listAttrs = tagAttributes[ type.toLowerCase() ];
+                newParent = this.createElement( type, listAttrs );
+
                 replaceWith(
                     item,
-                    this.createElement( 'LI', listItemAttrs, [
-                        newParent = this.createElement( type, listAttrs )
-                    ])
+                    newParent
                 );
             }
             newParent.appendChild( item );
@@ -3792,13 +3788,23 @@ var decreaseListLevel = function ( frag ) {
         if ( item.previousSibling ) {
             parent = split( parent, item, newParent, root );
         }
-        while ( node ) {
-            next = node.nextSibling;
-            if ( isContainer( node ) ) {
-                break;
+
+        // if the new parent is another list then we simply move the node
+        // e.g. `ul > ul > li` becomes `ul > li`
+        if ( /^[OU]L$/.test( newParent.nodeName ) ) {
+            newParent.insertBefore(item, parent);
+            if (!parent.firstChild) {
+              newParent.removeChild(parent);
             }
-            newParent.insertBefore( node, parent );
-            node = next;
+        } else {
+            while ( node ) {
+                next = node.nextSibling;
+                if ( isContainer( node ) ) {
+                    break;
+                }
+                newParent.insertBefore( node, parent );
+                node = next;
+            }
         }
         if ( newParent.nodeName === 'LI' && first.previousSibling ) {
             split( newParent, first, newParent.parentNode, root );
