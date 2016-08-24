@@ -624,7 +624,15 @@ proto._updatePathOnEvent = function () {
 // --- Focus ---
 
 proto.focus = function () {
+    var scrollTop = this.scrollTop();
+
     this._root.focus();
+
+    // In webkit, if contenteditable element focus method have been invoked when another input element has focus,
+    // contenteditable scroll to top automatically so we need scroll it back
+    if (scrollTop !== this.scrollTop()) {
+        this.scrollTop(scrollTop);
+    }
 
     if ( isIE ) {
         this.fireEvent( 'focus' );
@@ -642,6 +650,16 @@ proto.blur = function () {
 
     return this;
 };
+
+// --- scrollTop ---
+
+proto.scrollTop = function(value) {
+    if (value) {
+        this._root.scrollTop = value;
+    }
+
+    return this._root.scrollTop;
+}
 
 // --- Bookmarking ---
 
