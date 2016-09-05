@@ -17,6 +17,11 @@ var START_TO_END = 1;   // Range.START_TO_END
 var END_TO_END = 2;     // Range.END_TO_END
 var END_TO_START = 3;   // Range.END_TO_START
 
+var HIGHLIGHT_CLASS = 'highlight';
+var COLOUR_CLASS = 'colour';
+var FONT_FAMILY_CLASS = 'font';
+var FONT_SIZE_CLASS = 'size';
+
 var ZWS = '\u200B';
 
 var win = doc.defaultView;
@@ -26,11 +31,14 @@ var ua = navigator.userAgent;
 var isIOS = /iP(?:ad|hone|od)/.test( ua );
 var isMac = /Mac OS X/.test( ua );
 
+var isAndroid = /Android/.test( ua );
+
 var isGecko = /Gecko\//.test( ua );
 var isIElt11 = /Trident\/[456]\./.test( ua );
 var isPresto = !!win.opera;
 var isEdge = /Edge\//.test( ua );
 var isWebKit = !isEdge && /WebKit\//.test( ua );
+var isIE = /Trident\/[4567]\./.test( ua );
 
 var ctrlKey = isMac ? 'meta-' : 'ctrl-';
 
@@ -171,7 +179,7 @@ TreeWalker.prototype.previousPONode = function () {
     }
 };
 
-var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:FRAME|MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|U|VAR|WBR)$/;
+var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:FRAME|MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|TIME|U|VAR|WBR)$/;
 
 var leafNodeNames = {
     BR: 1,
@@ -283,6 +291,23 @@ function getPath ( node, root ) {
             }
             if ( dir = node.dir ) {
                 path += '[dir=' + dir + ']';
+            }
+            if ( classNames ) {
+                if ( indexOf.call( classNames, HIGHLIGHT_CLASS ) > -1 ) {
+                    path += '[backgroundColor=' +
+                        node.style.backgroundColor.replace( / /g,'' ) + ']';
+                }
+                if ( indexOf.call( classNames, COLOUR_CLASS ) > -1 ) {
+                    path += '[color=' +
+                        node.style.color.replace( / /g,'' ) + ']';
+                }
+                if ( indexOf.call( classNames, FONT_FAMILY_CLASS ) > -1 ) {
+                    path += '[fontFamily=' +
+                        node.style.fontFamily.replace( / /g,'' ) + ']';
+                }
+                if ( indexOf.call( classNames, FONT_SIZE_CLASS ) > -1 ) {
+                    path += '[fontSize=' + node.style.fontSize + ']';
+                }
             }
         }
     }
@@ -522,10 +547,7 @@ function split ( node, offset, stopNode, root ) {
     return offset;
 }
 
-function mergeInlines ( node, range ) {
-    if ( node.nodeType !== ELEMENT_NODE ) {
-        return;
-    }
+function _mergeInlines ( node, fakeRange ) {
     var children = node.childNodes,
         l = children.length,
         frags = [],
@@ -535,30 +557,30 @@ function mergeInlines ( node, range ) {
         prev = l && children[ l - 1 ];
         if ( l && isInline( child ) && areAlike( child, prev ) &&
                 !leafNodeNames[ child.nodeName ] ) {
-            if ( range.startContainer === child ) {
-                range.startContainer = prev;
-                range.startOffset += getLength( prev );
+            if ( fakeRange.startContainer === child ) {
+                fakeRange.startContainer = prev;
+                fakeRange.startOffset += getLength( prev );
             }
-            if ( range.endContainer === child ) {
-                range.endContainer = prev;
-                range.endOffset += getLength( prev );
+            if ( fakeRange.endContainer === child ) {
+                fakeRange.endContainer = prev;
+                fakeRange.endOffset += getLength( prev );
             }
-            if ( range.startContainer === node ) {
-                if ( range.startOffset > l ) {
-                    range.startOffset -= 1;
+            if ( fakeRange.startContainer === node ) {
+                if ( fakeRange.startOffset > l ) {
+                    fakeRange.startOffset -= 1;
                 }
-                else if ( range.startOffset === l ) {
-                    range.startContainer = prev;
-                    range.startOffset = getLength( prev );
+                else if ( fakeRange.startOffset === l ) {
+                    fakeRange.startContainer = prev;
+                    fakeRange.startOffset = getLength( prev );
                 }
             }
-            if ( range.endContainer === node ) {
-                if ( range.endOffset > l ) {
-                    range.endOffset -= 1;
+            if ( fakeRange.endContainer === node ) {
+                if ( fakeRange.endOffset > l ) {
+                    fakeRange.endOffset -= 1;
                 }
-                else if ( range.endOffset === l ) {
-                    range.endContainer = prev;
-                    range.endOffset = getLength( prev );
+                else if ( fakeRange.endOffset === l ) {
+                    fakeRange.endContainer = prev;
+                    fakeRange.endOffset = getLength( prev );
                 }
             }
             detach( child );
@@ -574,14 +596,31 @@ function mergeInlines ( node, range ) {
             while ( len-- ) {
                 child.appendChild( frags.pop() );
             }
-            mergeInlines( child, range );
+            _mergeInlines( child, fakeRange );
         }
+    }
+}
+
+function mergeInlines ( node, range ) {
+    if ( node.nodeType === TEXT_NODE ) {
+        node = node.parentNode;
+    }
+    if ( node.nodeType === ELEMENT_NODE ) {
+        var fakeRange = {
+            startContainer: range.startContainer,
+            startOffset: range.startOffset,
+            endContainer: range.endContainer,
+            endOffset: range.endOffset
+        };
+        _mergeInlines( node, fakeRange );
+        range.setStart( fakeRange.startContainer, fakeRange.startOffset );
+        range.setEnd( fakeRange.endContainer, fakeRange.endOffset );
     }
 }
 
 function mergeWithBlock ( block, next, range ) {
     var container = next,
-        last, offset, _range;
+        last, offset;
     while ( container.parentNode.childNodes.length === 1 ) {
         container = container.parentNode;
     }
@@ -596,18 +635,11 @@ function mergeWithBlock ( block, next, range ) {
         offset -= 1;
     }
 
-    _range = {
-        startContainer: block,
-        startOffset: offset,
-        endContainer: block,
-        endOffset: offset
-    };
-
     block.appendChild( empty( next ) );
-    mergeInlines( block, _range );
 
-    range.setStart( _range.startContainer, _range.startOffset );
+    range.setStart( block, offset );
     range.collapse( true );
+    mergeInlines( block, range );
 
     // Opera inserts a BR if you delete the last piece of text
     // in a block-level element. Unfortunately, it then gets
@@ -862,6 +894,10 @@ var insertTreeFragmentIntoRange = function ( range, frag, root ) {
     if ( allInline ) {
         // If inline, just insert at the current position.
         insertNodeInRange( range, frag );
+        if ( range.startContainer !== range.endContainer ) {
+            mergeInlines( range.endContainer, range );
+        }
+        mergeInlines( range.startContainer, range );
         range.collapse( false );
     } else {
         // Otherwise...
@@ -1300,7 +1336,7 @@ var afterDelete = function ( self, range ) {
             node = parent;
             parent = node.parentNode;
         }
-        // If focussed in empty inline element
+        // If focused in empty inline element
         if ( node !== parent ) {
             // Move focus to just before empty inline(s)
             range.setStart( parent,
@@ -1622,6 +1658,13 @@ var keyHandlers = {
                 !node.nextSibling && range.endOffset === getLength( node ) ) {
             range.setStartAfter( parent );
         }
+        // Delete the selection if not collapsed
+        else if ( !range.collapsed ) {
+            deleteContentsOfRange( range, self._root );
+            self._ensureBottomLine();
+            self.setSelection( range );
+            self._updatePath( range, true );
+        }
 
         self.setSelection( range );
     },
@@ -1690,12 +1733,12 @@ var fontSizes = {
     7: 48
 };
 
-var spanToSemantic = {
+var styleToSemantic = {
     backgroundColor: {
         regexp: notWS,
         replace: function ( doc, colour ) {
             return createElement( doc, 'SPAN', {
-                'class': 'highlight',
+                'class': HIGHLIGHT_CLASS,
                 style: 'background-color:' + colour
             });
         }
@@ -1704,7 +1747,7 @@ var spanToSemantic = {
         regexp: notWS,
         replace: function ( doc, colour ) {
             return createElement( doc, 'SPAN', {
-                'class': 'colour',
+                'class': COLOUR_CLASS,
                 style: 'color:' + colour
             });
         }
@@ -1725,7 +1768,7 @@ var spanToSemantic = {
         regexp: notWS,
         replace: function ( doc, family ) {
             return createElement( doc, 'SPAN', {
-                'class': 'font',
+                'class': FONT_FAMILY_CLASS,
                 style: 'font-family:' + family
             });
         }
@@ -1734,9 +1777,15 @@ var spanToSemantic = {
         regexp: notWS,
         replace: function ( doc, size ) {
             return createElement( doc, 'SPAN', {
-                'class': 'size',
+                'class': FONT_SIZE_CLASS,
                 style: 'font-size:' + size
             });
+        }
+    },
+    textDecoration: {
+        regexp: /^underline/i,
+        replace: function ( doc ) {
+            return createElement( doc, 'U' );
         }
     }
 };
@@ -1750,36 +1799,45 @@ var replaceWithTag = function ( tag ) {
     };
 };
 
-var stylesRewriters = {
-    SPAN: function ( span, parent ) {
-        var style = span.style,
-            doc = span.ownerDocument,
-            attr, converter, css, newTreeBottom, newTreeTop, el;
+var replaceStyles = function ( node, parent ) {
+    var style = node.style;
+    var doc = node.ownerDocument;
+    var attr, converter, css, newTreeBottom, newTreeTop, el;
 
-        for ( attr in spanToSemantic ) {
-            converter = spanToSemantic[ attr ];
-            css = style[ attr ];
-            if ( css && converter.regexp.test( css ) ) {
-                el = converter.replace( doc, css );
-                if ( newTreeBottom ) {
-                    newTreeBottom.appendChild( el );
-                }
-                newTreeBottom = el;
-                if ( !newTreeTop ) {
-                    newTreeTop = el;
-                }
+    for ( attr in styleToSemantic ) {
+        converter = styleToSemantic[ attr ];
+        css = style[ attr ];
+        if ( css && converter.regexp.test( css ) ) {
+            el = converter.replace( doc, css );
+            if ( !newTreeTop ) {
+                newTreeTop = el;
             }
+            if ( newTreeBottom ) {
+                newTreeBottom.appendChild( el );
+            }
+            newTreeBottom = el;
+            node.style[ attr ] = '';
         }
+    }
 
-        if ( newTreeTop ) {
-            newTreeBottom.appendChild( empty( span ) );
-            parent.replaceChild( newTreeTop, span );
+    if ( newTreeTop ) {
+        newTreeBottom.appendChild( empty( node ) );
+        if ( node.nodeName === 'SPAN' ) {
+            parent.replaceChild( newTreeTop, node );
+        } else {
+            node.appendChild( newTreeTop );
         }
+    }
 
-        return newTreeBottom || span;
-    },
+    return newTreeBottom || node;
+};
+
+var stylesRewriters = {
+    P: replaceStyles,
+    SPAN: replaceStyles,
     STRONG: replaceWithTag( 'B' ),
     EM: replaceWithTag( 'I' ),
+    INS: replaceWithTag( 'U' ),
     STRIKE: replaceWithTag( 'S' ),
     FONT: function ( node, parent ) {
         var face = node.face,
@@ -2059,12 +2117,32 @@ var onCopy = function ( event ) {
     var clipboardData = event.clipboardData;
     var range = this.getSelection();
     var node = this.createElement( 'div' );
+    var root = this._root;
+    var startBlock, contents, parent, newContents;
 
     // Edge only seems to support setting plain text as of 2016-03-11.
     // Mobile Safari flat out doesn't work:
     // https://bugs.webkit.org/show_bug.cgi?id=143776
     if ( !isEdge && !isIOS && clipboardData ) {
-        node.appendChild( range.cloneContents() );
+        range = range.cloneRange();
+        startBlock = getStartBlockOfRange( range, root );
+        if ( startBlock === getEndBlockOfRange( range, root ) ) {
+            // Copy all inline formatting, but that's it.
+            moveRangeBoundariesDownTree( range );
+            moveRangeBoundariesUpTree( range, startBlock );
+            contents = range.cloneContents();
+        } else {
+            moveRangeBoundariesUpTree( range, root );
+            contents = range.cloneContents();
+            parent = range.commonAncestorContainer;
+            while ( parent && parent !== root ) {
+                newContents = parent.cloneNode( false );
+                newContents.appendChild( contents );
+                contents = newContents;
+                parent = parent.parentNode;
+            }
+        }
+        node.appendChild( contents );
         clipboardData.setData( 'text/html', node.innerHTML );
         clipboardData.setData( 'text/plain',
             node.innerText || node.textContent );
@@ -2072,14 +2150,21 @@ var onCopy = function ( event ) {
     }
 };
 
+// Need to monitor for shift key like this, as event.shiftKey is not available
+// in paste event.
+function monitorShiftKey ( event ) {
+    this.isShiftDown = event.shiftKey;
+}
+
 var onPaste = function ( event ) {
-    var clipboardData = event.clipboardData,
-        items = clipboardData && clipboardData.items,
-        fireDrop = false,
-        hasImage = false,
-        plainItem = null,
-        self = this,
-        l, item, type, types, data;
+    var clipboardData = event.clipboardData;
+    var items = clipboardData && clipboardData.items;
+    var choosePlain = this.isShiftDown;
+    var fireDrop = false;
+    var hasImage = false;
+    var plainItem = null;
+    var self = this;
+    var l, item, type, types, data;
 
     // Current HTML5 Clipboard interface
     // ---------------------------------
@@ -2092,7 +2177,7 @@ var onPaste = function ( event ) {
         while ( l-- ) {
             item = items[l];
             type = item.type;
-            if ( type === 'text/html' ) {
+            if ( !choosePlain && type === 'text/html' ) {
                 /*jshint loopfunc: true */
                 item.getAsString( function ( html ) {
                     self.insertHTML( html, true );
@@ -2103,7 +2188,7 @@ var onPaste = function ( event ) {
             if ( type === 'text/plain' ) {
                 plainItem = item;
             }
-            if ( /^image\/.*/.test( type ) ) {
+            if ( !choosePlain && /^image\/.*/.test( type ) ) {
                 hasImage = true;
             }
         }
@@ -2155,7 +2240,7 @@ var onPaste = function ( event ) {
         // insert plain text instead. On iOS, Facebook (and possibly other
         // apps?) copy links as type text/uri-list, but also insert a **blank**
         // text/plain item onto the clipboard. Why? Who knows.
-        if (( data = clipboardData.getData( 'text/html' ) )) {
+        if ( !choosePlain && ( data = clipboardData.getData( 'text/html' ) ) ) {
             this.insertHTML( data, true );
         } else if (
                 ( data = clipboardData.getData( 'text/plain' ) ) ||
@@ -2267,16 +2352,20 @@ function getSquireInstance ( doc ) {
     return null;
 }
 
-function mergeObjects ( base, extras ) {
+function mergeObjects ( base, extras, mayOverride ) {
     var prop, value;
     if ( !base ) {
         base = {};
     }
-    for ( prop in extras ) {
-        value = extras[ prop ];
-        base[ prop ] = ( value && value.constructor === Object ) ?
-            mergeObjects( base[ prop ], value ) :
-            value;
+    if ( extras ) {
+        for ( prop in extras ) {
+            if ( mayOverride || !( prop in base ) ) {
+                value = extras[ prop ];
+                base[ prop ] = ( value && value.constructor === Object ) ?
+                    mergeObjects( base[ prop ], value, mayOverride ) :
+                    value;
+            }
+        }
     }
     return base;
 }
@@ -2295,6 +2384,7 @@ function Squire ( root, config ) {
 
     this._events = {};
 
+    this._isFocused = false;
     this._lastSelection = null;
 
     // IE loses selection state of iframe on blur, so make sure we
@@ -2308,6 +2398,7 @@ function Squire ( root, config ) {
     this._lastAnchorNode = null;
     this._lastFocusNode = null;
     this._path = '';
+    this._willUpdatePath = false;
 
     if ( 'onselectionchange' in doc ) {
         this.addEventListener( 'selectionchange', this._updatePathOnEvent );
@@ -2336,13 +2427,11 @@ function Squire ( root, config ) {
         this.addEventListener( 'keyup', this._keyUpDetectChange );
     }
 
-    // On blur, restore focus except if there is any change to the content, or
-    // the user taps or clicks to focus a specific point. Can't actually use
-    // click event because focus happens before click, so use
-    // mousedown/touchstart
+    // On blur, restore focus except if the user taps or clicks to focus a
+    // specific point. Can't actually use click event because focus happens
+    // before click, so use mousedown/touchstart
     this._restoreSelection = false;
     this.addEventListener( 'blur', enableRestoreSelection );
-    this.addEventListener( 'input', disableRestoreSelection );
     this.addEventListener( 'mousedown', disableRestoreSelection );
     this.addEventListener( 'touchstart', disableRestoreSelection );
     this.addEventListener( 'focus', restoreSelection );
@@ -2352,6 +2441,8 @@ function Squire ( root, config ) {
     this._awaitingPaste = false;
     this.addEventListener( isIElt11 ? 'beforecut' : 'cut', onCut );
     this.addEventListener( 'copy', onCopy );
+    this.addEventListener( 'keydown', monitorShiftKey );
+    this.addEventListener( 'keyup', monitorShiftKey );
     this.addEventListener( isIElt11 ? 'beforepaste' : 'paste', onPaste );
     this.addEventListener( 'drop', onDrop );
 
@@ -2420,8 +2511,13 @@ proto.setConfig = function ( config ) {
             ol: null,
             li: null,
             a: null
+        },
+        leafNodeNames: leafNodeNames,
+        undo: {
+            documentSizeThreshold: -1, // -1 means no threshold
+            undoLimit: -1 // -1 means no limit
         }
-    }, config );
+    }, config, true );
 
     // Users may specify block tag in lower case
     config.blockTag = config.blockTag.toUpperCase();
@@ -2483,8 +2579,26 @@ var customEvents = {
 };
 
 proto.fireEvent = function ( type, event ) {
-    var handlers = this._events[ type ],
-        l, obj;
+    var handlers = this._events[ type ];
+    var isFocused, l, obj;
+    // UI code, especially modal views, may be monitoring for focus events and
+    // immediately removing focus. In certain conditions, this can cause the
+    // focus event to fire after the blur event, which can cause an infinite
+    // loop. So we detect whether we're actually focused/blurred before firing.
+    if ( /^(?:focus|blur)/.test( type ) ) {
+        isFocused = isOrContains( this._root, this._doc.activeElement );
+        if ( type === 'focus' ) {
+            if ( !isFocused || this._isFocused ) {
+                return this;
+            }
+            this._isFocused = true;
+        } else {
+            if ( isFocused || !this._isFocused ) {
+                return this;
+            }
+            this._isFocused = false;
+        }
+    }
     if ( handlers ) {
         if ( !event ) {
             event = {};
@@ -2516,6 +2630,7 @@ proto.destroy = function () {
     var l = instances.length;
     var events = this._events;
     var type;
+
     for ( type in events ) {
         this.removeEventListener( type );
     }
@@ -2527,6 +2642,11 @@ proto.destroy = function () {
             instances.splice( l, 1 );
         }
     }
+
+    // Destroy undo stack
+    this._undoIndex = -1;
+    this._undoStack = [];
+    this._undoStackLength = 0;
 };
 
 proto.handleEvent = function ( event ) {
@@ -2617,12 +2737,7 @@ proto.getCursorPosition = function ( range ) {
         rect = node.getBoundingClientRect();
         parent = node.parentNode;
         parent.removeChild( node );
-        mergeInlines( parent, {
-            startContainer: range.startContainer,
-            endContainer: range.endContainer,
-            startOffset: range.startOffset,
-            endOffset: range.endOffset
-        });
+        mergeInlines( parent, range );
     }
     return rect;
 };
@@ -2647,20 +2762,34 @@ var getWindowSelection = function ( self ) {
 
 proto.setSelection = function ( range ) {
     if ( range ) {
-        // If we're setting selection, that automatically, and synchronously, // triggers a focus event. Don't want a reentrant call to setSelection.
-        this._restoreSelection = false;
         this._lastSelection = range;
-        // iOS bug: if you don't focus the iframe before setting the
-        // selection, you can end up in a state where you type but the input
-        // doesn't get directed into the contenteditable area but is instead
-        // lost in a black hole. Very strange.
-        if ( isIOS ) {
-            this._win.focus();
-        }
-        var sel = getWindowSelection( this );
-        if ( sel ) {
-            sel.removeAllRanges();
-            sel.addRange( range );
+        // If we're setting selection, that automatically, and synchronously, // triggers a focus event. So just store the selection and mark it as
+        // needing restore on focus.
+        if ( !this._isFocused ) {
+            enableRestoreSelection.call( this );
+        } else if ( isAndroid && !this._restoreSelection ) {
+            // Android closes the keyboard on removeAllRanges() and doesn't
+            // open it again when addRange() is called, sigh.
+            // Since Android doesn't trigger a focus event in setSelection(),
+            // use a blur/focus dance to work around this by letting the
+            // selection be restored on focus.
+            // Need to check for !this._restoreSelection to avoid infinite loop
+            enableRestoreSelection.call( this );
+            this.blur();
+            this.focus();
+        } else {
+            // iOS bug: if you don't focus the iframe before setting the
+            // selection, you can end up in a state where you type but the input
+            // doesn't get directed into the contenteditable area but is instead
+            // lost in a black hole. Very strange.
+            if ( isIOS ) {
+                this._win.focus();
+            }
+            var sel = getWindowSelection( this );
+            if ( sel ) {
+                sel.removeAllRanges();
+                sel.addRange( range );
+            }
         }
     }
     return this;
@@ -2758,13 +2887,18 @@ proto.getPath = function () {
 
 // WebKit bug: https://bugs.webkit.org/show_bug.cgi?id=15256
 
-var removeZWS = function ( root ) {
+// Walk down the tree starting at the root and remove any ZWS. If the node only
+// contained ZWS space then remove it too. We may want to keep one ZWS node at
+// the bottom of the tree so the block can be selected. Define that node as the
+// keepNode.
+var removeZWS = function ( root, keepNode ) {
     var walker = new TreeWalker( root, SHOW_TEXT, function () {
             return true;
         }, false ),
         parent, node, index;
     while ( node = walker.nextNode() ) {
-        while ( ( index = node.data.indexOf( ZWS ) ) > -1 ) {
+        while ( ( index = node.data.indexOf( ZWS ) ) > -1  &&
+                ( !keepNode || node.parentNode !== keepNode ) ) {
             if ( node.length === 1 ) {
                 do {
                     parent = node.parentNode;
@@ -2813,19 +2947,39 @@ proto._updatePath = function ( range, force ) {
     }
 };
 
+// selectionchange is fired synchronously in IE when removing current selection
+// and when setting new selection; keyup/mouseup may have processing we want
+// to do first. Either way, send to next event loop.
 proto._updatePathOnEvent = function () {
-    this._updatePath( this.getSelection() );
+    var self = this;
+    if ( !self._willUpdatePath ) {
+        self._willUpdatePath = true;
+        setTimeout( function () {
+            self._willUpdatePath = false;
+            self._updatePath( self.getSelection() );
+        }, 0 );
+    }
 };
 
 // --- Focus ---
 
 proto.focus = function () {
     this._root.focus();
+
+    if ( isIE ) {
+        this.fireEvent( 'focus' );
+    }
+
     return this;
 };
 
 proto.blur = function () {
     this._root.blur();
+
+    if ( isIE ) {
+        this.fireEvent( 'blur' );
+    }
+
     return this;
 };
 
@@ -2871,38 +3025,31 @@ proto._getRangeAndRemoveBookmark = function ( range ) {
     if ( start && end ) {
         var startContainer = start.parentNode,
             endContainer = end.parentNode,
-            collapsed;
-
-        var _range = {
-            startContainer: startContainer,
-            endContainer: endContainer,
-            startOffset: indexOf.call( startContainer.childNodes, start ),
-            endOffset: indexOf.call( endContainer.childNodes, end )
-        };
+            startOffset = indexOf.call( startContainer.childNodes, start ),
+            endOffset = indexOf.call( endContainer.childNodes, end );
 
         if ( startContainer === endContainer ) {
-            _range.endOffset -= 1;
+            endOffset -= 1;
         }
 
         detach( start );
         detach( end );
 
-        // Merge any text nodes we split
-        mergeInlines( startContainer, _range );
-        if ( startContainer !== endContainer ) {
-            mergeInlines( endContainer, _range );
-        }
-
         if ( !range ) {
             range = this._doc.createRange();
         }
-        range.setStart( _range.startContainer, _range.startOffset );
-        range.setEnd( _range.endContainer, _range.endOffset );
-        collapsed = range.collapsed;
+        range.setStart( startContainer, startOffset );
+        range.setEnd( endContainer, endOffset );
+
+        // Merge any text nodes we split
+        mergeInlines( startContainer, range );
+        if ( startContainer !== endContainer ) {
+            mergeInlines( endContainer, range );
+        }
 
         // If we didn't split a text node, we should move into any adjacent
         // text node to current selection point
-        if ( collapsed ) {
+        if ( range.collapsed ) {
             startContainer = range.startContainer;
             if ( startContainer.nodeType === TEXT_NODE ) {
                 endContainer = startContainer.childNodes[ range.startOffset ];
@@ -2959,19 +3106,37 @@ proto._recordUndoState = function ( range ) {
     // Don't record if we're already in an undo state
     if ( !this._isInUndoState ) {
         // Advance pointer to new position
-        var undoIndex = this._undoIndex += 1,
-            undoStack = this._undoStack;
+        var undoIndex = this._undoIndex += 1;
+        var undoStack = this._undoStack;
+        var undoConfig = this._config.undo;
+        var undoThreshold = undoConfig.documentSizeThreshold;
+        var undoLimit = undoConfig.undoLimit;
+        var html;
 
         // Truncate stack if longer (i.e. if has been previously undone)
         if ( undoIndex < this._undoStackLength ) {
             undoStack.length = this._undoStackLength = undoIndex;
         }
 
-        // Write out data
+        // Get data
         if ( range ) {
             this._saveRangeToBookmark( range );
         }
-        undoStack[ undoIndex ] = this._getHTML();
+        html = this._getHTML();
+
+        // If this document is above the configured size threshold,
+        // limit the number of saved undo states.
+        // Threshold is in bytes, JS uses 2 bytes per character
+        if ( undoThreshold > -1 && html.length * 2 > undoThreshold ) {
+            if ( undoLimit > -1 && undoIndex > undoLimit ) {
+                undoStack.splice( 0, undoIndex - undoLimit );
+                undoIndex = this._undoIndex = undoLimit;
+                this._undoStackLength = undoLimit;
+            }
+        }
+
+        // Save data
+        undoStack[ undoIndex ] = html;
         this._undoStackLength += 1;
         this._isInUndoState = true;
     }
@@ -3141,13 +3306,21 @@ proto._addFormat = function ( tag, attributes, range ) {
     // it round the range and focus it.
     var root = this._root;
     var el, walker, startContainer, endContainer, startOffset, endOffset,
-        node, needsFormat;
+        node, needsFormat, block;
 
     if ( range.collapsed ) {
         el = fixCursor( this.createElement( tag, attributes ), root );
         insertNodeInRange( range, el );
         range.setStart( el.firstChild, el.firstChild.length );
         range.collapse( true );
+
+        // Clean up any previous formats that may have been set on this block
+        // that are unused.
+        block = el;
+        while ( isInline( block ) ) {
+            block = block.parentNode;
+        }
+        removeZWS( block, el );
     }
     // Otherwise we find all the textnodes in the range (splitting
     // partially selected nodes) and if they're not already formatted
@@ -3162,8 +3335,8 @@ proto._addFormat = function ( tag, attributes, range ) {
         // to apply when the user types something in the block, which is
         // presumably what was intended.
         //
-        // IMG tags are included because we may want to create a link around them,
-        // and adding other styles is harmless.
+        // IMG tags are included because we may want to create a link around
+        // them, and adding other styles is harmless.
         walker = new TreeWalker(
             range.commonAncestorContainer,
             SHOW_TEXT|SHOW_ELEMENT,
@@ -3342,15 +3515,7 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
     if ( fixer ) {
         range.collapse( false );
     }
-    var _range = {
-        startContainer: range.startContainer,
-        startOffset: range.startOffset,
-        endContainer: range.endContainer,
-        endOffset: range.endOffset
-    };
-    mergeInlines( root, _range );
-    range.setStart( _range.startContainer, _range.startOffset );
-    range.setEnd( _range.endContainer, _range.endOffset );
+    mergeInlines( root, range );
 
     return range;
 };
@@ -3358,7 +3523,7 @@ proto._removeFormat = function ( tag, attributes, range, partial ) {
 proto.changeFormat = function ( add, remove, range, partial ) {
     // Normalise the arguments and get selection
     if ( !range && !( range = this.getSelection() ) ) {
-        return;
+        return this;
     }
 
     // Save undo checkpoint
@@ -3769,6 +3934,7 @@ proto.setHTML = function ( html ) {
     // anything calls getSelection before first focus, we have a range
     // to return.
     this._lastSelection = range;
+    enableRestoreSelection.call( this );
     this._updatePath( range, true );
 
     return this;
@@ -3820,7 +3986,7 @@ proto.insertElement = function ( el, range ) {
 proto.insertImage = function ( src, attributes ) {
     var img = this.createElement( 'IMG', mergeObjects({
         src: src
-    }, attributes ));
+    }, attributes, true ));
     this.insertElement( img );
     return img;
 };
@@ -3851,7 +4017,7 @@ var addLinks = function ( frag, root, self ) {
                         match[1] :
                         'http://' + match[1] :
                     'mailto:' + match[2]
-            }, defaultAttributes ));
+            }, defaultAttributes, false ));
             child.textContent = data.slice( index, endIndex );
             parent.insertBefore( child, node );
             node.data = data = data.slice( endIndex );
@@ -3864,26 +4030,34 @@ var addLinks = function ( frag, root, self ) {
 // by the html being inserted.
 proto.insertHTML = function ( html, isPaste ) {
     var range = this.getSelection();
-    var frag = this._doc.createDocumentFragment();
-    var div = this.createElement( 'DIV' );
+    var doc = this._doc;
     var startFragmentIndex, endFragmentIndex;
-    var root, node, event;
+    var div, frag, root, node, event;
 
     // Edge doesn't just copy the fragment, but includes the surrounding guff
-    // including the full <head> of the page. Need to strip this out. In the
-    // future should probably run all pastes through DOMPurify, but this will
-    // do for now
-    if ( isPaste ) {
-        startFragmentIndex = html.indexOf( '<!--StartFragment-->' );
-        endFragmentIndex = html.lastIndexOf( '<!--EndFragment-->' );
-        if ( startFragmentIndex > -1 && endFragmentIndex > -1 ) {
-            html = html.slice( startFragmentIndex + 20, endFragmentIndex );
+    // including the full <head> of the page. Need to strip this out. If
+    // available use DOMPurify to parse and sanitise.
+    if ( typeof DOMPurify !== 'undefined' && DOMPurify.isSupported ) {
+        frag = DOMPurify.sanitize( html, {
+            WHOLE_DOCUMENT: false,
+            RETURN_DOM: true,
+            RETURN_DOM_FRAGMENT: true
+        });
+        frag = doc.importNode( frag, true );
+    } else {
+        if ( isPaste ) {
+            startFragmentIndex = html.indexOf( '<!--StartFragment-->' );
+            endFragmentIndex = html.lastIndexOf( '<!--EndFragment-->' );
+            if ( startFragmentIndex > -1 && endFragmentIndex > -1 ) {
+                html = html.slice( startFragmentIndex + 20, endFragmentIndex );
+            }
         }
+        // Parse HTML into DOM tree
+        div = this.createElement( 'DIV' );
+        div.innerHTML = html;
+        frag = doc.createDocumentFragment();
+        frag.appendChild( empty( div ) );
     }
-
-    // Parse HTML into DOM tree
-    div.innerHTML = html;
-    frag.appendChild( empty( div ) );
 
     // Record undo checkpoint
     this.saveUndoState( range );
@@ -3924,6 +4098,10 @@ proto.insertHTML = function ( html, isPaste ) {
 
         this.setSelection( range );
         this._updatePath( range, true );
+        // Safari sometimes loses focus after paste. Weird.
+        if ( isPaste ) {
+            this.focus();
+        }
     } catch ( error ) {
         this.didError( error );
     }
@@ -4012,12 +4190,13 @@ proto.makeLink = function ( url, attributes ) {
             this._doc.createTextNode( url.slice( protocolEnd ) )
         );
     }
-
-    if ( !attributes ) {
-        attributes = {};
-    }
-    mergeObjects( attributes, this._config.tagAttributes.a );
-    attributes.href = url;
+    attributes = mergeObjects(
+        mergeObjects({
+            href: url
+        }, attributes, true ),
+        this._config.tagAttributes.a,
+        false
+    );
 
     this.changeFormat({
         tag: 'A',
@@ -4035,27 +4214,27 @@ proto.removeLink = function () {
 };
 
 proto.setFontFace = function ( name ) {
-    this.changeFormat({
+    this.changeFormat( name ? {
         tag: 'SPAN',
         attributes: {
             'class': 'font',
             style: 'font-family: ' + name + ', sans-serif;'
         }
-    }, {
+    } : null, {
         tag: 'SPAN',
         attributes: { 'class': 'font' }
     });
     return this.focus();
 };
 proto.setFontSize = function ( size ) {
-    this.changeFormat({
+    this.changeFormat( size ? {
         tag: 'SPAN',
         attributes: {
             'class': 'size',
             style: 'font-size: ' +
                 ( typeof size === 'number' ? size + 'px' : size )
         }
-    }, {
+    } : null, {
         tag: 'SPAN',
         attributes: { 'class': 'size' }
     });
@@ -4063,13 +4242,13 @@ proto.setFontSize = function ( size ) {
 };
 
 proto.setTextColour = function ( colour ) {
-    this.changeFormat({
+    this.changeFormat( colour ? {
         tag: 'SPAN',
         attributes: {
             'class': 'colour',
             style: 'color:' + colour
         }
-    }, {
+    } : null, {
         tag: 'SPAN',
         attributes: { 'class': 'colour' }
     });
@@ -4077,13 +4256,13 @@ proto.setTextColour = function ( colour ) {
 };
 
 proto.setHighlightColour = function ( colour ) {
-    this.changeFormat({
+    this.changeFormat( colour ? {
         tag: 'SPAN',
         attributes: {
             'class': 'highlight',
             style: 'background-color:' + colour
         }
-    }, {
+    } : colour, {
         tag: 'SPAN',
         attributes: { 'class': 'highlight' }
     });
@@ -4170,7 +4349,7 @@ proto.removeAllFormatting = function ( range ) {
     var cleanNodes = doc.createDocumentFragment();
     var nodeAfterSplit = split( endContainer, endOffset, stopNode, root );
     var nodeInSplit = split( startContainer, startOffset, stopNode, root );
-    var nextNode, _range, childNodes;
+    var nextNode, childNodes;
 
     // Then replace contents in split with a cleaned version of the same:
     // blocks become default blocks, text and leaf nodes survive, everything
@@ -4197,15 +4376,9 @@ proto.removeAllFormatting = function ( range ) {
     }
 
     // Merge text nodes at edges, if possible
-    _range = {
-        startContainer: stopNode,
-        startOffset: startOffset,
-        endContainer: stopNode,
-        endOffset: endOffset
-    };
-    mergeInlines( stopNode, _range );
-    range.setStart( _range.startContainer, _range.startOffset );
-    range.setEnd( _range.endContainer, _range.endOffset );
+    range.setStart( stopNode, startOffset );
+    range.setEnd( stopNode, endOffset );
+    mergeInlines( stopNode, range );
 
     // And move back down the tree
     moveRangeBoundariesDownTree( range );
@@ -4225,6 +4398,32 @@ proto.removeList = command( 'modifyBlocks', removeList );
 
 proto.increaseListLevel = command( 'modifyBlocks', increaseListLevel );
 proto.decreaseListLevel = command( 'modifyBlocks', decreaseListLevel );
+
+// Range.js exports
+Squire.getNodeBefore = getNodeBefore;
+Squire.getNodeAfter = getNodeAfter;
+Squire.insertNodeInRange = insertNodeInRange;
+Squire.extractContentsOfRange = extractContentsOfRange;
+Squire.deleteContentsOfRange = deleteContentsOfRange;
+Squire.insertTreeFragmentIntoRange = insertTreeFragmentIntoRange;
+Squire.isNodeContainedInRange = isNodeContainedInRange;
+Squire.moveRangeBoundariesDownTree = moveRangeBoundariesDownTree;
+Squire.moveRangeBoundariesUpTree = moveRangeBoundariesUpTree;
+Squire.getStartBlockOfRange = getStartBlockOfRange;
+Squire.getEndBlockOfRange = getEndBlockOfRange;
+Squire.contentWalker = contentWalker;
+Squire.rangeDoesStartAtBlockBoundary = rangeDoesStartAtBlockBoundary;
+Squire.rangeDoesEndAtBlockBoundary = rangeDoesEndAtBlockBoundary;
+Squire.expandRangeToBlockBoundaries = expandRangeToBlockBoundaries;
+
+// Clipboard.js exports
+Squire.onPaste = onPaste;
+
+// Editor.js exports
+Squire.addLinks = addLinks;
+Squire.splitBlock = splitBlock;
+Squire.startSelectionId = startSelectionId;
+Squire.endSelectionId = endSelectionId;
 
 if ( typeof exports === 'object' ) {
     module.exports = Squire;
