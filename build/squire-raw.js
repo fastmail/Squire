@@ -206,7 +206,10 @@ function isLeaf ( node ) {
         !!leafNodeNames[ node.nodeName ];
 }
 function isInline ( node ) {
-    return inlineNodeNames.test( node.nodeName );
+    return inlineNodeNames.test( node.nodeName ) &&
+        // Malformed HTML can have block tags inside inline tags. Need to treat
+        // these as containers rather than inline. See #239.
+        ( node.nodeType === TEXT_NODE || every( node.childNodes, isInline ) );
 }
 function isBlock ( node ) {
     var type = node.nodeType;
@@ -1033,6 +1036,7 @@ var moveRangeBoundariesDownTree = function ( range ) {
         startOffset = range.startOffset,
         endContainer = range.endContainer,
         endOffset = range.endOffset,
+        maySkipBR = true,
         child;
 
     while ( startContainer.nodeType !== TEXT_NODE ) {
@@ -1047,6 +1051,11 @@ var moveRangeBoundariesDownTree = function ( range ) {
         while ( endContainer.nodeType !== TEXT_NODE ) {
             child = endContainer.childNodes[ endOffset - 1 ];
             if ( !child || isLeaf( child ) ) {
+                if ( maySkipBR && child && child.nodeName === 'BR' ) {
+                    endOffset -= 1;
+                    maySkipBR = false;
+                    continue;
+                }
                 break;
             }
             endContainer = child;
@@ -1079,6 +1088,7 @@ var moveRangeBoundariesUpTree = function ( range, common ) {
         startOffset = range.startOffset,
         endContainer = range.endContainer,
         endOffset = range.endOffset,
+        maySkipBR = true,
         parent;
 
     if ( !common ) {
@@ -1091,8 +1101,18 @@ var moveRangeBoundariesUpTree = function ( range, common ) {
         startContainer = parent;
     }
 
-    while ( endContainer !== common &&
-            endOffset === getLength( endContainer ) ) {
+    while ( true ) {
+        if ( maySkipBR &&
+                endContainer.nodeType !== TEXT_NODE &&
+                endContainer.childNodes[ endOffset ] &&
+                endContainer.childNodes[ endOffset ].nodeName === 'BR' ) {
+            endOffset += 1;
+            maySkipBR = false;
+        }
+        if ( endContainer === common ||
+                endOffset !== getLength( endContainer ) ) {
+            break;
+        }
         parent = endContainer.parentNode;
         endOffset = indexOf.call( parent.childNodes, endContainer ) + 1;
         endContainer = parent;
@@ -1111,7 +1131,7 @@ var getStartBlockOfRange = function ( range, root ) {
     // If inline, get the containing block.
     if ( isInline( container ) ) {
         block = getPreviousBlock( container, root );
-    } else if ( isBlock( container ) ) {
+    } else if ( container !== root && isBlock( container ) ) {
         block = container;
     } else {
         block = getNodeBefore( container, range.startOffset );
@@ -1130,7 +1150,7 @@ var getEndBlockOfRange = function ( range, root ) {
     // If inline, get the containing block.
     if ( isInline( container ) ) {
         block = getPreviousBlock( container, root );
-    } else if ( isBlock( container ) ) {
+    } else if ( container !== root && isBlock( container ) ) {
         block = container;
     } else {
         block = getNodeAfter( container, range.endOffset );
@@ -1616,12 +1636,9 @@ var keyHandlers = {
             while ( parent = node.parentNode ) {
                 // If we find a UL or OL (so are in a list, node must be an LI)
                 if ( parent.nodeName === 'UL' || parent.nodeName === 'OL' ) {
-                    // AND the LI is not the first in the list
-                    if ( node.previousSibling ) {
-                        // Then increase the list level
-                        event.preventDefault();
-                        self.modifyBlocks( increaseListLevel, range );
-                    }
+                    // Then increase the list level
+                    event.preventDefault();
+                    self.modifyBlocks( increaseListLevel, range );
                     break;
                 }
                 node = parent;
@@ -1966,7 +1983,7 @@ var cleanTree = function cleanTree ( node, preserveWS ) {
                         nodeName = sibling.nodeName;
                         if ( nodeName === 'IMG' ||
                                 ( nodeName === '#text' &&
-                                    /\S/.test( sibling.data ) ) ) {
+                                    notWS.test( sibling.data ) ) ) {
                             break;
                         }
                         if ( !isInline( sibling ) ) {
@@ -1974,14 +1991,14 @@ var cleanTree = function cleanTree ( node, preserveWS ) {
                             break;
                         }
                     }
-                    data = data.replace( /^\s+/g, sibling ? ' ' : '' );
+                    data = data.replace( /^[ \t\r\n]+/g, sibling ? ' ' : '' );
                 }
                 if ( endsWithWS ) {
                     walker.currentNode = child;
                     while ( sibling = walker.nextNode() ) {
                         if ( nodeName === 'IMG' ||
                                 ( nodeName === '#text' &&
-                                    /\S/.test( sibling.data ) ) ) {
+                                    notWS.test( sibling.data ) ) ) {
                             break;
                         }
                         if ( !isInline( sibling ) ) {
@@ -1989,7 +2006,7 @@ var cleanTree = function cleanTree ( node, preserveWS ) {
                             break;
                         }
                     }
-                    data = data.replace( /\s+$/g, sibling ? ' ' : '' );
+                    data = data.replace( /[ \t\r\n]+$/g, sibling ? ' ' : '' );
                 }
                 if ( data ) {
                     child.data = data;
@@ -2118,7 +2135,7 @@ var onCopy = function ( event ) {
     var range = this.getSelection();
     var node = this.createElement( 'div' );
     var root = this._root;
-    var startBlock, contents, parent, newContents;
+    var startBlock, endBlock, copyRoot, contents, parent, newContents;
 
     // Edge only seems to support setting plain text as of 2016-03-11.
     // Mobile Safari flat out doesn't work:
@@ -2126,23 +2143,23 @@ var onCopy = function ( event ) {
     if ( !isEdge && !isIOS && clipboardData ) {
         range = range.cloneRange();
         startBlock = getStartBlockOfRange( range, root );
-        if ( startBlock === getEndBlockOfRange( range, root ) ) {
-            // Copy all inline formatting, but that's it.
-            moveRangeBoundariesDownTree( range );
-            moveRangeBoundariesUpTree( range, startBlock );
-            contents = range.cloneContents();
-        } else {
-            moveRangeBoundariesUpTree( range, root );
-            contents = range.cloneContents();
-            parent = range.commonAncestorContainer;
-            while ( parent && parent !== root ) {
-                newContents = parent.cloneNode( false );
-                newContents.appendChild( contents );
-                contents = newContents;
-                parent = parent.parentNode;
-            }
+        endBlock = getEndBlockOfRange( range, root );
+        copyRoot = ( startBlock === endBlock ) ? startBlock : root;
+        moveRangeBoundariesDownTree( range );
+        moveRangeBoundariesUpTree( range, copyRoot );
+        contents = range.cloneContents();
+        parent = range.commonAncestorContainer;
+        if ( parent.nodeType === TEXT_NODE ) {
+            parent = parent.parentNode;
+        }
+        while ( parent && parent !== copyRoot ) {
+            newContents = parent.cloneNode( false );
+            newContents.appendChild( contents );
+            contents = newContents;
+            parent = parent.parentNode;
         }
         node.appendChild( contents );
+
         clipboardData.setData( 'text/html', node.innerHTML );
         clipboardData.setData( 'text/plain',
             node.innerText || node.textContent );
@@ -3706,9 +3723,9 @@ var makeList = function ( self, frag, type ) {
             }
 
             // Have we replaced the previous block with a new <ul>/<ol>?
-            if ( ( prev = node.previousSibling ) &&
-                    prev.nodeName === type ) {
+            if ( ( prev = node.previousSibling ) && prev.nodeName === type ) {
                 prev.appendChild( newLi );
+                detach( node );
             }
             // Otherwise, replace this block with the <ul>/<ol>
             else {
@@ -3719,7 +3736,8 @@ var makeList = function ( self, frag, type ) {
                     ])
                 );
             }
-            newLi.appendChild( node );
+            newLi.appendChild( empty( node ) );
+            walker.currentNode = newLi;
         } else {
             node = node.parentNode.parentNode;
             tag = node.nodeName;
@@ -3744,18 +3762,26 @@ var makeOrderedList = function ( frag ) {
 
 var removeList = function ( frag ) {
     var lists = frag.querySelectorAll( 'UL, OL' ),
-        i, l, ll, list, listFrag, children, child;
+        items =  frag.querySelectorAll( 'LI' ),
+        root = this._root,
+        i, l, list, listFrag, item;
     for ( i = 0, l = lists.length; i < l; i += 1 ) {
         list = lists[i];
         listFrag = empty( list );
-        children = listFrag.childNodes;
-        ll = children.length;
-        while ( ll-- ) {
-            child = children[ll];
-            replaceWith( child, empty( child ) );
-        }
-        fixContainer( listFrag, this._root );
+        fixContainer( listFrag, root );
         replaceWith( list, listFrag );
+    }
+
+    for ( i = 0, l = items.length; i < l; i += 1 ) {
+        item = items[i];
+        if ( isBlock( item ) ) {
+            replaceWith( item,
+                this.createDefaultBlock([ empty( item ) ])
+            );
+        } else {
+            fixContainer( item, root );
+            replaceWith( item, empty( item ) );
+        }
     }
     return frag;
 };
@@ -3765,7 +3791,6 @@ var increaseListLevel = function ( frag ) {
         i, l, item,
         type, newParent,
         tagAttributes = this._config.tagAttributes,
-        listItemAttrs = tagAttributes.li,
         listAttrs;
     for ( i = 0, l = items.length; i < l; i += 1 ) {
         item = items[i];
@@ -3776,11 +3801,11 @@ var increaseListLevel = function ( frag ) {
             if ( !newParent || !( newParent = newParent.lastChild ) ||
                     newParent.nodeName !== type ) {
                 listAttrs = tagAttributes[ type.toLowerCase() ];
+                newParent = this.createElement( type, listAttrs );
+
                 replaceWith(
                     item,
-                    this.createElement( 'LI', listItemAttrs, [
-                        newParent = this.createElement( type, listAttrs )
-                    ])
+                    newParent
                 );
             }
             newParent.appendChild( item );
@@ -3803,13 +3828,23 @@ var decreaseListLevel = function ( frag ) {
         if ( item.previousSibling ) {
             parent = split( parent, item, newParent, root );
         }
-        while ( node ) {
-            next = node.nextSibling;
-            if ( isContainer( node ) ) {
-                break;
+
+        // if the new parent is another list then we simply move the node
+        // e.g. `ul > ul > li` becomes `ul > li`
+        if ( /^[OU]L$/.test( newParent.nodeName ) ) {
+            newParent.insertBefore( item, parent );
+            if ( !parent.firstChild ) {
+                newParent.removeChild( parent );
             }
-            newParent.insertBefore( node, parent );
-            node = next;
+        } else {
+            while ( node ) {
+                next = node.nextSibling;
+                if ( isContainer( node ) ) {
+                    break;
+                }
+                newParent.insertBefore( node, parent );
+                node = next;
+            }
         }
         if ( newParent.nodeName === 'LI' && first.previousSibling ) {
             split( newParent, first, newParent.parentNode, root );
