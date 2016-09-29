@@ -30,7 +30,7 @@ var styleToSemantic = {
         }
     },
     fontWeight: {
-        regexp: /^bold/i,
+        regexp: /^bold|^700/i,
         replace: function ( doc ) {
             return createElement( doc, 'B' );
         }
