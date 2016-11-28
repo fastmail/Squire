@@ -62,7 +62,8 @@ pass a set of attributes to apply to each default block:
 
     var editor = new Squire( document, {
         blockTag: 'P',
-        blockAttributes: { style: 'font-size: 16px;' }
+        blockAttributes: { style: 'font-size: 16px;' },
+        readOnly: false // default is true
     })
 
 If using the simple setup, call `editor.setConfig(…);` with your

@@ -146,7 +146,7 @@ function Squire ( root, config ) {
         };
     }
 
-    root.setAttribute( 'contenteditable', 'true' );
+    root.setAttribute( 'contenteditable', !(config.readOnly || false) );
 
     // Remove Firefox's built-in controls
     try {
