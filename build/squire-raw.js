@@ -47,6 +47,7 @@ var cantFocusEmptyTextNodes = isIElt11 || isWebKit;
 var losesSelectionOnBlur = isIElt11;
 
 var canObserveMutations = typeof MutationObserver !== 'undefined';
+var canWeakMap = typeof WeakMap !== 'undefined';
 
 // Use [^ \t\r\n] instead of \S so that nbsp does not count as white-space
 var notWS = /[^ \t\r\n]/;
@@ -201,25 +202,53 @@ function every ( nodeList, fn ) {
 
 // ---
 
+var UNKNOWN = 0;
+var INLINE = 1;
+var BLOCK = 2;
+var CONTAINER = 3;
+
+var nodeCategoryCache = canWeakMap ? new WeakMap() : null;
+
 function isLeaf ( node ) {
-    return node.nodeType === ELEMENT_NODE &&
-        !!leafNodeNames[ node.nodeName ];
+    return node.nodeType === ELEMENT_NODE && !!leafNodeNames[ node.nodeName ];
 }
-function isInline ( node ) {
-    return inlineNodeNames.test( node.nodeName ) &&
+function getNodeCategory ( node ) {
+    switch ( node.nodeType ) {
+    case TEXT_NODE:
+        return INLINE;
+    case ELEMENT_NODE:
+    case DOCUMENT_FRAGMENT_NODE:
+        if ( canWeakMap && nodeCategoryCache.has( node ) ) {
+            return nodeCategoryCache.get( node );
+        }
+        break;
+    default:
+        return UNKNOWN;
+    }
+
+    var nodeCategory;
+    if ( !every( node.childNodes, isInline ) ) {
         // Malformed HTML can have block tags inside inline tags. Need to treat
         // these as containers rather than inline. See #239.
-        ( node.nodeType === TEXT_NODE || every( node.childNodes, isInline ) );
+        nodeCategory = CONTAINER;
+    } else if ( inlineNodeNames.test( node.nodeName ) ) {
+        nodeCategory = INLINE;
+    } else {
+        nodeCategory = BLOCK;
+    }
+    if ( canWeakMap ) {
+        nodeCategoryCache.set( node, nodeCategory );
+    }
+    return nodeCategory;
+}
+function isInline ( node ) {
+    return getNodeCategory( node ) === INLINE;
 }
 function isBlock ( node ) {
-    var type = node.nodeType;
-    return ( type === ELEMENT_NODE || type === DOCUMENT_FRAGMENT_NODE ) &&
-        !isInline( node ) && every( node.childNodes, isInline );
+    return getNodeCategory( node ) === BLOCK;
 }
 function isContainer ( node ) {
-    var type = node.nodeType;
-    return ( type === ELEMENT_NODE || type === DOCUMENT_FRAGMENT_NODE ) &&
-        !isInline( node ) && !isBlock( node );
+    return getNodeCategory( node ) === CONTAINER;
 }
 
 function getBlockWalker ( node, root ) {
@@ -374,13 +403,14 @@ function fixCursor ( node, root ) {
     // unfocussable if they have no content. To remedy this, a <BR> must be
     // inserted. In Opera and IE, we just need a textnode in order for the
     // cursor to appear.
-    var doc = node.ownerDocument,
-        originalNode = node,
-        fixer, child;
+    var self = root.__squire__;
+    var doc = node.ownerDocument;
+    var originalNode = node;
+    var fixer, child;
 
     if ( node === root ) {
         if ( !( child = node.firstChild ) || child.nodeName === 'BR' ) {
-            fixer = getSquireInstance( doc ).createDefaultBlock();
+            fixer = self.createDefaultBlock();
             if ( child ) {
                 node.replaceChild( fixer, child );
             }
@@ -406,7 +436,7 @@ function fixCursor ( node, root ) {
         if ( !child ) {
             if ( cantFocusEmptyTextNodes ) {
                 fixer = doc.createTextNode( ZWS );
-                getSquireInstance( doc )._didAddZWS();
+                self._didAddZWS();
             } else {
                 fixer = doc.createTextNode( '' );
             }
@@ -442,7 +472,7 @@ function fixCursor ( node, root ) {
         try {
             node.appendChild( fixer );
         } catch ( error ) {
-            getSquireInstance( doc ).didError({
+            self.didError({
                 name: 'Squire: fixCursor – ' + error,
                 message: 'Parent: ' + node.nodeName + '/' + node.innerHTML +
                     ' appendChild: ' + fixer.nodeName
@@ -455,11 +485,11 @@ function fixCursor ( node, root ) {
 
 // Recursively examine container nodes and wrap any inline children.
 function fixContainer ( container, root ) {
-    var children = container.childNodes,
-        doc = container.ownerDocument,
-        wrapper = null,
-        i, l, child, isBR,
-        config = getSquireInstance( doc )._config;
+    var children = container.childNodes;
+    var doc = container.ownerDocument;
+    var wrapper = null;
+    var i, l, child, isBR;
+    var config = root.__squire__._config;
 
     for ( i = 0, l = children.length; i < l; i += 1 ) {
         child = children[i];
@@ -867,7 +897,7 @@ var deleteContentsOfRange = function ( range, root ) {
         fixCursor( root, root );
         range.selectNodeContents( root.firstChild );
     } else {
-        range.collapse( false );
+        range.collapse( range.endContainer === root ? true : false );
     }
     return frag;
 };
@@ -1865,7 +1895,7 @@ var stylesRewriters = {
             newTreeBottom, newTreeTop;
         if ( face ) {
             fontSpan = createElement( doc, 'SPAN', {
-                'class': 'font',
+                'class': FONT_FAMILY_CLASS,
                 style: 'font-family:' + face
             });
             newTreeTop = fontSpan;
@@ -1873,7 +1903,7 @@ var stylesRewriters = {
         }
         if ( size ) {
             sizeSpan = createElement( doc, 'SPAN', {
-                'class': 'size',
+                'class': FONT_SIZE_CLASS,
                 style: 'font-size:' + fontSizes[ size ] + 'px'
             });
             if ( !newTreeTop ) {
@@ -1889,7 +1919,7 @@ var stylesRewriters = {
                 colour = '#' + colour;
             }
             colourSpan = createElement( doc, 'SPAN', {
-                'class': 'colour',
+                'class': COLOUR_CLASS,
                 style: 'color:' + colour
             });
             if ( !newTreeTop ) {
@@ -1909,7 +1939,7 @@ var stylesRewriters = {
     },
     TT: function ( node, parent ) {
         var el = createElement( node.ownerDocument, 'SPAN', {
-            'class': 'font',
+            'class': FONT_FAMILY_CLASS,
             style: 'font-family:menlo,consolas,"courier new",monospace'
         });
         parent.replaceChild( el, node );
@@ -2155,7 +2185,7 @@ var onCopy = function ( event ) {
         range = range.cloneRange();
         startBlock = getStartBlockOfRange( range, root );
         endBlock = getEndBlockOfRange( range, root );
-        copyRoot = ( startBlock === endBlock ) ? startBlock : root;
+        copyRoot = ( ( startBlock === endBlock ) && startBlock ) || root;
         moveRangeBoundariesDownTree( range );
         moveRangeBoundariesUpTree( range, copyRoot );
         contents = range.cloneContents();
@@ -2234,7 +2264,7 @@ var onPaste = function ( event ) {
                 });
             }
         } else if ( plainItem ) {
-            item.getAsString( function ( text ) {
+            plainItem.getAsString( function ( text ) {
                 self.insertPlainText( text, true );
             });
         }
@@ -2363,20 +2393,6 @@ var onDrop = function ( event ) {
         this.saveUndoState();
     }
 };
-
-var instances = [];
-
-function getSquireInstance ( doc ) {
-    var l = instances.length,
-        instance;
-    while ( l-- ) {
-        instance = instances[l];
-        if ( instance._doc === doc ) {
-            return instance;
-        }
-    }
-    return null;
-}
 
 function mergeObjects ( base, extras, mayOverride ) {
     var prop, value;
@@ -2518,7 +2534,7 @@ function Squire ( root, config ) {
         doc.execCommand( 'enableInlineTableEditing', false, 'false' );
     } catch ( error ) {}
 
-    instances.push( this );
+    root.__squire__ = this;
 
     // Need to register instance before calling setHTML, so that the fixCursor
     // function can lookup any default block tag options set.
@@ -2526,6 +2542,15 @@ function Squire ( root, config ) {
 }
 
 var proto = Squire.prototype;
+
+var sanitizeToDOMFragment = function ( html/*, isPaste*/ ) {
+    var frag = DOMPurify.sanitize( html, {
+        WHOLE_DOCUMENT: false,
+        RETURN_DOM: true,
+        RETURN_DOM_FRAGMENT: true
+    });
+    return doc.importNode( frag, true );
+};
 
 proto.setConfig = function ( config ) {
     config = mergeObjects({
@@ -2542,7 +2567,13 @@ proto.setConfig = function ( config ) {
         undo: {
             documentSizeThreshold: -1, // -1 means no threshold
             undoLimit: -1 // -1 means no limit
-        }
+        },
+        isInsertedHTMLSanitized: true,
+        isSetHTMLSanitized: true,
+        sanitizeToDOMFragment:
+            typeof DOMPurify !== 'undefined' && DOMPurify.isSupported ?
+            sanitizeToDOMFragment : null
+
     }, config, true );
 
     // Users may specify block tag in lower case
@@ -2592,6 +2623,7 @@ proto.modifyDocument = function ( modificationCallback ) {
             characterData: true,
             subtree: true
         });
+        this._ignoreChange = false;
     }
 };
 
@@ -2653,7 +2685,6 @@ proto.fireEvent = function ( type, event ) {
 };
 
 proto.destroy = function () {
-    var l = instances.length;
     var events = this._events;
     var type;
 
@@ -2663,11 +2694,7 @@ proto.destroy = function () {
     if ( this._mutation ) {
         this._mutation.disconnect();
     }
-    while ( l-- ) {
-        if ( instances[l] === this ) {
-            instances.splice( l, 1 );
-        }
-    }
+    delete this._root.__squire__;
 
     // Destroy undo stack
     this._undoIndex = -1;
@@ -3109,6 +3136,9 @@ proto._keyUpDetectChange = function ( event ) {
 };
 
 proto._docWasChanged = function () {
+    if ( canWeakMap ) {
+        nodeCategoryCache = new WeakMap();
+    }
     if ( this._ignoreAllChanges ) {
         return;
     }
@@ -3934,14 +3964,21 @@ proto.getHTML = function ( withBookMark ) {
 };
 
 proto.setHTML = function ( html ) {
-    var frag = this._doc.createDocumentFragment();
-    var div = this.createElement( 'DIV' );
+    var config = this._config;
+    var sanitizeToDOMFragment = config.isSetHTMLSanitized ?
+            config.sanitizeToDOMFragment : null;
     var root = this._root;
-    var child;
+    var div, frag, child;
 
     // Parse HTML into DOM tree
-    div.innerHTML = html;
-    frag.appendChild( empty( div ) );
+    if ( typeof sanitizeToDOMFragment === 'function' ) {
+        frag = sanitizeToDOMFragment( html, false );
+    } else {
+        div = this.createElement( 'DIV' );
+        div.innerHTML = html;
+        frag = this._doc.createDocumentFragment();
+        frag.appendChild( empty( div ) );
+    }
 
     cleanTree( frag );
     cleanupBRs( frag, root );
@@ -4076,6 +4113,9 @@ var addLinks = function ( frag, root, self ) {
 // insertTreeFragmentIntoRange will delete the selection so that it is replaced
 // by the html being inserted.
 proto.insertHTML = function ( html, isPaste ) {
+    var config = this._config;
+    var sanitizeToDOMFragment = config.isInsertedHTMLSanitized ?
+            config.sanitizeToDOMFragment : null;
     var range = this.getSelection();
     var doc = this._doc;
     var startFragmentIndex, endFragmentIndex;
@@ -4084,13 +4124,8 @@ proto.insertHTML = function ( html, isPaste ) {
     // Edge doesn't just copy the fragment, but includes the surrounding guff
     // including the full <head> of the page. Need to strip this out. If
     // available use DOMPurify to parse and sanitise.
-    if ( typeof DOMPurify !== 'undefined' && DOMPurify.isSupported ) {
-        frag = DOMPurify.sanitize( html, {
-            WHOLE_DOCUMENT: false,
-            RETURN_DOM: true,
-            RETURN_DOM_FRAGMENT: true
-        });
-        frag = doc.importNode( frag, true );
+    if ( typeof sanitizeToDOMFragment === 'function' ) {
+        frag = sanitizeToDOMFragment( html, isPaste );
     } else {
         if ( isPaste ) {
             startFragmentIndex = html.indexOf( '<!--StartFragment-->' );
@@ -4122,12 +4157,12 @@ proto.insertHTML = function ( html, isPaste ) {
 
         addLinks( frag, frag, this );
         cleanTree( frag );
-        cleanupBRs( frag, null );
+        cleanupBRs( frag, root );
         removeEmptyInlines( frag );
         frag.normalize();
 
         while ( node = getNextBlock( node, frag ) ) {
-            fixCursor( node, null );
+            fixCursor( node, root );
         }
 
         if ( isPaste ) {
@@ -4264,12 +4299,12 @@ proto.setFontFace = function ( name ) {
     this.changeFormat( name ? {
         tag: 'SPAN',
         attributes: {
-            'class': 'font',
+            'class': FONT_FAMILY_CLASS,
             style: 'font-family: ' + name + ', sans-serif;'
         }
     } : null, {
         tag: 'SPAN',
-        attributes: { 'class': 'font' }
+        attributes: { 'class': FONT_FAMILY_CLASS }
     });
     return this.focus();
 };
@@ -4277,13 +4312,13 @@ proto.setFontSize = function ( size ) {
     this.changeFormat( size ? {
         tag: 'SPAN',
         attributes: {
-            'class': 'size',
+            'class': FONT_SIZE_CLASS,
             style: 'font-size: ' +
                 ( typeof size === 'number' ? size + 'px' : size )
         }
     } : null, {
         tag: 'SPAN',
-        attributes: { 'class': 'size' }
+        attributes: { 'class': FONT_SIZE_CLASS }
     });
     return this.focus();
 };
@@ -4292,12 +4327,12 @@ proto.setTextColour = function ( colour ) {
     this.changeFormat( colour ? {
         tag: 'SPAN',
         attributes: {
-            'class': 'colour',
+            'class': COLOUR_CLASS,
             style: 'color:' + colour
         }
     } : null, {
         tag: 'SPAN',
-        attributes: { 'class': 'colour' }
+        attributes: { 'class': COLOUR_CLASS }
     });
     return this.focus();
 };
@@ -4306,33 +4341,42 @@ proto.setHighlightColour = function ( colour ) {
     this.changeFormat( colour ? {
         tag: 'SPAN',
         attributes: {
-            'class': 'highlight',
+            'class': HIGHLIGHT_CLASS,
             style: 'background-color:' + colour
         }
     } : colour, {
         tag: 'SPAN',
-        attributes: { 'class': 'highlight' }
+        attributes: { 'class': HIGHLIGHT_CLASS }
     });
     return this.focus();
 };
 
 proto.setTextAlignment = function ( alignment ) {
     this.forEachBlock( function ( block ) {
-        block.className = ( block.className
+        var className = block.className
             .split( /\s+/ )
             .filter( function ( klass ) {
-                return !( /align/.test( klass ) );
+                return !!klass && !/^align/.test( klass );
             })
-            .join( ' ' ) +
-            ' align-' + alignment ).trim();
-        block.style.textAlign = alignment;
+            .join( ' ' );
+        if ( alignment ) {
+            block.className = className + ' align-' + alignment;
+            block.style.textAlign = alignment;
+        } else {
+            block.className = className;
+            block.style.textAlign = '';
+        }
     }, true );
     return this.focus();
 };
 
 proto.setTextDirection = function ( direction ) {
     this.forEachBlock( function ( block ) {
-        block.dir = direction;
+        if ( direction ) {
+            block.dir = direction;
+        } else {
+            block.removeAttribute( 'dir' );
+        }
     }, true );
     return this.focus();
 };
@@ -4445,6 +4489,21 @@ proto.removeList = command( 'modifyBlocks', removeList );
 
 proto.increaseListLevel = command( 'modifyBlocks', increaseListLevel );
 proto.decreaseListLevel = command( 'modifyBlocks', decreaseListLevel );
+
+// Node.js exports
+Squire.isInline = isInline;
+Squire.isBlock = isBlock;
+Squire.isContainer = isContainer;
+Squire.getBlockWalker = getBlockWalker;
+Squire.getPreviousBlock = getPreviousBlock;
+Squire.getNextBlock = getNextBlock;
+Squire.areAlike = areAlike;
+Squire.hasTagAttributes = hasTagAttributes;
+Squire.getNearest = getNearest;
+Squire.isOrContains = isOrContains;
+Squire.detach = detach;
+Squire.replaceWith = replaceWith;
+Squire.empty = empty;
 
 // Range.js exports
 Squire.getNodeBefore = getNodeBefore;
