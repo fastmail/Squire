@@ -28,10 +28,10 @@ var win = doc.defaultView;
 
 var ua = navigator.userAgent;
 
+var isAndroid = /Android/.test( ua );
 var isIOS = /iP(?:ad|hone|od)/.test( ua );
 var isMac = /Mac OS X/.test( ua );
-
-var isAndroid = /Android/.test( ua );
+var isWin = /Windows NT/.test( ua );
 
 var isGecko = /Gecko\//.test( ua );
 var isIElt11 = /Trident\/[456]\./.test( ua );
@@ -2131,11 +2131,29 @@ var cleanupBRs = function ( node, root ) {
 // DOM node into the document to ensure the text part is correct.
 var setClipboardData = function ( clipboardData, node ) {
     var body = node.ownerDocument.body;
+    var html, text;
+
+    // Firefox will add an extra new line for BRs at the end of block when
+    // calculating innerText, even though they don't actually affect display.
+    // So we need to remove them first.
+    cleanupBRs( node, root );
+
     node.setAttribute( 'style',
         'position:fixed;overflow:hidden;bottom:100%;right:100%;' );
     body.appendChild( node );
-    clipboardData.setData( 'text/html', node.innerHTML );
-    clipboardData.setData( 'text/plain', node.innerText || node.textContent );
+    html = node.innerHTML;
+    text = node.innerText || node.textContent;
+
+    // Firefox (and others?) returns unix line endings (\n) even on Windows.
+    // If on Windows, normalise to \r\n, since Notepad and some other crappy
+    // apps do not understand just \n.
+    if ( isWin ) {
+        text = text.replace( /\r?\n/g, '\r\n' );
+    }
+
+    clipboardData.setData( 'text/html', html );
+    clipboardData.setData( 'text/plain', text );
+
     body.removeChild( node );
 };
 
