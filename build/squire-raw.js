@@ -2078,15 +2078,15 @@ var notWSTextNode = function ( node ) {
         notWS.test( node.data );
 };
 var isLineBreak = function ( br ) {
-    var block = br.parentNode,
-        walker;
+    var block = br.parentNode;
+    var walker;
     while ( isInline( block ) ) {
         block = block.parentNode;
     }
     walker = new TreeWalker(
         block, SHOW_ELEMENT|SHOW_TEXT, notWSTextNode );
     walker.currentNode = br;
-    return !!walker.nextNode();
+    return !!walker.nextNode() || !walker.previousNode();
 };
 
 // <br> elements are treated specially, and differently depending on the
