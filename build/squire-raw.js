@@ -2129,7 +2129,7 @@ var cleanupBRs = function ( node, root ) {
 // The (non-standard but supported enough) innerText property is based on the
 // render tree in Firefox and possibly other browsers, so we must insert the
 // DOM node into the document to ensure the text part is correct.
-var setClipboardData = function ( clipboardData, node ) {
+var setClipboardData = function ( clipboardData, node, root ) {
     var body = node.ownerDocument.body;
     var html, text;
 
@@ -2173,7 +2173,7 @@ var onCut = function ( event ) {
     if ( !isEdge && !isIOS && clipboardData ) {
         moveRangeBoundariesUpTree( range, root );
         node.appendChild( deleteContentsOfRange( range, root ) );
-        setClipboardData( clipboardData, node );
+        setClipboardData( clipboardData, node, root );
         event.preventDefault();
     } else {
         setTimeout( function () {
@@ -2219,7 +2219,7 @@ var onCopy = function ( event ) {
         }
         node.appendChild( contents );
 
-        setClipboardData( clipboardData, node );
+        setClipboardData( clipboardData, node, root );
         event.preventDefault();
     }
 };
