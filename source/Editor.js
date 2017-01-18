@@ -601,7 +601,7 @@ proto._updatePath = function ( range, force ) {
         this._lastFocusNode = focus;
         newPath = ( anchor && focus ) ? ( anchor === focus ) ?
             getPath( focus, this._root ) : '(selection)' : '';
-        if ( this._path !== newPath ) {
+        if ( !force && this._path !== newPath ) {
             this._path = newPath;
             this.fireEvent( 'pathChange', { path: newPath } );
         }
