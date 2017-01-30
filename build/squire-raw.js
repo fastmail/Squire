@@ -2340,8 +2340,7 @@ var onPaste = function ( event ) {
     if ( !isEdge && types && (
             indexOf.call( types, 'text/html' ) > -1 || (
                 !isGecko &&
-                indexOf.call( types, 'text/plain' ) > -1 &&
-                indexOf.call( types, 'text/rtf' ) < 0 )
+                indexOf.call( types, 'text/plain' ) > -1 )
             )) {
         event.preventDefault();
         // Abiword on Linux copies a plain text and html version, but the HTML
@@ -2349,7 +2348,7 @@ var onPaste = function ( event ) {
         // insert plain text instead. On iOS, Facebook (and possibly other
         // apps?) copy links as type text/uri-list, but also insert a **blank**
         // text/plain item onto the clipboard. Why? Who knows.
-        if ( !choosePlain && ( data = clipboardData.getData( 'text/html' ) ) ) {
+        if ( !choosePlain && !this._config.usePlainTextOnPaste && ( data = clipboardData.getData( 'text/html' ) ) ) {
             this.insertHTML( data, true );
         } else if (
                 ( data = clipboardData.getData( 'text/plain' ) ) ||
