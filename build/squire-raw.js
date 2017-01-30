@@ -2286,7 +2286,7 @@ var onPaste = function ( event ) {
         while ( l-- ) {
             item = items[l];
             type = item.type;
-            if ( !choosePlain && type === 'text/html' ) {
+            if ( !choosePlain && type === 'text/html' && !this._config.usePlainTextOnPaste ) {
                 /*jshint loopfunc: true */
                 item.getAsString( function ( html ) {
                     self.insertHTML( html, true );
@@ -2610,6 +2610,7 @@ proto.setConfig = function ( config ) {
     config = mergeObjects({
         blockTag: 'DIV',
         blockAttributes: null,
+        usePlainTextOnPaste: false,
         tagAttributes: {
             blockquote: null,
             ul: null,

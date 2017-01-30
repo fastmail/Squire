@@ -163,6 +163,7 @@ proto.setConfig = function ( config ) {
     config = mergeObjects({
         blockTag: 'DIV',
         blockAttributes: null,
+        usePlainTextOnPaste: false,
         tagAttributes: {
             blockquote: null,
             ul: null,
