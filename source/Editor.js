@@ -163,6 +163,7 @@ proto.setConfig = function ( config ) {
     config = mergeObjects({
         blockTag: 'DIV',
         blockAttributes: null,
+        usePlainTextOnPaste: false,
         tagAttributes: {
             blockquote: null,
             ul: null,
@@ -487,8 +488,18 @@ proto.getSelection = function () {
     return selection;
 };
 
-function enableRestoreSelection () {
-    this._restoreSelection = true;
+function enableRestoreSelection (ev) {
+    // Blur can be called when you are focusing on other elements within the
+    // editor. We should only want to restore the selection if we are coming
+    // from outside of the editor. We need to do this on a timeout because we
+    // cannot determine what the new focused element is until after the blur.
+    var self = this;
+    setTimeout(function() {
+        var target = document.activeElement;
+        if( !isOrContains( self._root, document.activeElement ) ) {
+            this._restoreSelection = true;
+        }
+    }, 1);
 }
 function disableRestoreSelection () {
     this._restoreSelection = false;
@@ -601,7 +612,7 @@ proto._updatePath = function ( range, force ) {
         this._lastFocusNode = focus;
         newPath = ( anchor && focus ) ? ( anchor === focus ) ?
             getPath( focus, this._root ) : '(selection)' : '';
-        if ( this._path !== newPath ) {
+        if ( !force && this._path !== newPath ) {
             this._path = newPath;
             this.fireEvent( 'pathChange', { path: newPath } );
         }
