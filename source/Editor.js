@@ -1217,6 +1217,13 @@ proto.changeFormat = function ( add, remove, range, partial ) {
         this._docWasChanged();
     }
 
+    this.fireEvent( 'formatChange', {
+        add: add,
+        remove: remove,
+        range: range,
+        partial: partial
+    } );
+
     return this;
 };
 
