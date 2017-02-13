@@ -495,8 +495,12 @@ function enableRestoreSelection () {
 function disableRestoreSelection () {
     this._restoreSelection = false;
 }
-function restoreSelection () {
-    if ( this._restoreSelection ) {
+function restoreSelection (event) {
+    if ( this._restoreSelection && (
+        event == undefined 
+        || event.relatedTarget === null
+        || !isOrContains(this._root, event.relatedTarget))
+    ) {
         this.setSelection( this._lastSelection );
     }
 }
