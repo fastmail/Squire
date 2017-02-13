@@ -858,28 +858,25 @@ var extractContentsOfRange = function ( range, common, root ) {
 };
 
 var deleteContentsOfRange = function ( range, root ) {
-    // Move boundaries up as much as possible to reduce need to split.
-    // But we need to check whether we've moved the boundary outside of a
-    // block. If so, the entire block will be removed, so we shouldn't merge
-    // later.
-    moveRangeBoundariesUpTree( range );
+    var startBlock = getStartBlockOfRange( range, root );
+    var endBlock = getEndBlockOfRange( range, root );
+    var needsMerge = ( startBlock !== endBlock );
+    var frag, child;
 
-    var startBlock = range.startContainer,
-        endBlock = range.endContainer,
-        needsMerge = ( isInline( startBlock ) || isBlock( startBlock ) ) &&
-            ( isInline( endBlock ) || isBlock( endBlock ) );
+    // Move boundaries up as much as possible without exiting block,
+    // to reduce need to split.
+    moveRangeBoundariesDownTree( range );
+    moveRangeBoundariesUpTree( range, startBlock, endBlock, root );
 
     // Remove selected range
-    var frag = extractContentsOfRange( range, null, root );
+    frag = extractContentsOfRange( range, null, root );
 
-    // Move boundaries back down tree so that they are inside the blocks.
-    // If we don't do this, the range may be collapsed to a point between
-    // two blocks, so get(Start|End)BlockOfRange will return null.
+    // Move boundaries back down tree as far as possible.
     moveRangeBoundariesDownTree( range );
 
     // If we split into two different blocks, merge the blocks.
-    startBlock = getStartBlockOfRange( range, root );
     if ( needsMerge ) {
+        // endBlock will have been split, so need to refetch
         endBlock = getEndBlockOfRange( range, root );
         if ( startBlock && endBlock && startBlock !== endBlock ) {
             mergeWithBlock( startBlock, endBlock, range );
@@ -892,12 +889,12 @@ var deleteContentsOfRange = function ( range, root ) {
     }
 
     // Ensure root has a block-level element in it.
-    var child = root.firstChild;
+    child = root.firstChild;
     if ( !child || child.nodeName === 'BR' ) {
         fixCursor( root, root );
         range.selectNodeContents( root.firstChild );
     } else {
-        range.collapse( range.endContainer === root ? true : false );
+        range.collapse( true );
     }
     return frag;
 };
@@ -1113,19 +1110,24 @@ var moveRangeBoundariesDownTree = function ( range ) {
     }
 };
 
-var moveRangeBoundariesUpTree = function ( range, common ) {
-    var startContainer = range.startContainer,
-        startOffset = range.startOffset,
-        endContainer = range.endContainer,
-        endOffset = range.endOffset,
-        maySkipBR = true,
-        parent;
+var moveRangeBoundariesUpTree = function ( range, startMax, endMax, root ) {
+    var startContainer = range.startContainer;
+    var startOffset = range.startOffset;
+    var endContainer = range.endContainer;
+    var endOffset = range.endOffset;
+    var maySkipBR = true;
+    var parent;
 
-    if ( !common ) {
-        common = range.commonAncestorContainer;
+    if ( !startMax ) {
+        startMax = range.commonAncestorContainer;
+    }
+    if ( !endMax ) {
+        endMax = startMax;
     }
 
-    while ( startContainer !== common && !startOffset ) {
+    while ( !startOffset &&
+            startContainer !== startMax &&
+            startContainer !== root ) {
         parent = startContainer.parentNode;
         startOffset = indexOf.call( parent.childNodes, startContainer );
         startContainer = parent;
@@ -1139,7 +1141,8 @@ var moveRangeBoundariesUpTree = function ( range, common ) {
             endOffset += 1;
             maySkipBR = false;
         }
-        if ( endContainer === common ||
+        if ( endContainer === endMax ||
+                endContainer === root ||
                 endOffset !== getLength( endContainer ) ) {
             break;
         }
@@ -1638,7 +1641,7 @@ var keyHandlers = {
             // delete it ourselves, because the browser won't if it is not
             // inline.
             originalRange = range.cloneRange();
-            moveRangeBoundariesUpTree( range, self._root );
+            moveRangeBoundariesUpTree( range, root, root, root );
             cursorContainer = range.endContainer;
             cursorOffset = range.endOffset;
             if ( cursorContainer.nodeType === ELEMENT_NODE ) {
@@ -2077,7 +2080,7 @@ var notWSTextNode = function ( node ) {
         node.nodeName === 'BR' :
         notWS.test( node.data );
 };
-var isLineBreak = function ( br ) {
+var isLineBreak = function ( br, isLBIfEmptyBlock ) {
     var block = br.parentNode;
     var walker;
     while ( isInline( block ) ) {
@@ -2086,7 +2089,8 @@ var isLineBreak = function ( br ) {
     walker = new TreeWalker(
         block, SHOW_ELEMENT|SHOW_TEXT, notWSTextNode );
     walker.currentNode = br;
-    return !!walker.nextNode() || !walker.previousNode();
+    return !!walker.nextNode() ||
+        ( isLBIfEmptyBlock && !walker.previousNode() );
 };
 
 // <br> elements are treated specially, and differently depending on the
@@ -2095,11 +2099,11 @@ var isLineBreak = function ( br ) {
 // line breaks by wrapping the inline text in a <div>. Browsers that want <br>
 // elements at the end of each block will then have them added back in a later
 // fixCursor method call.
-var cleanupBRs = function ( node, root ) {
-    var brs = node.querySelectorAll( 'BR' ),
-        brBreaksLine = [],
-        l = brs.length,
-        i, br, parent;
+var cleanupBRs = function ( node, root, keepForBlankLine ) {
+    var brs = node.querySelectorAll( 'BR' );
+    var brBreaksLine = [];
+    var l = brs.length;
+    var i, br, parent;
 
     // Must calculate whether the <br> breaks a line first, because if we
     // have two <br>s next to each other, after the first one is converted
@@ -2107,7 +2111,7 @@ var cleanupBRs = function ( node, root ) {
     // therefore seem to not be a line break. But in its original context it
     // was, so we should also convert it to a block split.
     for ( i = 0; i < l; i += 1 ) {
-        brBreaksLine[i] = isLineBreak( brs[i] );
+        brBreaksLine[i] = isLineBreak( brs[i], keepForBlankLine );
     }
     while ( l-- ) {
         br = brs[l];
@@ -2136,7 +2140,7 @@ var setClipboardData = function ( clipboardData, node, root ) {
     // Firefox will add an extra new line for BRs at the end of block when
     // calculating innerText, even though they don't actually affect display.
     // So we need to remove them first.
-    cleanupBRs( node, root );
+    cleanupBRs( node, root, true );
 
     node.setAttribute( 'style',
         'position:fixed;overflow:hidden;bottom:100%;right:100%;' );
@@ -2160,9 +2164,15 @@ var setClipboardData = function ( clipboardData, node, root ) {
 var onCut = function ( event ) {
     var clipboardData = event.clipboardData;
     var range = this.getSelection();
-    var node = this.createElement( 'div' );
     var root = this._root;
     var self = this;
+    var startBlock, endBlock, copyRoot, contents, parent, newContents, node;
+
+    // Nothing to do
+    if ( range.collapsed ) {
+        event.preventDefault();
+        return;
+    }
 
     // Save undo checkpoint
     this.saveUndoState( range );
@@ -2171,8 +2181,27 @@ var onCut = function ( event ) {
     // Mobile Safari flat out doesn't work:
     // https://bugs.webkit.org/show_bug.cgi?id=143776
     if ( !isEdge && !isIOS && clipboardData ) {
-        moveRangeBoundariesUpTree( range, root );
-        node.appendChild( deleteContentsOfRange( range, root ) );
+        // Clipboard content should include all parents within block, or all
+        // parents up to root if selection across blocks
+        startBlock = getStartBlockOfRange( range, root );
+        endBlock = getEndBlockOfRange( range, root );
+        copyRoot = ( ( startBlock === endBlock ) && startBlock ) || root;
+        // Extract the contents
+        contents = deleteContentsOfRange( range, root );
+        // Add any other parents not in extracted content, up to copy root
+        parent = range.commonAncestorContainer;
+        if ( parent.nodeType === TEXT_NODE ) {
+            parent = parent.parentNode;
+        }
+        while ( parent && parent !== copyRoot ) {
+            newContents = parent.cloneNode( false );
+            newContents.appendChild( contents );
+            contents = newContents;
+            parent = parent.parentNode;
+        }
+        // Set clipboard data
+        node = this.createElement( 'div' );
+        node.appendChild( contents );
         setClipboardData( clipboardData, node, root );
         event.preventDefault();
     } else {
@@ -2192,21 +2221,26 @@ var onCut = function ( event ) {
 var onCopy = function ( event ) {
     var clipboardData = event.clipboardData;
     var range = this.getSelection();
-    var node = this.createElement( 'div' );
     var root = this._root;
-    var startBlock, endBlock, copyRoot, contents, parent, newContents;
+    var startBlock, endBlock, copyRoot, contents, parent, newContents, node;
 
     // Edge only seems to support setting plain text as of 2016-03-11.
     // Mobile Safari flat out doesn't work:
     // https://bugs.webkit.org/show_bug.cgi?id=143776
     if ( !isEdge && !isIOS && clipboardData ) {
-        range = range.cloneRange();
+        // Clipboard content should include all parents within block, or all
+        // parents up to root if selection across blocks
         startBlock = getStartBlockOfRange( range, root );
         endBlock = getEndBlockOfRange( range, root );
         copyRoot = ( ( startBlock === endBlock ) && startBlock ) || root;
+        // Clone range to mutate, then move up as high as possible without
+        // passing the copy root node.
+        range = range.cloneRange();
         moveRangeBoundariesDownTree( range );
-        moveRangeBoundariesUpTree( range, copyRoot );
+        moveRangeBoundariesUpTree( range, copyRoot, copyRoot, root );
+        // Extract the contents
         contents = range.cloneContents();
+        // Add any other parents not in extracted content, up to copy root
         parent = range.commonAncestorContainer;
         if ( parent.nodeType === TEXT_NODE ) {
             parent = parent.parentNode;
@@ -2217,8 +2251,9 @@ var onCopy = function ( event ) {
             contents = newContents;
             parent = parent.parentNode;
         }
+        // Set clipboard data
+        node = this.createElement( 'div' );
         node.appendChild( contents );
-
         setClipboardData( clipboardData, node, root );
         event.preventDefault();
     }
@@ -2561,13 +2596,14 @@ function Squire ( root, config ) {
 
 var proto = Squire.prototype;
 
-var sanitizeToDOMFragment = function ( html/*, isPaste*/ ) {
-    var frag = DOMPurify.sanitize( html, {
+var sanitizeToDOMFragment = function ( html, isPaste, self ) {
+    var doc = self._doc;
+    var frag = html ? DOMPurify.sanitize( html, {
         WHOLE_DOCUMENT: false,
         RETURN_DOM: true,
         RETURN_DOM_FRAGMENT: true
-    });
-    return doc.importNode( frag, true );
+    }) : null;
+    return frag ? doc.importNode( frag, true ) : doc.createDocumentFragment();
 };
 
 proto.setConfig = function ( config ) {
@@ -2626,16 +2662,20 @@ proto.getRoot = function () {
 };
 
 proto.modifyDocument = function ( modificationCallback ) {
-    this._ignoreAllChanges = true;
-    if ( this._mutation ) {
-        this._mutation.disconnect();
+    var mutation = this._mutation;
+    if ( mutation ) {
+        if ( mutation.takeRecords().length ) {
+            this._docWasChanged();
+        }
+        mutation.disconnect();
     }
 
+    this._ignoreAllChanges = true;
     modificationCallback();
-
     this._ignoreAllChanges = false;
-    if ( this._mutation ) {
-        this._mutation.observe( this._root, {
+
+    if ( mutation ) {
+        mutation.observe( this._root, {
             childList: true,
             attributes: true,
             characterData: true,
@@ -2870,7 +2910,9 @@ proto.getSelection = function () {
     var sel = getWindowSelection( this );
     var root = this._root;
     var selection, startContainer, endContainer;
-    if ( sel && sel.rangeCount ) {
+    // If not focused, always rely on cached selection; another function may
+    // have set it but the DOM is not modified until focus again
+    if ( this._isFocused && sel && sel.rangeCount ) {
         selection  = sel.getRangeAt( 0 ).cloneRange();
         startContainer = selection.startContainer;
         endContainer = selection.endContainer;
@@ -3708,7 +3750,7 @@ proto.modifyBlocks = function ( modify, range ) {
     expandRangeToBlockBoundaries( range, root );
 
     // 3. Remove range.
-    moveRangeBoundariesUpTree( range, root );
+    moveRangeBoundariesUpTree( range, root, root, root );
     frag = extractContentsOfRange( range, root, root );
 
     // 4. Modify tree of fragment and reinsert.
@@ -3990,7 +4032,7 @@ proto.setHTML = function ( html ) {
 
     // Parse HTML into DOM tree
     if ( typeof sanitizeToDOMFragment === 'function' ) {
-        frag = sanitizeToDOMFragment( html, false );
+        frag = sanitizeToDOMFragment( html, false, this );
     } else {
         div = this.createElement( 'DIV' );
         div.innerHTML = html;
@@ -3999,7 +4041,7 @@ proto.setHTML = function ( html ) {
     }
 
     cleanTree( frag );
-    cleanupBRs( frag, root );
+    cleanupBRs( frag, root, false );
 
     fixContainer( frag, root );
 
@@ -4143,7 +4185,7 @@ proto.insertHTML = function ( html, isPaste ) {
     // including the full <head> of the page. Need to strip this out. If
     // available use DOMPurify to parse and sanitise.
     if ( typeof sanitizeToDOMFragment === 'function' ) {
-        frag = sanitizeToDOMFragment( html, isPaste );
+        frag = sanitizeToDOMFragment( html, isPaste, this );
     } else {
         if ( isPaste ) {
             startFragmentIndex = html.indexOf( '<!--StartFragment-->' );
@@ -4175,7 +4217,7 @@ proto.insertHTML = function ( html, isPaste ) {
 
         addLinks( frag, frag, this );
         cleanTree( frag );
-        cleanupBRs( frag, root );
+        cleanupBRs( frag, root, false );
         removeEmptyInlines( frag );
         frag.normalize();
 
@@ -4442,7 +4484,7 @@ proto.removeAllFormatting = function ( range ) {
     this.saveUndoState( range );
 
     // Avoid splitting where we're already at edges.
-    moveRangeBoundariesUpTree( range, stopNode );
+    moveRangeBoundariesUpTree( range, stopNode, stopNode, root );
 
     // Split the selection up to the block, or if whole selection in same
     // block, expand range boundaries to ends of block and split up to root.
