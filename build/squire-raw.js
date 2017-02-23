@@ -1448,6 +1448,15 @@ var keyHandlers = {
         // If this is a malformed bit of document or in a table;
         // just play it safe and insert a <br>.
         if ( !block || /^T[HD]$/.test( block.nodeName ) ) {
+            // Move cursor out of tags if the cursor is at the end of inline tags
+            parent = range.commonAncestorContainer;
+            if ( /^T[HD]$/.test( block.nodeName ) ) {
+                while ( isInline( parent ) && getLength( parent ) === range.endOffset ) {
+                    range.setStartAfter( parent );
+                    range.collapse( true );
+                    parent = range.commonAncestorContainer;
+                }
+            }
             insertNodeInRange( range, self.createElement( 'BR' ) );
             range.collapse( false );
             self.setSelection( range );
