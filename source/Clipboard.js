@@ -121,6 +121,13 @@ var onCopy = function ( event ) {
             contents = newContents;
             parent = parent.parentNode;
         }
+        // remove br's that are the last children in a node
+        var brs = contents.querySelectorAll('br');
+        brs.forEach(function(br) {
+            if (br.nextSibling === null) {
+                br.parentNode.removeChild(br);
+            }
+        });
         // Set clipboard data
         node = this.createElement( 'div' );
         node.appendChild( contents );
