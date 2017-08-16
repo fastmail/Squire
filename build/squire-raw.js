@@ -4148,19 +4148,15 @@ var addLinks = function ( frag, root, self ) {
     while ( node = walker.nextNode() ) {
         data = node.data;
         parent = node.parentNode;
-        while ( match = linkRegExp.exec( data ) ) {
+        while ( match = self.matchLink( data ) ) {
             index = match.index;
-            endIndex = index + match[0].length;
+            endIndex = index + match.original.length;
             if ( index ) {
                 child = doc.createTextNode( data.slice( 0, index ) );
                 parent.insertBefore( child, node );
             }
             child = self.createElement( 'A', mergeObjects({
-                href: match[1] ?
-                    /^(?:ht|f)tps?:/.test( match[1] ) ?
-                        match[1] :
-                        'http://' + match[1] :
-                    'mailto:' + match[2]
+                href: match.href
             }, defaultAttributes, false ));
             child.textContent = data.slice( index, endIndex );
             parent.insertBefore( child, node );
@@ -4168,6 +4164,25 @@ var addLinks = function ( frag, root, self ) {
         }
     }
 };
+
+proto.matchLink = function ( text ) {
+  var match = linkRegExp.exec( text );
+  if (!match) {
+    return null;
+  }
+
+  var href = match[1] ?
+    /^(?:ht|f)tps?:/.test( match[1] ) ?
+      match[1] :
+      'http://' + match[1] :
+    'mailto:' + match[2]
+
+  return {
+    index: match.index,
+    original: match[0],
+    href: href
+  }
+}
 
 // Insert HTML at the cursor location. If the selection is not collapsed
 // insertTreeFragmentIntoRange will delete the selection so that it is replaced
