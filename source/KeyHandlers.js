@@ -169,6 +169,13 @@ var keyHandlers = {
         // If this is a malformed bit of document or in a table;
         // just play it safe and insert a <br>.
         if ( !block || /^T[HD]$/.test( block.nodeName ) ) {
+            // If inside an <a>, move focus out
+            parent = getNearest( range.endContainer, root, 'A' );
+            if ( parent ) {
+                parent = parent.parentNode;
+                moveRangeBoundariesUpTree( range, parent, parent, root );
+                range.collapse( false );
+            }
             insertNodeInRange( range, self.createElement( 'BR' ) );
             range.collapse( false );
             self.setSelection( range );
@@ -181,11 +188,11 @@ var keyHandlers = {
             block = parent;
         }
 
-        if ( !block.textContent ) {
+        if ( isEmptyBlock( block ) ) {
             // Break list
             if ( getNearest( block, root, 'UL' ) ||
                     getNearest( block, root, 'OL' ) ) {
-                return self.modifyBlocks( decreaseListLevel, range );
+                return self.decreaseListLevel( range );
             }
             // Break blockquote
             else if ( getNearest( block, root, 'BLOCKQUOTE' ) ) {
@@ -274,7 +281,7 @@ var keyHandlers = {
                     return;
                 }
                 // Otherwise merge.
-                mergeWithBlock( previous, current, range );
+                mergeWithBlock( previous, current, range, root );
                 // If deleted line between containers, merge newly adjacent
                 // containers.
                 current = previous.parentNode;
@@ -292,7 +299,7 @@ var keyHandlers = {
                 // Break list
                 if ( getNearest( current, root, 'UL' ) ||
                         getNearest( current, root, 'OL' ) ) {
-                    return self.modifyBlocks( decreaseListLevel, range );
+                    return self.decreaseListLevel( range );
                 }
                 // Break blockquote
                 else if ( getNearest( current, root, 'BLOCKQUOTE' ) ) {
@@ -341,7 +348,7 @@ var keyHandlers = {
                     return;
                 }
                 // Otherwise merge.
-                mergeWithBlock( current, next, range );
+                mergeWithBlock( current, next, range, root );
                 // If deleted line between containers, merge newly adjacent
                 // containers.
                 next = current.parentNode;
@@ -362,7 +369,7 @@ var keyHandlers = {
             // delete it ourselves, because the browser won't if it is not
             // inline.
             originalRange = range.cloneRange();
-            moveRangeBoundariesUpTree( range, self._root );
+            moveRangeBoundariesUpTree( range, root, root, root );
             cursorContainer = range.endContainer;
             cursorOffset = range.endOffset;
             if ( cursorContainer.nodeType === ELEMENT_NODE ) {
@@ -387,15 +394,12 @@ var keyHandlers = {
         if ( range.collapsed && rangeDoesStartAtBlockBoundary( range, root ) ) {
             node = getStartBlockOfRange( range, root );
             // Iterate through the block's parents
-            while ( parent = node.parentNode ) {
+            while ( ( parent = node.parentNode ) ) {
                 // If we find a UL or OL (so are in a list, node must be an LI)
                 if ( parent.nodeName === 'UL' || parent.nodeName === 'OL' ) {
-                    // AND the LI is not the first in the list
-                    if ( node.previousSibling ) {
-                        // Then increase the list level
-                        event.preventDefault();
-                        self.modifyBlocks( increaseListLevel, range );
-                    }
+                    // Then increase the list level
+                    event.preventDefault();
+                    self.increaseListLevel( range );
                     break;
                 }
                 node = parent;
@@ -413,7 +417,7 @@ var keyHandlers = {
             if ( getNearest( node, root, 'UL' ) ||
                     getNearest( node, root, 'OL' ) ) {
                 event.preventDefault();
-                self.modifyBlocks( decreaseListLevel, range );
+                self.decreaseListLevel( range );
             }
         }
     },

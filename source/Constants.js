@@ -24,10 +24,10 @@ var win = doc.defaultView;
 
 var ua = navigator.userAgent;
 
+var isAndroid = /Android/.test( ua );
 var isIOS = /iP(?:ad|hone|od)/.test( ua );
 var isMac = /Mac OS X/.test( ua );
-
-var isAndroid = /Android/.test( ua );
+var isWin = /Windows NT/.test( ua );
 
 var isGecko = /Gecko\//.test( ua );
 var isIElt11 = /Trident\/[456]\./.test( ua );
@@ -43,6 +43,7 @@ var cantFocusEmptyTextNodes = isIElt11 || isWebKit;
 var losesSelectionOnBlur = isIElt11;
 
 var canObserveMutations = typeof MutationObserver !== 'undefined';
+var canWeakMap = typeof WeakMap !== 'undefined';
 
 // Use [^ \t\r\n] instead of \S so that nbsp does not count as white-space
 var notWS = /[^ \t\r\n]/;

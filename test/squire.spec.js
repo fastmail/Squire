@@ -26,6 +26,7 @@ describe('Squire RTE', function () {
     });
 
     function selectAll(editor) {
+        doc.getSelection().removeAllRanges()
         var range = doc.createRange();
         range.setStart(doc.body.childNodes.item(0), 0);
         range.setEnd(doc.body.childNodes.item(0), doc.body.childNodes.item(0).childNodes.length);
@@ -268,6 +269,97 @@ describe('Squire RTE', function () {
             editor._updatePath(range);
 
             expect(editor.getPath(), 'to be', '(selection)');
+        });
+    });
+
+    describe('multi-level lists', function () {
+      it('increases list indentation', function() {
+        var startHTML = '<ul><li><div>a</div></li><li><div>b</div></li><li><div>c</div></li></ul>';
+        editor.setHTML(startHTML);
+        expect(editor, 'to contain HTML', startHTML);
+
+        var range = doc.createRange();
+        var textNode = doc.getElementsByTagName('li').item(1).childNodes[0].childNodes[0]
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, 0);
+        editor.setSelection(range);
+
+        editor.increaseListLevel()
+        expect(editor, 'to contain HTML', '<ul><li><div>a</div></li><ul><li><div>b</div></li></ul><li><div>c</div></li></ul>');
+      });
+
+      it('increases list indentation 2', function() {
+        var startHTML = '<ul><li><div>a</div></li><li><div>b</div></li><li><div>c</div></li></ul>';
+        editor.setHTML(startHTML);
+        expect(editor, 'to contain HTML', startHTML);
+
+        var range = doc.createRange();
+        var textNode = doc.getElementsByTagName('li').item(1).childNodes[0].childNodes[0]
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, 0);
+        editor.setSelection(range);
+
+        editor.increaseListLevel()
+        editor.increaseListLevel()
+        expect(editor, 'to contain HTML', '<ul><li><div>a</div></li><ul><ul><li><div>b</div></li></ul></ul><li><div>c</div></li></ul>');
+      });
+
+      it('decreases list indentation', function() {
+        var startHTML = '<ul><li><div>a</div></li><ul><li><div>b</div></li></ul><li><div>c</div></li></ul>';
+        editor.setHTML(startHTML);
+        expect(editor, 'to contain HTML', startHTML);
+
+        var range = doc.createRange();
+        var textNode = doc.getElementsByTagName('li').item(1).childNodes[0].childNodes[0]
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, 0);
+        editor.setSelection(range);
+
+        editor.decreaseListLevel()
+        expect(editor, 'to contain HTML', '<ul><li><div>a</div></li><li><div>b</div></li><li><div>c</div></li></ul>');
+      });
+
+      it('decreases list indentation 2', function() {
+        var startHTML = '<ul><li><div>a</div></li><ul><ul><li><div>b</div></li></ul></ul><li><div>c</div></li></ul>';
+        editor.setHTML(startHTML);
+        expect(editor, 'to contain HTML', startHTML);
+
+        var range = doc.createRange();
+        var textNode = doc.getElementsByTagName('li').item(1).childNodes[0].childNodes[0]
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, 0);
+        editor.setSelection(range);
+
+        editor.decreaseListLevel()
+        editor.decreaseListLevel()
+        expect(editor, 'to contain HTML', '<ul><li><div>a</div></li><li><div>b</div></li><li><div>c</div></li></ul>');
+      });
+
+      it('removes lists', function() {
+        var startHTML = '<ul><li><div>foo</div></li><ul><li><div>bar</div></li></ul></ul>';
+        editor.setHTML(startHTML);
+        expect(editor, 'to contain HTML', startHTML);
+
+        var range = doc.createRange();
+        var textNode = doc.getElementsByTagName('li').item(1).childNodes[0].childNodes[0]
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, 0);
+        editor.setSelection(range);
+
+        editor.removeList()
+        expect(editor, 'to contain HTML', '<ul><li><div>foo</div></li></ul><div>bar</div>');
+      })
+    });
+
+    describe('insertHTML', function() {
+        it('fix CF_HTML incomplete table', function() {
+            editor.insertHTML('<table><tbody><tr><!--StartFragment--><td>text</td><!--EndFragment--></tr></tbody></table>');
+            expect(editor.getHTML(), 'to contain', '<table><tbody><tr><td>text<br></td></tr></tbody></table>');
+
+            editor.setHTML('');
+
+            editor.insertHTML('<table><tbody><!--StartFragment--><tr><td>text1</td><td>text2</td></tr><!--EndFragment--></tbody></table>');
+            expect(editor.getHTML(), 'to contain', '<table><tbody><tr><td>text1<br></td><td>text2<br></td></tr></tbody></table>');
         });
     });
 
