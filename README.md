@@ -46,6 +46,18 @@ Squire can also be used without an iframe for the document. To use it this way:
 
 You can have multiple squire instances in a single page without issue. If you are using the editor as part of a long lived single-page app, be sure to call `editor.destroy()` once you have finished using an instance to ensure it doesn't leak resources.
 
+### Security
+
+Malicious HTML can be a source of XSS and other security issues. I highly recommended you use [DOMPurify](https://github.com/cure53/DOMPurify) with Squire to prevent these security issues. If DOMPurify is included in the page (with the standard global variable), Squire will automatically sanitise any HTML passed in via `setHTML` or `insertHTML` (which includes HTML the user pastes from the clipboard).
+
+You can override this by setting properties on the config object (the second argument passed to the constructor, see below). The properties are:
+
+* **isSetHTMLSanitized**: `Boolean`
+  Should the HTML passed via calls to `setHTML` be passed to the sanitizer? If your app always sanitizes the HTML in some other way before calling this, you may wish to set this to `false` to avoid the overhead.
+* **isInsertedHTMLSanitized**: `Boolean` (defaults to `true`) – Should the HTML passed via calls to `insertHTML` be passed to the sanitizer? This includes when the user pastes from the clipboard. Since you cannot control what other apps put on the clipboard, it is highly recommended you do not set this to `false`.
+* **sanitizeToDOMFragment**: `(html: String, isPaste: Boolean, self: Squire) -> DOMFragment`
+  A custom sanitization function. This will be called instead of the default call to DOMPurify to sanitize the potentially dangerous HTML. It is passed three arguments: the first is the string of HTML, the second is a boolean indicating if this content has come from the clipboard, rather than an explicit call by your own code, the third is the squire instance. It must return a DOM Fragment node belonging to the same document as the editor's root node, with the contents being clean DOM nodes to set/insert.
+
 Advanced usage
 --------------
 
@@ -94,6 +106,8 @@ Attach an event listener to the editor. The handler can be either a function or 
 * **input**: The user inserted, deleted or changed the style of some text; in other words, the result for `editor.getHTML()` will have changed.
 * **pathChange**: The path (see getPath documentation) to the cursor has changed. The new path is available as the `path` property on the event object.
 * **select**: The user selected some text.
+* **cursor**: The user cleared their selection or moved the cursor to a
+  different position.
 * **undoStateChange**: The availability of undo and/or redo has changed. The event object has two boolean properties, `canUndo` and `canRedo` to let you know the new state.
 * **willPaste**: The user is pasting content into the document. The content that will be inserted is available as the `fragment` property on the event object. You can modify this fragment in your event handler to change what will be pasted. You can also call the `preventDefault` on the event object to cancel the paste operation.
 
@@ -171,9 +185,10 @@ Returns the text currently selected in the editor.
 
 Inserts an image at the current cursor location.
 
-The method takes one argument:
+The method takes two arguments:
 
 * **src**: The source path for the image.
+* **attributes**: (optional) An object containing other attributes to set on the `<img>` node. e.g. `{ class: 'class-name' }`. Any `src` attribute will be overwritten by the url given as the first argument.
 
 Returns a reference to the newly inserted image element.
 
