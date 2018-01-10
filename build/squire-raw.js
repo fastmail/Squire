@@ -1570,8 +1570,12 @@ var keyHandlers = {
             else if ( current ) {
                 // Break list
                 if ( getNearest( current, root, 'UL' ) ||
-                        getNearest( current, root, 'OL' ) ) {
+                        getNearest( current, root, 'OL' )
+                        ) {
                     return self.modifyBlocks( decreaseListLevel, range );
+                } else if ( getNearest ( current, root, 'PRE' )) {
+                    console.log('decrease pre')
+                    return self.modifyBlocks( decreaseSpecialElementLevel, range );
                 }
                 // Break blockquote
                 else if ( getNearest( current, root, 'BLOCKQUOTE' ) ) {
@@ -2615,7 +2619,8 @@ proto.setConfig = function ( config ) {
             ul: null,
             ol: null,
             li: null,
-            a: null
+            a: null,
+            pre: null,
         },
         leafNodeNames: leafNodeNames,
         undo: {
@@ -3852,8 +3857,63 @@ var makeList = function ( self, frag, type ) {
     }
 };
 
+var makeSpecialElement = function ( self, frag, type, marginLeft ) {
+    var walker = getBlockWalker( frag, self._root ),
+        node, tag, prev, newLi,
+        tagAttributes = self._config.tagAttributes,
+        listAttrs = tagAttributes[ type.toLowerCase() ],
+        listItemAttrs = self._config.blockTag.toLowerCase();
+
+    while ( node = walker.nextNode() ) {
+        if ( node.parentNode.nodeName === 'div' ) {
+            node = node.parentNode;
+            walker.currentNode = node.lastChild;
+        }
+        if ( node.nodeName !== 'div' ) {
+            newLi = self.createElement( 'div' );
+            if ( node.dir ) {
+                newLi.dir = node.dir;
+            }
+
+            // Have we replaced the previous block with a new <ul>/<ol>?
+            if ( ( prev = node.previousSibling ) && prev.nodeName === type ) {
+                prev.appendChild( newLi );
+                detach( node );
+            }
+            // Otherwise, replace this block with the <ul>/<ol>
+            else {
+                var newElement = self.createElement( type, listAttrs, [
+                    newLi
+                ])
+                if ( marginLeft ) {
+                    newElement.style.marginLeft = marginLeft;
+                }
+                replaceWith(
+                    node,
+                    newElement
+                );
+            }
+            newLi.appendChild( empty( node ) );
+            walker.currentNode = newLi;
+        } else {
+            node = node.parentNode;
+            tag = node.nodeName;
+            if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
+                replaceWith( node,
+                    self.createElement( type, listAttrs, [ empty( node ) ] )
+                );
+            }
+        }
+    }
+};
+
 var makeUnorderedList = function ( frag ) {
     makeList( this, frag, 'UL' );
+    return frag;
+};
+
+var makePre = function ( frag ) {
+    makeSpecialElement( this, frag, 'PRE', '20px' );
     return frag;
 };
 
@@ -3918,7 +3978,7 @@ var increaseListLevel = function ( frag ) {
 
 var decreaseListLevel = function ( frag ) {
     var root = this._root;
-    var items = frag.querySelectorAll( 'LI' );
+    var items = frag.querySelectorAll( 'div' );
     Array.prototype.filter.call( items, function ( el ) {
         return !isContainer( el.firstChild );
     }).forEach( function ( item ) {
@@ -3948,7 +4008,52 @@ var decreaseListLevel = function ( frag ) {
                 node = next;
             }
         }
-        if ( newParent.nodeName === 'LI' && first.previousSibling ) {
+        if ( newParent.nodeName === 'div' && first.previousSibling ) {
+            split( newParent, first, newParent.parentNode, root );
+        }
+        while ( item !== frag && !item.childNodes.length ) {
+            parent = item.parentNode;
+            parent.removeChild( item );
+            item = parent;
+        }
+    }, this );
+    fixContainer( frag, root );
+    return frag;
+};
+
+var decreaseSpecialElementLevel = function ( frag ) {
+    console.log('decrease pre inside')
+    var root = this._root;
+    var items = frag.querySelectorAll( 'div' );
+    Array.prototype.filter.call( items, function ( el ) {
+        return !isContainer( el.firstChild );
+    }).forEach( function ( item ) {
+        var parent = item.parentNode,
+            newParent = parent.parentNode,
+            first = item.firstChild,
+            node = first,
+            next;
+        if ( item.previousSibling ) {
+            parent = split( parent, item, newParent, root );
+        }
+        // if the new parent is another list then we simply move the node
+        // e.g. `ul > ul > li` becomes `ul > li`
+        if ( /^[OU]L$/.test( newParent.nodeName ) ) {
+            newParent.insertBefore( item, parent );
+            if ( !parent.firstChild ) {
+                newParent.removeChild( parent );
+            }
+        } else {
+            while ( node ) {
+                next = node.nextSibling;
+                if ( isContainer( node ) ) {
+                    break;
+                }
+                newParent.insertBefore( node, parent );
+                node = next;
+            }
+        }
+        if ( newParent.nodeName === 'div' && first.previousSibling ) {
             split( newParent, first, newParent.parentNode, root );
         }
         while ( item !== frag && !item.childNodes.length ) {
@@ -4564,6 +4669,9 @@ proto.removeList = command( 'modifyBlocks', removeList );
 
 proto.increaseListLevel = command( 'modifyBlocks', increaseListLevel );
 proto.decreaseListLevel = command( 'modifyBlocks', decreaseListLevel );
+
+proto.makePre = command( 'modifyBlocks', makePre );
+proto.decreaseSpecialElementLevel = command( 'modifyBlocks', decreaseSpecialElementLevel );
 
 // Node.js exports
 Squire.isInline = isInline;

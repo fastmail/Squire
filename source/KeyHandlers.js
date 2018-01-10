@@ -293,6 +293,8 @@ var keyHandlers = {
                 if ( getNearest( current, root, 'UL' ) ||
                         getNearest( current, root, 'OL' ) ) {
                     return self.modifyBlocks( decreaseListLevel, range );
+                } else if ( getNearest ( current, root, 'PRE' )) {
+                    return self.modifyBlocks( decreaseSpecialElementLevel, range );
                 }
                 // Break blockquote
                 else if ( getNearest( current, root, 'BLOCKQUOTE' ) ) {
