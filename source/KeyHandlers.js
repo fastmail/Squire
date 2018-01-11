@@ -177,11 +177,16 @@ var keyHandlers = {
         }
 
         // If in a list, we'll split the LI instead.
-        if ( parent = getNearest( block, root, 'LI' ) ) {
-            block = parent;
+        if ( parent = getNearest( block, root, 'LI' )) {
+            var child = parent.firstChild
+            if ( child && child.tagName == 'PRE' ) {
+                block = block;
+            } else {
+                block = parent;
+            }
         }
 
-        if ( !block.textContent ) {
+        if ( !block.textContent || block.textContent == " " ) {
             // Break list
             if ( getNearest( block, root, 'UL' ) ||
                     getNearest( block, root, 'OL' ) ) {

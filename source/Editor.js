@@ -1436,22 +1436,19 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
                 if ( marginLeft ) {
                     newElement.style.marginLeft = marginLeft;
                 }
-                // if in list
-                // if ( getNearest( node, root, 'LI' ) ) {
-                //     console.log('in list pre', newElement, node.parentNode);
-                //     // var container = self.createElement('LI');
-                //     // node.parentNode.appendChild(container);
-                //     // container.appendChild(newElement);
-                // } else {
-                //     replaceWith(
-                //         node,
-                //         newElement
-                //     );
-                // }
+
                 replaceWith(
                     node,
                     newElement
                 );
+
+                // if in list, still create <pre> tags but move them into a <li>
+                if ( getNearest( node, root, 'LI' ) ) {
+                    // create wrapper <li>, insert wrapper before el in the DOM tree, move el into wrapper
+                    var wrapper = self.createElement( 'LI' );
+                    newElement.parentNode.insertBefore( wrapper, newElement );
+                    wrapper.appendChild( newElement );
+                }
             }
             newLi.appendChild( empty( node ) );
             walker.currentNode = newLi;

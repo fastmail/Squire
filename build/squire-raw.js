@@ -1456,11 +1456,16 @@ var keyHandlers = {
         }
 
         // If in a list, we'll split the LI instead.
-        if ( parent = getNearest( block, root, 'LI' ) ) {
-            block = parent;
+        if ( parent = getNearest( block, root, 'LI' )) {
+            var child = parent.firstChild
+            if ( child && child.tagName == 'PRE' ) {
+                block = block;
+            } else {
+                block = parent;
+            }
         }
 
-        if ( !block.textContent ) {
+        if ( !block.textContent || block.textContent == " " ) {
             // Break list
             if ( getNearest( block, root, 'UL' ) ||
                     getNearest( block, root, 'OL' ) ) {
@@ -1531,8 +1536,6 @@ var keyHandlers = {
         // Record undo checkpoint.
         self.saveUndoState( range );
 
-        console.log(range, 'range')
-
         // If not collapsed, delete contents
         if ( !range.collapsed ) {
             event.preventDefault();
@@ -1540,7 +1543,7 @@ var keyHandlers = {
             afterDelete( self, range );
         }
 
-        // If contains an inline element
+        // If contains an inline element, commented out for now
         // else if ( self.hasFormat( 'b', null, range ) || self.hasFormat( 'i', null, range ) || self.hasFormat( 'u', null, range )) {
         //     var current = getStartBlockOfRange( range, root );
         //     if ( getLength( current.firstChild.innerText ) == 1) {
@@ -1564,9 +1567,6 @@ var keyHandlers = {
             fixContainer( current.parentNode, root );
             // Now get previous block
             previous = getPreviousBlock( current, root );
-
-            console.log(current, current, 'current')
-
 
             // Must not be at the very beginning of the text area.
             if ( previous ) {
@@ -1592,7 +1592,6 @@ var keyHandlers = {
             // to break lists/blockquote.
             else if ( current ) {
                 // Break list
-                console.log(current, 'current 1')
                 if ( getNearest( current, root, 'UL' ) ||
                         getNearest( current, root, 'OL' ) ) {
                     return self.modifyBlocks( decreaseListLevel, range );
@@ -3909,22 +3908,19 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
                 if ( marginLeft ) {
                     newElement.style.marginLeft = marginLeft;
                 }
-                // if in list
-                // if ( getNearest( node, root, 'LI' ) ) {
-                //     console.log('in list pre', newElement, node.parentNode);
-                //     // var container = self.createElement('LI');
-                //     // node.parentNode.appendChild(container);
-                //     // container.appendChild(newElement);
-                // } else {
-                //     replaceWith(
-                //         node,
-                //         newElement
-                //     );
-                // }
+
                 replaceWith(
                     node,
                     newElement
                 );
+
+                // if in list, still create <pre> tags but move them into a <li>
+                if ( getNearest( node, root, 'LI' ) ) {
+                    // create wrapper <li>, insert wrapper before el in the DOM tree, move el into wrapper
+                    var wrapper = self.createElement( 'LI' );
+                    newElement.parentNode.insertBefore( wrapper, newElement );
+                    wrapper.appendChild( newElement );
+                }
             }
             newLi.appendChild( empty( node ) );
             walker.currentNode = newLi;
