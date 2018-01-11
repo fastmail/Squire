@@ -266,15 +266,15 @@ var keyHandlers = {
             afterDelete( self, range );
         }
 
-        // If contains an inline element, commented out for now
-        // else if ( self.hasFormat( 'b', null, range ) || self.hasFormat( 'i', null, range ) || self.hasFormat( 'u', null, range )) {
-        //     var current = getStartBlockOfRange( range, root );
-        //     if ( getLength( current.firstChild.innerText ) == 1) {
-        //         event.preventDefault();
-        //         current.firstChild.innerText = '';
-        //         insertNodeInRange( range, self._doc.createTextNode( ZWS ) );
-        //     }
-        // }
+        // If contains an inline element don't delete on first line, instead preventDefault and insert ZWS to keep tags
+        else if ( self.hasFormat( 'b', null, range ) || self.hasFormat( 'i', null, range ) || self.hasFormat( 'u', null, range ) || self.hasFormat( 'span', null, range )) {
+            var current = getStartBlockOfRange( range, root );
+            if ( getLength( current.firstChild.innerText.replace(/^\u200b*/, '') ) == 1 ) {
+                event.preventDefault();
+                current.firstChild.innerText = '';
+                insertNodeInRange( range, self._doc.createTextNode( ZWS ) );
+            }
+        }
 
         // If at beginning of block, merge with previous
         else if ( rangeDoesStartAtBlockBoundary( range, root ) ) {
