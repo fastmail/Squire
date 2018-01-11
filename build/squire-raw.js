@@ -1469,6 +1469,9 @@ var keyHandlers = {
             // Break blockquote
             else if ( getNearest( block, root, 'BLOCKQUOTE' ) ) {
                 return self.modifyBlocks( removeBlockQuote, range );
+            } 
+            else if ( getNearest ( block, root, 'PRE' )) {
+                return self.modifyBlocks( decreaseSpecialElementLevel, range );
             }
         }
 
@@ -1527,24 +1530,44 @@ var keyHandlers = {
         self._removeZWS();
         // Record undo checkpoint.
         self.saveUndoState( range );
+
+        console.log(range, 'range')
+
         // If not collapsed, delete contents
         if ( !range.collapsed ) {
             event.preventDefault();
             deleteContentsOfRange( range, root );
             afterDelete( self, range );
         }
+
+        // If contains an inline element
+        // else if ( self.hasFormat( 'b', null, range ) || self.hasFormat( 'i', null, range ) || self.hasFormat( 'u', null, range )) {
+        //     var current = getStartBlockOfRange( range, root );
+        //     if ( getLength( current.firstChild.innerText ) == 1) {
+        //         event.preventDefault();
+        //         current.firstChild.innerText = '';
+        //         insertNodeInRange( range, self._doc.createTextNode( ZWS ) );
+        //     }
+        // }
+
         // If at beginning of block, merge with previous
         else if ( rangeDoesStartAtBlockBoundary( range, root ) ) {
             event.preventDefault();
             var current = getStartBlockOfRange( range, root );
             var previous;
+
             if ( !current ) {
                 return;
             }
+
             // In case inline data has somehow got between blocks.
             fixContainer( current.parentNode, root );
             // Now get previous block
             previous = getPreviousBlock( current, root );
+
+            console.log(current, current, 'current')
+
+
             // Must not be at the very beginning of the text area.
             if ( previous ) {
                 // If not editable, just delete whole block.
@@ -1569,12 +1592,11 @@ var keyHandlers = {
             // to break lists/blockquote.
             else if ( current ) {
                 // Break list
+                console.log(current, 'current 1')
                 if ( getNearest( current, root, 'UL' ) ||
-                        getNearest( current, root, 'OL' )
-                        ) {
+                        getNearest( current, root, 'OL' ) ) {
                     return self.modifyBlocks( decreaseListLevel, range );
                 } else if ( getNearest ( current, root, 'PRE' )) {
-                    console.log('decrease pre')
                     return self.modifyBlocks( decreaseSpecialElementLevel, range );
                 }
                 // Break blockquote
@@ -3828,7 +3850,6 @@ var makeList = function ( self, frag, type ) {
             if ( node.dir ) {
                 newLi.dir = node.dir;
             }
-
             // Have we replaced the previous block with a new <ul>/<ol>?
             if ( ( prev = node.previousSibling ) && prev.nodeName === type ) {
                 prev.appendChild( newLi );
@@ -3862,8 +3883,9 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
         node, tag, prev, newLi,
         tagAttributes = self._config.tagAttributes,
         listAttrs = tagAttributes[ type.toLowerCase() ],
-        listItemAttrs = self._config.blockTag.toLowerCase();
-
+        listItemAttrs = self._config.blockTag.toLowerCase(),
+        root = self._root;
+    
     while ( node = walker.nextNode() ) {
         if ( node.parentNode.nodeName === 'div' ) {
             node = node.parentNode;
@@ -3874,13 +3896,12 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
             if ( node.dir ) {
                 newLi.dir = node.dir;
             }
-
-            // Have we replaced the previous block with a new <ul>/<ol>?
+            // Have we replaced the previous block with a new special element?
             if ( ( prev = node.previousSibling ) && prev.nodeName === type ) {
                 prev.appendChild( newLi );
                 detach( node );
             }
-            // Otherwise, replace this block with the <ul>/<ol>
+            // Otherwise, replace this block with the special element tags
             else {
                 var newElement = self.createElement( type, listAttrs, [
                     newLi
@@ -3888,6 +3909,18 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
                 if ( marginLeft ) {
                     newElement.style.marginLeft = marginLeft;
                 }
+                // if in list
+                // if ( getNearest( node, root, 'LI' ) ) {
+                //     console.log('in list pre', newElement, node.parentNode);
+                //     // var container = self.createElement('LI');
+                //     // node.parentNode.appendChild(container);
+                //     // container.appendChild(newElement);
+                // } else {
+                //     replaceWith(
+                //         node,
+                //         newElement
+                //     );
+                // }
                 replaceWith(
                     node,
                     newElement
@@ -3896,13 +3929,14 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
             newLi.appendChild( empty( node ) );
             walker.currentNode = newLi;
         } else {
-            node = node.parentNode;
-            tag = node.nodeName;
-            if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
-                replaceWith( node,
-                    self.createElement( type, listAttrs, [ empty( node ) ] )
-                );
-            }
+            // todo handle handle <pre> inside <pre> child?
+            // node = node.parentNode;
+            // tag = node.nodeName;
+            // if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
+            //     replaceWith( node,
+            //         self.createElement( type, listAttrs, [ empty( node ) ] )
+            //     );
+            // }
         }
     }
 };
@@ -3978,7 +4012,7 @@ var increaseListLevel = function ( frag ) {
 
 var decreaseListLevel = function ( frag ) {
     var root = this._root;
-    var items = frag.querySelectorAll( 'div' );
+    var items = frag.querySelectorAll( 'LI' );
     Array.prototype.filter.call( items, function ( el ) {
         return !isContainer( el.firstChild );
     }).forEach( function ( item ) {
@@ -4008,7 +4042,7 @@ var decreaseListLevel = function ( frag ) {
                 node = next;
             }
         }
-        if ( newParent.nodeName === 'div' && first.previousSibling ) {
+        if ( newParent.nodeName === 'LI' && first.previousSibling ) {
             split( newParent, first, newParent.parentNode, root );
         }
         while ( item !== frag && !item.childNodes.length ) {
@@ -4022,9 +4056,9 @@ var decreaseListLevel = function ( frag ) {
 };
 
 var decreaseSpecialElementLevel = function ( frag ) {
-    console.log('decrease pre inside')
     var root = this._root;
     var items = frag.querySelectorAll( 'div' );
+
     Array.prototype.filter.call( items, function ( el ) {
         return !isContainer( el.firstChild );
     }).forEach( function ( item ) {
@@ -4033,6 +4067,7 @@ var decreaseSpecialElementLevel = function ( frag ) {
             first = item.firstChild,
             node = first,
             next;
+
         if ( item.previousSibling ) {
             parent = split( parent, item, newParent, root );
         }

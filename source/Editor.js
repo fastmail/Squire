@@ -1377,7 +1377,6 @@ var makeList = function ( self, frag, type ) {
             if ( node.dir ) {
                 newLi.dir = node.dir;
             }
-
             // Have we replaced the previous block with a new <ul>/<ol>?
             if ( ( prev = node.previousSibling ) && prev.nodeName === type ) {
                 prev.appendChild( newLi );
@@ -1411,8 +1410,9 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
         node, tag, prev, newLi,
         tagAttributes = self._config.tagAttributes,
         listAttrs = tagAttributes[ type.toLowerCase() ],
-        listItemAttrs = self._config.blockTag.toLowerCase();
-
+        listItemAttrs = self._config.blockTag.toLowerCase(),
+        root = self._root;
+    
     while ( node = walker.nextNode() ) {
         if ( node.parentNode.nodeName === 'div' ) {
             node = node.parentNode;
@@ -1423,7 +1423,6 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
             if ( node.dir ) {
                 newLi.dir = node.dir;
             }
-
             // Have we replaced the previous block with a new special element?
             if ( ( prev = node.previousSibling ) && prev.nodeName === type ) {
                 prev.appendChild( newLi );
@@ -1437,6 +1436,18 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
                 if ( marginLeft ) {
                     newElement.style.marginLeft = marginLeft;
                 }
+                // if in list
+                // if ( getNearest( node, root, 'LI' ) ) {
+                //     console.log('in list pre', newElement, node.parentNode);
+                //     // var container = self.createElement('LI');
+                //     // node.parentNode.appendChild(container);
+                //     // container.appendChild(newElement);
+                // } else {
+                //     replaceWith(
+                //         node,
+                //         newElement
+                //     );
+                // }
                 replaceWith(
                     node,
                     newElement
@@ -1445,13 +1456,14 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
             newLi.appendChild( empty( node ) );
             walker.currentNode = newLi;
         } else {
-            node = node.parentNode;
-            tag = node.nodeName;
-            if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
-                replaceWith( node,
-                    self.createElement( type, listAttrs, [ empty( node ) ] )
-                );
-            }
+            // todo handle handle <pre> inside <pre> child?
+            // node = node.parentNode;
+            // tag = node.nodeName;
+            // if ( tag !== type && ( /^[OU]L$/.test( tag ) ) ) {
+            //     replaceWith( node,
+            //         self.createElement( type, listAttrs, [ empty( node ) ] )
+            //     );
+            // }
         }
     }
 };
@@ -1573,6 +1585,7 @@ var decreaseListLevel = function ( frag ) {
 var decreaseSpecialElementLevel = function ( frag ) {
     var root = this._root;
     var items = frag.querySelectorAll( 'div' );
+
     Array.prototype.filter.call( items, function ( el ) {
         return !isContainer( el.firstChild );
     }).forEach( function ( item ) {
@@ -1581,6 +1594,7 @@ var decreaseSpecialElementLevel = function ( frag ) {
             first = item.firstChild,
             node = first,
             next;
+
         if ( item.previousSibling ) {
             parent = split( parent, item, newParent, root );
         }

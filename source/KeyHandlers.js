@@ -190,6 +190,9 @@ var keyHandlers = {
             // Break blockquote
             else if ( getNearest( block, root, 'BLOCKQUOTE' ) ) {
                 return self.modifyBlocks( removeBlockQuote, range );
+            } 
+            else if ( getNearest ( block, root, 'PRE' )) {
+                return self.modifyBlocks( decreaseSpecialElementLevel, range );
             }
         }
 
@@ -248,24 +251,39 @@ var keyHandlers = {
         self._removeZWS();
         // Record undo checkpoint.
         self.saveUndoState( range );
+
         // If not collapsed, delete contents
         if ( !range.collapsed ) {
             event.preventDefault();
             deleteContentsOfRange( range, root );
             afterDelete( self, range );
         }
+
+        // If contains an inline element, commented out for now
+        // else if ( self.hasFormat( 'b', null, range ) || self.hasFormat( 'i', null, range ) || self.hasFormat( 'u', null, range )) {
+        //     var current = getStartBlockOfRange( range, root );
+        //     if ( getLength( current.firstChild.innerText ) == 1) {
+        //         event.preventDefault();
+        //         current.firstChild.innerText = '';
+        //         insertNodeInRange( range, self._doc.createTextNode( ZWS ) );
+        //     }
+        // }
+
         // If at beginning of block, merge with previous
         else if ( rangeDoesStartAtBlockBoundary( range, root ) ) {
             event.preventDefault();
             var current = getStartBlockOfRange( range, root );
             var previous;
+
             if ( !current ) {
                 return;
             }
+
             // In case inline data has somehow got between blocks.
             fixContainer( current.parentNode, root );
             // Now get previous block
             previous = getPreviousBlock( current, root );
+
             // Must not be at the very beginning of the text area.
             if ( previous ) {
                 // If not editable, just delete whole block.
