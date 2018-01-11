@@ -1584,6 +1584,11 @@ var decreaseListLevel = function ( frag ) {
 var decreaseSpecialElementLevel = function ( frag ) {
     var root = this._root;
     var items = frag.querySelectorAll( 'div' );
+    var pre = frag.querySelectorAll( 'PRE' );
+
+    // somehow if <pre> is the only thing on the line and its empty it will contain no <div>, this is how we delete it
+    if (items.length == 0 && pre.length == 1)
+        pre[0].remove()
 
     Array.prototype.filter.call( items, function ( el ) {
         return !isContainer( el.firstChild );
