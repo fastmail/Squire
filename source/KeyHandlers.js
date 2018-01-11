@@ -187,8 +187,12 @@ var keyHandlers = {
         }
 
         if ( !block.textContent || block.textContent == " " ) {
+
             // Break list
-            if ( getNearest( block, root, 'UL' ) ||
+            if ( getNearest ( block, root, 'PRE' )) {
+                return self.modifyBlocks( decreaseSpecialElementLevel, range );
+            }
+            else if ( getNearest( block, root, 'UL' ) ||
                     getNearest( block, root, 'OL' ) ) {
                 return self.modifyBlocks( decreaseListLevel, range );
             }
@@ -196,15 +200,13 @@ var keyHandlers = {
             else if ( getNearest( block, root, 'BLOCKQUOTE' ) ) {
                 return self.modifyBlocks( removeBlockQuote, range );
             } 
-            else if ( getNearest ( block, root, 'PRE' )) {
-                return self.modifyBlocks( decreaseSpecialElementLevel, range );
-            }
+        
         }
 
         // Otherwise, split at cursor point.
         nodeAfterSplit = splitBlock( self, block,
             range.startContainer, range.startOffset );
-
+        
         // Clean up any empty inlines if we hit enter at the beginning of the
         // block
         removeZWS( block );
@@ -313,11 +315,12 @@ var keyHandlers = {
             // to break lists/blockquote.
             else if ( current ) {
                 // Break list
-                if ( getNearest( current, root, 'UL' ) ||
+                if ( getNearest ( current, root, 'PRE' )) {
+                    return self.modifyBlocks( decreaseSpecialElementLevel, range );
+                }
+                else if ( getNearest( current, root, 'UL' ) ||
                         getNearest( current, root, 'OL' ) ) {
                     return self.modifyBlocks( decreaseListLevel, range );
-                } else if ( getNearest ( current, root, 'PRE' )) {
-                    return self.modifyBlocks( decreaseSpecialElementLevel, range );
                 }
                 // Break blockquote
                 else if ( getNearest( current, root, 'BLOCKQUOTE' ) ) {

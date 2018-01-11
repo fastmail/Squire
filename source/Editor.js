@@ -1538,13 +1538,14 @@ var decreaseListLevel = function ( frag ) {
     var root = this._root;
     var items = frag.querySelectorAll( 'LI' );
     Array.prototype.filter.call( items, function ( el ) {
-        return !isContainer( el.firstChild );
+        return !isContainer( el.firstChild )
     }).forEach( function ( item ) {
         var parent = item.parentNode,
             newParent = parent.parentNode,
             first = item.firstChild,
             node = first,
             next;
+
         if ( item.previousSibling ) {
             parent = split( parent, item, newParent, root );
         }
@@ -1566,6 +1567,7 @@ var decreaseListLevel = function ( frag ) {
                 node = next;
             }
         }
+
         if ( newParent.nodeName === 'LI' && first.previousSibling ) {
             split( newParent, first, newParent.parentNode, root );
         }

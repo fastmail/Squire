@@ -1466,23 +1466,29 @@ var keyHandlers = {
         }
 
         if ( !block.textContent || block.textContent == " " ) {
+
             // Break list
-            if ( getNearest( block, root, 'UL' ) ||
+            if ( getNearest ( block, root, 'PRE' )) {
+                console.log(4)
+                return self.modifyBlocks( decreaseSpecialElementLevel, range );
+            }
+            else if ( getNearest( block, root, 'UL' ) ||
                     getNearest( block, root, 'OL' ) ) {
+                        console.log(3, block)
                 return self.modifyBlocks( decreaseListLevel, range );
             }
             // Break blockquote
             else if ( getNearest( block, root, 'BLOCKQUOTE' ) ) {
                 return self.modifyBlocks( removeBlockQuote, range );
             } 
-            else if ( getNearest ( block, root, 'PRE' )) {
-                return self.modifyBlocks( decreaseSpecialElementLevel, range );
-            }
+        
         }
 
         // Otherwise, split at cursor point.
         nodeAfterSplit = splitBlock( self, block,
             range.startContainer, range.startOffset );
+        
+        console.log(nodeAfterSplit, 'node after')
 
         // Clean up any empty inlines if we hit enter at the beginning of the
         // block
@@ -1592,11 +1598,12 @@ var keyHandlers = {
             // to break lists/blockquote.
             else if ( current ) {
                 // Break list
-                if ( getNearest( current, root, 'UL' ) ||
+                if ( getNearest ( current, root, 'PRE' )) {
+                    return self.modifyBlocks( decreaseSpecialElementLevel, range );
+                }
+                else if ( getNearest( current, root, 'UL' ) ||
                         getNearest( current, root, 'OL' ) ) {
                     return self.modifyBlocks( decreaseListLevel, range );
-                } else if ( getNearest ( current, root, 'PRE' )) {
-                    return self.modifyBlocks( decreaseSpecialElementLevel, range );
                 }
                 // Break blockquote
                 else if ( getNearest( current, root, 'BLOCKQUOTE' ) ) {
@@ -4010,13 +4017,14 @@ var decreaseListLevel = function ( frag ) {
     var root = this._root;
     var items = frag.querySelectorAll( 'LI' );
     Array.prototype.filter.call( items, function ( el ) {
-        return !isContainer( el.firstChild );
+        return !isContainer( el.firstChild )
     }).forEach( function ( item ) {
         var parent = item.parentNode,
             newParent = parent.parentNode,
             first = item.firstChild,
             node = first,
             next;
+
         if ( item.previousSibling ) {
             parent = split( parent, item, newParent, root );
         }
@@ -4038,6 +4046,7 @@ var decreaseListLevel = function ( frag ) {
                 node = next;
             }
         }
+
         if ( newParent.nodeName === 'LI' && first.previousSibling ) {
             split( newParent, first, newParent.parentNode, root );
         }
