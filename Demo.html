@@ -93,6 +93,7 @@
     <span id="removeList">Unlist</span>
     <span id="increaseListLevel">Increase list level</span>
     <span id="decreaseListLevel">Decrease list level</span>
+    <span id="makePre">Pre</span>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   <span id="insertImage" class="prompt">Insert image</span>
   <span id="setHTML" class="prompt">Set HTML</span>
@@ -106,7 +107,7 @@
 <script type="text/javascript" charset="utf-8">
   var div = document.getElementById( 'editor' );
   var editor = new Squire( div, {
-      blockTag: 'p',
+      blockTag: 'div',
       blockAttributes: {'class': 'paragraph'},
       tagAttributes: {
           ul: {'class': 'UL'},
