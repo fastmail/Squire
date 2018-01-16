@@ -190,6 +190,8 @@ var keyHandlers = {
 
             // Break list
             if ( getNearest ( block, root, 'PRE' )) {
+                // <div> inside <pre> cannot be empty to be focused, it will contain a space when getting here, make sure we clear it
+                block.textContent = block.textContent.replace(" ", "", 1)                    
                 return self.modifyBlocks( decreaseSpecialElementLevel, range );
             }
             else if ( getNearest( block, root, 'UL' ) ||
