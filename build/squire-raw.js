@@ -1548,9 +1548,15 @@ var keyHandlers = {
         }
 
         // If contains an inline element don't delete on first line, instead preventDefault and insert ZWS to keep tags
-        else if ( self.hasFormat( 'b', null, range ) || self.hasFormat( 'i', null, range ) || self.hasFormat( 'u', null, range ) || self.hasFormat( 'span', null, range )) {
+        // Make sure the cursor is not at the start of line
+        else if ( (range.endOffset != 0) &&
+            self.hasFormat( 'b', null, range ) || 
+            self.hasFormat( 'i', null, range ) || 
+            self.hasFormat( 'u', null, range ) || 
+            self.hasFormat( 'span', null, range )
+        ) {
             var current = getStartBlockOfRange( range, root );
-            if ( getLength( current.firstChild.innerText.replace(/^\u200b*/, '') ) == 1 ) {
+            if ( current && current.firstChild.innerText && getLength( current.firstChild.innerText.replace(/^\u200b*/, '') ) == 1 ) {
                 event.preventDefault();
                 current.firstChild.innerText = '';
                 insertNodeInRange( range, self._doc.createTextNode( ZWS ) );
@@ -1630,6 +1636,20 @@ var keyHandlers = {
             event.preventDefault();
             deleteContentsOfRange( range, root );
             afterDelete( self, range );
+        }
+        else if (
+            self.hasFormat( 'b', null, range ) || 
+            self.hasFormat( 'i', null, range ) || 
+            self.hasFormat( 'u', null, range ) || 
+            self.hasFormat( 'span', null, range )
+        ) {
+            var current = getStartBlockOfRange( range, root );
+            console.log(current, 'current')
+            if ( current && current.firstChild.innerText && getLength( current.firstChild.innerText.replace(/^\u200b*/, '') ) == 1 ) {
+                event.preventDefault();
+                current.firstChild.innerText = '';
+                insertNodeInRange( range, self._doc.createTextNode( ZWS ) );
+            }
         }
         // If at end of block, merge next into this block
         else if ( rangeDoesEndAtBlockBoundary( range, root ) ) {
