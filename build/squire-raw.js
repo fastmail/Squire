@@ -1531,7 +1531,12 @@ var keyHandlers = {
     },
     backspace: function ( self, event, range ) {
         var root = self._root;
-        self._removeZWS();
+        
+        // Bold/italic gets confused at the transition point,
+        // by not removing zero width space we keep this distinction. Ref #7567
+        // self._removeZWS();
+
+
         // Record undo checkpoint.
         self.saveUndoState( range );
 
