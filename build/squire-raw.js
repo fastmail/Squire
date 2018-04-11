@@ -3907,7 +3907,7 @@ var makeList = function ( self, frag, type ) {
     }
 };
 
-var makeSpecialElement = function ( self, frag, type, marginLeft ) {
+var makeSpecialElement = function ( self, frag, type ) {
     var walker = getBlockWalker( frag, self._root ),
         node, tag, prev, newLi,
         tagAttributes = self._config.tagAttributes,
@@ -3935,9 +3935,9 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
                 var newElement = self.createElement( type, listAttrs, [
                     newLi
                 ])
-                if ( marginLeft ) {
-                    newElement.style.marginLeft = marginLeft;
-                }
+
+                newElement.style.paddingLeft = '20px';
+                newElement.style.backgroundColor = '#f0f0ff';
 
                 replaceWith(
                     node,
@@ -3973,7 +3973,7 @@ var makeUnorderedList = function ( frag ) {
 };
 
 var makePre = function ( frag ) {
-    makeSpecialElement( this, frag, 'PRE', '20px' );
+    makeSpecialElement( this, frag, 'PRE' );
     return frag;
 };
 
