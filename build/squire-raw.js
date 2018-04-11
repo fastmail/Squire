@@ -1578,7 +1578,7 @@ var keyHandlers = {
             // Now get previous block
             previous = getPreviousBlock( current, root );
 
-            var forceBreakElement = getNearest( current, root, 'PRE' )
+            var forceBreakElement = getNearest( current, root, 'PRE' ) && !current.nextSibling
 
             // Must not be at the very beginning of the text area.
             if ( previous && !forceBreakElement) {
