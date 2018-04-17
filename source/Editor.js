@@ -1434,9 +1434,6 @@ var makeSpecialElement = function ( self, frag, type ) {
                     newLi
                 ])
 
-                newElement.style.paddingLeft = '20px';
-                newElement.style.backgroundColor = '#f0f0ff';
-
                 replaceWith(
                     node,
                     newElement
