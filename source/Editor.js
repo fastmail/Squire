@@ -1411,6 +1411,7 @@ var makeSpecialElement = function ( self, frag, type ) {
         tagAttributes = self._config.tagAttributes,
         listAttrs = tagAttributes[ type.toLowerCase() ],
         listItemAttrs = self._config.blockTag.toLowerCase(),
+        style = self._config.preStyle,
         root = self._root;
     
     while ( node = walker.nextNode() ) {
@@ -1433,6 +1434,11 @@ var makeSpecialElement = function ( self, frag, type ) {
                 var newElement = self.createElement( type, listAttrs, [
                     newLi
                 ])
+
+                // apply style
+                Object.keys(style).forEach( function ( key ) {
+                    newElement.style[key] = style[key];
+                })
 
                 replaceWith(
                     node,
