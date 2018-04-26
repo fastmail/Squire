@@ -1405,12 +1405,13 @@ var makeList = function ( self, frag, type ) {
     }
 };
 
-var makeSpecialElement = function ( self, frag, type, marginLeft ) {
+var makeSpecialElement = function ( self, frag, type ) {
     var walker = getBlockWalker( frag, self._root ),
         node, tag, prev, newLi,
         tagAttributes = self._config.tagAttributes,
         listAttrs = tagAttributes[ type.toLowerCase() ],
         listItemAttrs = self._config.blockTag.toLowerCase(),
+        style = self._config.preStyle,
         root = self._root;
     
     while ( node = walker.nextNode() ) {
@@ -1433,9 +1434,11 @@ var makeSpecialElement = function ( self, frag, type, marginLeft ) {
                 var newElement = self.createElement( type, listAttrs, [
                     newLi
                 ])
-                if ( marginLeft ) {
-                    newElement.style.marginLeft = marginLeft;
-                }
+
+                // apply style
+                Object.keys(style).forEach( function ( key ) {
+                    newElement.style[key] = style[key];
+                })
 
                 replaceWith(
                     node,
@@ -1471,7 +1474,7 @@ var makeUnorderedList = function ( frag ) {
 };
 
 var makePre = function ( frag ) {
-    makeSpecialElement( this, frag, 'PRE', '20px' );
+    makeSpecialElement( this, frag, 'PRE' );
     return frag;
 };
 
