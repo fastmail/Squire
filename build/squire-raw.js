@@ -1581,7 +1581,7 @@ var keyHandlers = {
             var forceBreakElement = getNearest( current, root, 'PRE' ) && !current.nextSibling
 
             // Must not be at the very beginning of the text area.
-            if ( previous && !forceBreakElement) {
+            if ( previous) {
 
                 // If not editable, just delete whole block.
                 if ( !previous.isContentEditable ) {
