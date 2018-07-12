@@ -60,12 +60,30 @@ var onKey = function ( event ) {
     if ( this._keyHandlers[ key ] ) {
         this._keyHandlers[ key ]( this, event, range );
     } else if ( key.length === 1 && !range.collapsed ) {
+        var initialStartOffset = range.startOffset
         // Record undo checkpoint.
         this.saveUndoState( range );
         // Delete the selection
         deleteContentsOfRange( range, this._root );
         this._ensureBottomLine();
-        this.setSelection( range );
+
+        // double clicking a word and typing deletes the space after it
+        // caused because a '  ' is automatically cleaned by the HTML to ' '
+        // the fix inserts a zero width space in between the spaces so it looks like => ' \u200b '
+        // and leaves it selected so it is replaced by the onKey event
+
+        // if the delete was successful, the startContainer should be the endContainer
+        if (range.startContainer === range.endContainer) {
+          var textContent = range.startContainer.textContent
+          var spliceIndex = range.startOffset
+          range.startContainer.textContent = textContent.substring( 0, spliceIndex ) + '\u200b' + textContent.substring( spliceIndex, textContent.length )
+          var newRange = document.createRange();
+          newRange.setStart( range.startContainer, initialStartOffset );
+          newRange.setEnd( ange.startContainer, initialStartOffset + 1 );
+          this.setSelection( newRange );
+        } else {
+          this.setSelection( range );
+        }
         this._updatePath( range, true );
     }
 };
@@ -196,14 +214,14 @@ var keyHandlers = {
             // Break blockquote
             else if ( getNearest( block, root, 'BLOCKQUOTE' ) ) {
                 return self.modifyBlocks( removeBlockQuote, range );
-            } 
-        
+            }
+
         }
 
         // Otherwise, split at cursor point.
         nodeAfterSplit = splitBlock( self, block,
             range.startContainer, range.startOffset );
-        
+
         // Clean up any empty inlines if we hit enter at the beginning of the
         // block
         removeZWS( block );
@@ -252,7 +270,7 @@ var keyHandlers = {
     },
     backspace: function ( self, event, range ) {
         var root = self._root;
-        
+
         // Bold/italic gets confused at the transition point,
         // by not removing zero width space we keep this distinction. Ref #7567
         // self._removeZWS();
@@ -271,9 +289,9 @@ var keyHandlers = {
         // If contains an inline element don't delete on first line, instead preventDefault and insert ZWS to keep tags
         // Make sure the cursor is not at the start of line
         else if ( (range.endOffset != 0) &&
-            self.hasFormat( 'b', null, range ) || 
-            self.hasFormat( 'i', null, range ) || 
-            self.hasFormat( 'u', null, range ) || 
+            self.hasFormat( 'b', null, range ) ||
+            self.hasFormat( 'i', null, range ) ||
+            self.hasFormat( 'u', null, range ) ||
             self.hasFormat( 'span', null, range )
         ) {
             var current = getStartBlockOfRange( range, root );
@@ -363,9 +381,9 @@ var keyHandlers = {
             afterDelete( self, range );
         }
         else if (
-            self.hasFormat( 'b', null, range ) || 
-            self.hasFormat( 'i', null, range ) || 
-            self.hasFormat( 'u', null, range ) || 
+            self.hasFormat( 'b', null, range ) ||
+            self.hasFormat( 'i', null, range ) ||
+            self.hasFormat( 'u', null, range ) ||
             self.hasFormat( 'span', null, range )
         ) {
             var current = getStartBlockOfRange( range, root );
