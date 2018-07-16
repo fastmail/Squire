@@ -69,21 +69,17 @@ var onKey = function ( event ) {
 
         // double clicking a word and typing deletes the space after it
         // caused because a '  ' is automatically cleaned by the HTML to ' '
-        // the fix inserts a zero width space in between the spaces so it looks like => ' \u200b '
-        // and leaves it selected so it is replaced by the onKey event
-
+        // the fix inserts a ZWS in between the spaces => ' \u200b '
+        // and leaves the ZWS selected so it is replaced by the onKey event
+        var textContent = range.startContainer.textContent
+        var spliceIndex = range.startOffset
         // if the delete was successful, the startContainer should be the endContainer
-        if (range.startContainer === range.endContainer) {
-          var textContent = range.startContainer.textContent
-          var spliceIndex = range.startOffset
+        if (range.startContainer === range.endContainer && textContent.charAt( spliceIndex ) === ' ' && textContent.charAt( spliceIndex - 1 ) === ' ') {
           range.startContainer.textContent = textContent.substring( 0, spliceIndex ) + '\u200b' + textContent.substring( spliceIndex, textContent.length )
-          var newRange = document.createRange();
-          newRange.setStart( range.startContainer, initialStartOffset );
-          newRange.setEnd( ange.startContainer, initialStartOffset + 1 );
-          this.setSelection( newRange );
-        } else {
-          this.setSelection( range );
+          range.setStart( range.startContainer, initialStartOffset );
+          range.setEnd( range.startContainer, initialStartOffset + 1 );
         }
+        this.setSelection( range );
         this._updatePath( range, true );
     }
 };
