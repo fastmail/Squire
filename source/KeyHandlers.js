@@ -203,7 +203,12 @@ var keyHandlers = {
         if ( !block.textContent || block.textContent == " " ) {
 
             // Break list
-            if ( getNearest( block, root, 'UL' ) ||
+            if ( getNearest ( block, root, 'PRE' )) {
+                // <div> inside <pre> cannot be empty to be focused, it will contain a space when getting here, make sure we clear it
+                block.textContent = block.textContent.replace(" ", "", 1)
+                return self.modifyBlocks( decreaseSpecialElementLevel, range );
+            }
+            else if ( getNearest( block, root, 'UL' ) ||
                     getNearest( block, root, 'OL' ) ) {
                 return self.modifyBlocks( decreaseListLevel, range );
             }
@@ -266,12 +271,7 @@ var keyHandlers = {
     },
     backspace: function ( self, event, range ) {
         var root = self._root;
-
-        // Bold/italic gets confused at the transition point,
-        // by not removing zero width space we keep this distinction. Ref #7567
-        // self._removeZWS();
-
-
+        self._removeZWS();
         // Record undo checkpoint.
         self.saveUndoState( range );
 
@@ -315,7 +315,6 @@ var keyHandlers = {
 
             // Must not be at the very beginning of the text area.
             if ( previous ) {
-
                 // If not editable, just delete whole block.
                 if ( !previous.isContentEditable ) {
                     detach( previous );
@@ -325,7 +324,6 @@ var keyHandlers = {
                 mergeWithBlock( previous, current, range );
                 // If deleted line between containers, merge newly adjacent
                 // containers.
-
                 current = previous.parentNode;
                 while ( current !== root && !current.nextSibling ) {
                     current = current.parentNode;
@@ -333,12 +331,10 @@ var keyHandlers = {
                 if ( current !== root && ( current = current.nextSibling ) ) {
                     mergeContainers( current, root );
                 }
-
                 self.setSelection( range );
             }
             // If at very beginning of text area, allow backspace
-            // to break lists/blockquote/pre. For elements like <pre>, backspace will
-            // break even if at the beginning of the element, not only text area
+            // to break lists/blockquote.
             else if ( current ) {
                 // Break list
                 if ( getNearest ( current, root, 'PRE' )) {

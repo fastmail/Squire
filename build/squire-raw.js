@@ -1468,7 +1468,12 @@ var keyHandlers = {
         if ( !block.textContent || block.textContent == " " ) {
 
             // Break list
-            if ( getNearest( block, root, 'UL' ) ||
+            if ( getNearest ( block, root, 'PRE' )) {
+                // <div> inside <pre> cannot be empty to be focused, it will contain a space when getting here, make sure we clear it
+                block.textContent = block.textContent.replace(" ", "", 1)                    
+                return self.modifyBlocks( decreaseSpecialElementLevel, range );
+            }
+            else if ( getNearest( block, root, 'UL' ) ||
                     getNearest( block, root, 'OL' ) ) {
                 return self.modifyBlocks( decreaseListLevel, range );
             }
@@ -1531,12 +1536,7 @@ var keyHandlers = {
     },
     backspace: function ( self, event, range ) {
         var root = self._root;
-        
-        // Bold/italic gets confused at the transition point,
-        // by not removing zero width space we keep this distinction. Ref #7567
-        // self._removeZWS();
-
-
+        self._removeZWS();
         // Record undo checkpoint.
         self.saveUndoState( range );
 
@@ -1578,11 +1578,8 @@ var keyHandlers = {
             // Now get previous block
             previous = getPreviousBlock( current, root );
 
-            var forceBreakElement = getNearest( current, root, 'PRE' ) && !current.nextSibling
-
             // Must not be at the very beginning of the text area.
-            if ( previous) {
-
+            if ( previous ) {
                 // If not editable, just delete whole block.
                 if ( !previous.isContentEditable ) {
                     detach( previous );
@@ -1592,7 +1589,6 @@ var keyHandlers = {
                 mergeWithBlock( previous, current, range );
                 // If deleted line between containers, merge newly adjacent
                 // containers.
-
                 current = previous.parentNode;
                 while ( current !== root && !current.nextSibling ) {
                     current = current.parentNode;
@@ -1600,12 +1596,10 @@ var keyHandlers = {
                 if ( current !== root && ( current = current.nextSibling ) ) {
                     mergeContainers( current, root );
                 }
-
                 self.setSelection( range );
             }
             // If at very beginning of text area, allow backspace
-            // to break lists/blockquote/pre. For elements like <pre>, backspace will
-            // break even if at the beginning of the element, not only text area
+            // to break lists/blockquote.
             else if ( current ) {
                 // Break list
                 if ( getNearest ( current, root, 'PRE' )) {
@@ -1650,6 +1644,7 @@ var keyHandlers = {
             self.hasFormat( 'span', null, range )
         ) {
             var current = getStartBlockOfRange( range, root );
+            console.log(current, 'current')
             if ( current && current.firstChild.innerText && getLength( current.firstChild.innerText.replace(/^\u200b*/, '') ) == 1 ) {
                 event.preventDefault();
                 current.firstChild.innerText = '';
@@ -3907,13 +3902,12 @@ var makeList = function ( self, frag, type ) {
     }
 };
 
-var makeSpecialElement = function ( self, frag, type ) {
+var makeSpecialElement = function ( self, frag, type, marginLeft ) {
     var walker = getBlockWalker( frag, self._root ),
         node, tag, prev, newLi,
         tagAttributes = self._config.tagAttributes,
         listAttrs = tagAttributes[ type.toLowerCase() ],
         listItemAttrs = self._config.blockTag.toLowerCase(),
-        style = self._config.preStyle,
         root = self._root;
     
     while ( node = walker.nextNode() ) {
@@ -3936,11 +3930,9 @@ var makeSpecialElement = function ( self, frag, type ) {
                 var newElement = self.createElement( type, listAttrs, [
                     newLi
                 ])
-
-                // apply style
-                Object.keys(style).forEach( function ( key ) {
-                    newElement.style[key] = style[key];
-                })
+                if ( marginLeft ) {
+                    newElement.style.marginLeft = marginLeft;
+                }
 
                 replaceWith(
                     node,
@@ -3976,7 +3968,7 @@ var makeUnorderedList = function ( frag ) {
 };
 
 var makePre = function ( frag ) {
-    makeSpecialElement( this, frag, 'PRE' );
+    makeSpecialElement( this, frag, 'PRE', '20px' );
     return frag;
 };
 
