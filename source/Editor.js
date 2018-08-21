@@ -631,7 +631,7 @@ proto._updatePathOnEvent = function () {
 // --- Focus ---
 
 proto.focus = function () {
-    this._root.focus();
+    this._root.focus({preventScroll: true});
 
     if ( isIE ) {
         this.fireEvent( 'focus' );
@@ -1413,7 +1413,7 @@ var makeSpecialElement = function ( self, frag, type ) {
         listItemAttrs = self._config.blockTag.toLowerCase(),
         style = self._config.preStyle,
         root = self._root;
-    
+
     while ( node = walker.nextNode() ) {
         if ( node.parentNode.nodeName === 'div' ) {
             node = node.parentNode;
