@@ -4086,6 +4086,7 @@ proto.decreaseListLevel = function ( range ) {
     var list = listSelection[0];
     var startLi = listSelection[1];
     var endLi = listSelection[2];
+    var newParent, next, insertBefore, makeNotList;
     if ( !startLi ) {
         startLi = list.firstChild;
     }
@@ -4096,34 +4097,35 @@ proto.decreaseListLevel = function ( range ) {
     // Save undo checkpoint and bookmark selection
     this._recordUndoState( range, this._isInUndoState );
 
-    // Find the new parent list node
-    var newParent = list.parentNode;
-    var next;
+    if ( startLi ) {
+        // Find the new parent list node
+        newParent = list.parentNode;
 
-    // Split list if necesary
-    var insertBefore = !endLi.nextSibling ?
-        list.nextSibling :
-        split( list, endLi.nextSibling, newParent, root );
+        // Split list if necesary
+        insertBefore = !endLi.nextSibling ?
+            list.nextSibling :
+            split( list, endLi.nextSibling, newParent, root );
 
-    if ( newParent !== root && newParent.nodeName === 'LI' ) {
-        newParent = newParent.parentNode;
-        while ( insertBefore ) {
-            next = insertBefore.nextSibling;
-            endLi.appendChild( insertBefore );
-            insertBefore = next;
+        if ( newParent !== root && newParent.nodeName === 'LI' ) {
+            newParent = newParent.parentNode;
+            while ( insertBefore ) {
+                next = insertBefore.nextSibling;
+                endLi.appendChild( insertBefore );
+                insertBefore = next;
+            }
+            insertBefore = list.parentNode.nextSibling;
         }
-        insertBefore = list.parentNode.nextSibling;
+
+        makeNotList = !/^[OU]L$/.test( newParent.nodeName );
+        do {
+            next = startLi === endLi ? null : startLi.nextSibling;
+            list.removeChild( startLi );
+            if ( makeNotList && startLi.nodeName === 'LI' ) {
+                startLi = this.createDefaultBlock([ empty( startLi ) ]);
+            }
+            newParent.insertBefore( startLi, insertBefore );
+        } while (( startLi = next ));
     }
-
-    var makeNotList = !/^[OU]L$/.test( newParent.nodeName );
-    do {
-        next = startLi === endLi ? null : startLi.nextSibling;
-        list.removeChild( startLi );
-        if ( makeNotList && startLi.nodeName === 'LI' ) {
-            startLi = this.createDefaultBlock([ empty( startLi ) ]);
-        }
-        newParent.insertBefore( startLi, insertBefore );
-    } while ( ( startLi = next ) );
 
     if ( !list.firstChild ) {
         detach( list );
