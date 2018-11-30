@@ -212,11 +212,21 @@ var insertTreeFragmentIntoRange = function ( range, frag, root ) {
     // Where will we split up to? First blockquote parent, otherwise root.
     stopPoint = getNearest( range.endContainer, root, 'BLOCKQUOTE' ) || root;
 
+    // find the start block of the target range
+    block = getStartBlockOfRange( range, root );
+
+    // if insert a table into a cell of existing table,
+    // find the target cell and merge the new table into it
+    const tableTags = ['TABLE', 'TBODY', 'TH', 'TR', 'TD']
+    if ( block && frag && tableTags.includes(block.nodeName) && tableTags.includes(frag.firstChild.nodeName)) {
+        mergeWithBlock(block, frag, range, root);
+        return;
+    }
+
     // Merge the contents of the first block in the frag with the focused block.
     // If there are contents in the block after the focus point, collect this
     // up to insert in the last block later. If the block is empty, replace
     // it instead of merging.
-    block = getStartBlockOfRange( range, root );
     firstBlockInFrag = getNextBlock( frag, frag );
     replaceBlock = !!block && isEmptyBlock( block );
     if ( block && firstBlockInFrag && !replaceBlock &&

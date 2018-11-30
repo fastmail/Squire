@@ -1837,6 +1837,13 @@ proto.insertHTML = function ( html, isPaste ) {
     var startFragmentIndex, endFragmentIndex;
     var div, frag, root, node, event;
 
+    // Stop here if range contains multiple table cells
+    var startCellIndex = range.startContainer.cellIndex || -1;
+    var endCellIndex = range.endContainer.cellIndex || -1;
+    if (startCellIndex !== endCellIndex) {
+        return;
+    }
+
     // Edge doesn't just copy the fragment, but includes the surrounding guff
     // including the full <head> of the page. Need to strip this out. If
     // available use DOMPurify to parse and sanitise.
