@@ -362,6 +362,28 @@ describe('Squire RTE', function () {
             expect(editor.getHTML(), 'to contain', '<table><tbody><tr><td>text1<br></td><td>text2<br></td></tr></tbody></table>');
         });
 
+        it('should insert table into a table cell', function() {
+            editor.setHTML('');
+            editor.insertHTML('<table><tbody><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table>')
+            var range = doc.createRange();
+            range.setStart(doc.getElementsByTagName('td').item(1), 0);
+            range.setEnd(doc.getElementsByTagName('td').item(1), 0);
+            editor.setSelection(range);
+            editor.insertHTML('<table><tbody><tr><td>a</td><td>b</td></tr></tbody></table>');
+            expect(editor.getHTML(), 'to contain', '<table><tbody><tr><td><br></td><td><table><tbody><tr><td>a<br></td><td>b<br></td></tr></tbody></table></td><td><br></td></tr></tbody></table><div><br></div>');
+        });
+
+        it('should not insert table if multiple table cells are selected', function() {
+            editor.setHTML('');
+            editor.insertHTML('<table><tbody><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table>')
+            var range = doc.createRange();
+            range.setStart(doc.getElementsByTagName('td').item(1), 0);
+            range.setEnd(doc.getElementsByTagName('td').item(2), 0);
+            editor.setSelection(range);
+            editor.insertHTML('<table><tbody><tr><td>a</td><td>b</td></tr></tbody></table>');
+            expect(editor.getHTML(), 'to contain', '<table><tbody><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table>');
+        });
+
         var LINK_MAP = {
             "dewdw@fre.fr": "mailto:dewdw@fre.fr",
             "dew@free.fr?dew=dew": "mailto:dew@free.fr?dew=dew",
