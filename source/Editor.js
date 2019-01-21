@@ -178,6 +178,7 @@ proto.setConfig = function ( config ) {
             highlight: 'highlight'
         },
         leafNodeNames: leafNodeNames,
+        inlineNodeNames: inlineNodeNames,
         undo: {
             documentSizeThreshold: -1, // -1 means no threshold
             undoLimit: -1 // -1 means no limit

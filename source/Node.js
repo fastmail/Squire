@@ -1,6 +1,8 @@
 /*jshint strict:false, undef:false, unused:false */
 
-var inlineNodeNames  = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:FRAME|MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|TIME|U|VAR|WBR)$/;
+var inlineNodeNames  = {
+    regexp: /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:FRAME|MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|TIME|U|VAR|WBR)$/
+};
 
 var leafNodeNames = {
     BR: 1,
@@ -51,7 +53,7 @@ function getNodeCategory ( node ) {
         // Malformed HTML can have block tags inside inline tags. Need to treat
         // these as containers rather than inline. See #239.
         nodeCategory = CONTAINER;
-    } else if ( inlineNodeNames.test( node.nodeName ) ) {
+    } else if ( inlineNodeNames.regexp.test( node.nodeName ) ) {
         nodeCategory = INLINE;
     } else {
         nodeCategory = BLOCK;
