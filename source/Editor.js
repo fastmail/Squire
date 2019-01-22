@@ -179,6 +179,7 @@ proto.setConfig = function ( config ) {
         },
         leafNodeNames: leafNodeNames,
         inlineNodeNames: inlineNodeNames,
+        allowedBlock: allowedBlock,
         undo: {
             documentSizeThreshold: -1, // -1 means no threshold
             undoLimit: -1 // -1 means no limit

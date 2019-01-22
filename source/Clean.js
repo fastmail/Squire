@@ -179,7 +179,9 @@ var stylesRewriters = {
     }
 };
 
-var allowedBlock = /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|IGCAPTION|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|COL(?:GROUP)?|UL)$/;
+var allowedBlock = {
+    regexp: /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|IGCAPTION|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|COL(?:GROUP)?|UL)$/
+};
 
 var blacklist = /^(?:HEAD|META|STYLE)/;
 
@@ -217,7 +219,7 @@ var cleanTree = function cleanTree ( node, config, preserveWS ) {
                 i -= 1;
                 l -= 1;
                 continue;
-            } else if ( !allowedBlock.test( nodeName ) && !isInline( child ) ) {
+            } else if ( !allowedBlock.regexp.test( nodeName ) && !isInline( child ) ) {
                 i -= 1;
                 l += childLength - 1;
                 node.replaceChild( empty( child ), child );
