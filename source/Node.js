@@ -312,6 +312,14 @@ function fixCursor ( node, root ) {
 function fixContainer ( container, root ) {
     var children = container.childNodes;
     var doc = container.ownerDocument;
+    var phrasingContentElements = [
+        'ABBR', 'AUDIO', 'B', 'BDO', 'BR', 'BUTTON', 'CANVAS', 'CITE', 'CODE',
+        'COMMAND', 'DATA', 'DATALIST', 'DFN', 'EM', 'EMBED', 'I', 'IFRAME',
+        'IMG', 'INPUT', 'KBD', 'KEYGEN', 'LABEL', 'MARK', 'MATH', 'METER',
+        'NOSCRIPT', 'OBJECT', 'OUTPUT', 'PROGRESS', 'Q', 'RUBY', 'SAMP',
+        'SCRIPT', 'SELECT', 'SMALL', 'SPAN', 'STRONG', 'SUB', 'SUP', 'SVG',
+        'TEXTAREA', 'TIME', 'VAR', 'VIDEO', 'WBR'
+    ];
     var wrapper = null;
     var i, l, child, isBR;
     var config = root.__squire__._config;
@@ -319,7 +327,13 @@ function fixContainer ( container, root ) {
     for ( i = 0, l = children.length; i < l; i += 1 ) {
         child = children[i];
         isBR = child.nodeName === 'BR';
-        if ( !isBR && isInline( child ) ) {
+        if (
+            !isBR && 
+            isInline( child ) && (
+                config.blockTag !== 'DIV' ||
+                !phrasingContentElements.includes(child.nodeName)
+            )
+        ) {
             if ( !wrapper ) {
                  wrapper = createElement( doc,
                     config.blockTag, config.blockAttributes );
