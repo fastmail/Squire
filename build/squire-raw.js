@@ -2346,6 +2346,7 @@ var onPaste = function ( event ) {
     var items = clipboardData && clipboardData.items;
     var choosePlain = this.isShiftDown;
     var fireDrop = false;
+    var hasRTF = false;
     var hasImage = false;
     var plainItem = null;
     var htmlItem = null;
@@ -2364,6 +2365,8 @@ var onPaste = function ( event ) {
                 htmlItem = item;
             } else if ( type === 'text/plain' ) {
                 plainItem = item;
+            } else if ( type === 'text/rtf' ) {
+                hasRTF = true;
             } else if ( /^image\/.*/.test( type ) ) {
                 hasImage = true;
             }
@@ -2372,9 +2375,13 @@ var onPaste = function ( event ) {
         // Treat image paste as a drop of an image file. When you copy
         // an image in Chrome/Firefox (at least), it copies the image data
         // but also an HTML version (referencing the original URL of the image)
-        // and a plain text version. So we check for image data first, only if
-        // none look for text/html.
-        if ( hasImage ) {
+        // and a plain text version.
+        //
+        // However, when you copy in Excel, you get html, rtf, text, image;
+        // in this instance you want the html version! So let's try using
+        // the presence of text/rtf as an indicator to choose the html version
+        // over the image.
+        if ( hasImage && !( hasRTF && htmlItem ) ) {
             event.preventDefault();
             this.fireEvent( 'dragover', {
                 dataTransfer: clipboardData,
