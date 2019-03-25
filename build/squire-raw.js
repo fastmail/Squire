@@ -2363,7 +2363,10 @@ var onPaste = function ( event ) {
             type = item.type;
             if ( type === 'text/html' ) {
                 htmlItem = item;
-            } else if ( type === 'text/plain' ) {
+            // iOS copy URL gives you type text/uri-list which is just a list
+            // of 1 or more URLs separated by new lines. Can just treat as
+            // plain text.
+            } else if ( type === 'text/plain' || type === 'text/uri-list' ) {
                 plainItem = item;
             } else if ( type === 'text/rtf' ) {
                 hasRTF = true;
