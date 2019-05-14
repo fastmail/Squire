@@ -1963,9 +1963,13 @@ proto.insertPlainText = function ( plainText, isPaste ) {
     var attr, i, l, line;
 
     for ( attr in attributes ) {
+      if(attributes[ attr ]){
         openBlock += ' ' + attr + '="' +
             escapeHTMLFragement( attributes[ attr ] ) +
         '"';
+      }else{
+        openBlock += ' ' + attr + ' ';
+      }
     }
     openBlock += '>';
 
