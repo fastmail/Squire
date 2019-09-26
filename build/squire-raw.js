@@ -3191,7 +3191,7 @@ proto._updatePathOnEvent = function ( event ) {
 // --- Focus ---
 
 proto.focus = function () {
-    this._root.focus();
+    this._root.focus({ preventScroll: true });
 
     if ( isIE ) {
         this.fireEvent( 'focus' );
