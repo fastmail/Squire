@@ -53,9 +53,7 @@ var onCut = function ( event ) {
     this.saveUndoState( range );
 
     // Edge only seems to support setting plain text as of 2016-03-11.
-    // Mobile Safari flat out doesn't work:
-    // https://bugs.webkit.org/show_bug.cgi?id=143776
-    if ( !isEdge && !isIOS && clipboardData ) {
+    if ( !isEdge && clipboardData ) {
         // Clipboard content should include all parents within block, or all
         // parents up to root if selection across blocks
         startBlock = getStartBlockOfRange( range, root );
@@ -100,9 +98,7 @@ var onCopy = function ( event ) {
     var startBlock, endBlock, copyRoot, contents, parent, newContents, node;
 
     // Edge only seems to support setting plain text as of 2016-03-11.
-    // Mobile Safari flat out doesn't work:
-    // https://bugs.webkit.org/show_bug.cgi?id=143776
-    if ( !isEdge && !isIOS && clipboardData ) {
+    if ( !isEdge && clipboardData ) {
         // Clipboard content should include all parents within block, or all
         // parents up to root if selection across blocks
         startBlock = getStartBlockOfRange( range, root );
