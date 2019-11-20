@@ -148,6 +148,8 @@ var afterDelete = function ( self, range ) {
 var keyHandlers = {
     enter: function ( self, event, range ) {
         var root = self._root;
+        // Ignore the shift key on iOS, as this is for auto-capitalisation.
+        var shiftKey = !isIOS && event.shiftKey;
         var block, parent, node, offset, nodeAfterSplit;
 
         // We handle this ourselves
@@ -179,7 +181,7 @@ var keyHandlers = {
                 parent.insertBefore( node, parent.firstChild );
             }
             // If blank line: split and insert default block
-            if ( !event.shiftKey &&
+            if ( !shiftKey &&
                     ( node.data.charAt( offset - 1 ) === '\n' ||
                         rangeDoesStartAtBlockBoundary( range, root ) ) &&
                     ( node.data.charAt( offset ) === '\n' ||
@@ -219,7 +221,7 @@ var keyHandlers = {
 
         // If this is a malformed bit of document or in a table;
         // just play it safe and insert a <br>.
-        if ( !block || event.shiftKey || /^T[HD]$/.test( block.nodeName ) ) {
+        if ( !block || shiftKey || /^T[HD]$/.test( block.nodeName ) ) {
             // If inside an <a>, move focus out
             parent = getNearest( range.endContainer, root, 'A' );
             if ( parent ) {
