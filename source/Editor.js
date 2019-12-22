@@ -187,7 +187,8 @@ proto.setConfig = function ( config ) {
         sanitizeToDOMFragment:
             typeof DOMPurify !== 'undefined' && DOMPurify.isSupported ?
             sanitizeToDOMFragment : null,
-        willCutCopy: null
+        willCutCopy: null,
+        addLinks: true
     }, config, true );
 
     // Users may specify block tag in lower case

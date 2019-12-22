@@ -153,7 +153,9 @@ var handleEnter = function ( self, shiftKey, range ) {
     // Remove any zws so we don't think there's content in an empty
     // block.
     self._recordUndoState( range );
-    addLinks( range.startContainer, root, self );
+    if ( self._config.addLinks ) {
+        addLinks( range.startContainer, root, self );
+    }
     self._removeZWS();
     self._getRangeAndRemoveBookmark( range );
 
@@ -504,7 +506,9 @@ var keyHandlers = {
         var node, parent;
         var root = self._root;
         self._recordUndoState( range );
-        addLinks( range.startContainer, root, self );
+        if ( self._config.addLinks ) {
+            addLinks( range.startContainer, root, self );
+        }
         self._getRangeAndRemoveBookmark( range );
 
         // If the cursor is at the end of a link (<a>foo|</a>) then move it
