@@ -70,6 +70,12 @@ var styleToSemantic = {
 var replaceWithTag = function ( tag ) {
     return function ( node, parent ) {
         var el = createElement( node.ownerDocument, tag );
+        var attributes = node.attributes;
+        var i, l, attribute;
+        for ( i = 0, l = attributes.length; i < l; i += 1 ) {
+            attribute = attributes[i];
+            el.setAttribute( attribute.name, attribute.value );
+        }
         parent.replaceChild( el, node );
         el.appendChild( empty( node ) );
         return el;
