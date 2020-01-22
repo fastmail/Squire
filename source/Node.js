@@ -211,7 +211,7 @@ function createElement ( doc, tag, props, children ) {
         for ( attr in props ) {
             value = props[ attr ];
             if ( value !== undefined ) {
-                el.setAttribute( attr, props[ attr ] );
+                el.setAttribute( attr, value );
             }
         }
     }
