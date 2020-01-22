@@ -390,7 +390,7 @@ function createElement ( doc, tag, props, children ) {
         for ( attr in props ) {
             value = props[ attr ];
             if ( value !== undefined ) {
-                el.setAttribute( attr, props[ attr ] );
+                el.setAttribute( attr, value );
             }
         }
     }
@@ -500,16 +500,14 @@ function fixContainer ( container, root ) {
         isBR = child.nodeName === 'BR';
         if ( !isBR && isInline( child ) ) {
             if ( !wrapper ) {
-                 wrapper = createElement( doc,
-                    config.blockTag, config.blockAttributes );
+                 wrapper = createElement( doc, 'div' );
             }
             wrapper.appendChild( child );
             i -= 1;
             l -= 1;
         } else if ( isBR || wrapper ) {
             if ( !wrapper ) {
-                wrapper = createElement( doc,
-                    config.blockTag, config.blockAttributes );
+                wrapper = createElement( doc, 'div' );
             }
             fixCursor( wrapper, root );
             if ( isBR ) {
@@ -1941,6 +1939,12 @@ var styleToSemantic = {
 var replaceWithTag = function ( tag ) {
     return function ( node, parent ) {
         var el = createElement( node.ownerDocument, tag );
+        var attributes = node.attributes;
+        var i, l, attribute;
+        for ( i = 0, l = attributes.length; i < l; i += 1 ) {
+            attribute = attributes[i];
+            el.setAttribute( attribute.name, attribute.value );
+        }
         parent.replaceChild( el, node );
         el.appendChild( empty( node ) );
         return el;
@@ -1981,7 +1985,6 @@ var replaceStyles = function ( node, parent, config ) {
 };
 
 var stylesRewriters = {
-    P: replaceStyles,
     SPAN: replaceStyles,
     STRONG: replaceWithTag( 'B' ),
     EM: replaceWithTag( 'I' ),

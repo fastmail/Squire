@@ -116,7 +116,6 @@ var replaceStyles = function ( node, parent, config ) {
 };
 
 var stylesRewriters = {
-    P: replaceStyles,
     SPAN: replaceStyles,
     STRONG: replaceWithTag( 'B' ),
     EM: replaceWithTag( 'I' ),
