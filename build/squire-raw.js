@@ -4359,7 +4359,57 @@ proto.insertImage = function ( src, attributes ) {
     return img;
 };
 
-proto.linkRegExp = /\b((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))|([\w\-.%+]+@(?:[\w\-]+\.)+[A-Z]{2,}\b)(?:\?[^&?\s]+=[^&?\s]+(?:&[^&?\s]+=[^&?\s]+)*)?/i;
+/*
+const linkRegExp = new RegExp(
+// Only look on boundaries
+'\\b(?:' +
+// Capture group 1: URLs
+'(' +
+    // Add links to URLS
+    // Starts with:
+    '(?:' +
+        // http(s):// or ftp://
+        '(?:ht|f)tps?:\\/\\/' +
+        // or
+        '|' +
+        // www.
+        'www\\d{0,3}[.]' +
+        // or
+        '|' +
+        // foo90.com/
+        '[a-z0-9][a-z0-9.\\-]*[.][a-z]{2,}\\/' +
+    ')' +
+    // Then we get one or more:
+    '(?:' +
+        // Run of non-spaces, non ()<>
+        '[^\\s()<>]+' +
+        // or
+        '|' +
+        // balanced parentheses (one level deep only)
+        '\\([^\\s()<>]+\\)' +
+    ')+' +
+    // And we finish with
+    '(?:' +
+        // Not a space or punctuation character
+        '[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]' +
+        // or
+        '|' +
+        // Balanced parentheses.
+        '\\([^\\s()<>]+\\)' +
+    ')' +
+// Capture group 2: Emails
+')|(' +
+    // Add links to emails
+    '[\\w\\-.%+]+@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
+    // Allow query parameters in the mailto: style
+    '(?:' +
+        '[?][^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+' +
+        '(?:&[^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+)*' +
+    ')?' +
+'))', 'i' );
+*/
+
+proto.linkRegExp = /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
 
 var addLinks = function ( frag, root, self ) {
     var doc = frag.ownerDocument;
