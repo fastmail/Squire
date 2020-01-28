@@ -92,6 +92,10 @@ var replaceStyles = function ( node, parent, config ) {
         css = style[ attr ];
         if ( css && converter.regexp.test( css ) ) {
             el = converter.replace( doc, config.classNames, css );
+            if ( el.nodeName === node.nodeName &&
+                    el.className === node.className ) {
+                continue;
+            }
             if ( !newTreeTop ) {
                 newTreeTop = el;
             }
@@ -105,11 +109,7 @@ var replaceStyles = function ( node, parent, config ) {
 
     if ( newTreeTop ) {
         newTreeBottom.appendChild( empty( node ) );
-        if ( node.nodeName === 'SPAN' ) {
-            parent.replaceChild( newTreeTop, node );
-        } else {
-            node.appendChild( newTreeTop );
-        }
+        parent.replaceChild( newTreeTop, node );
     }
 
     return newTreeBottom || node;
