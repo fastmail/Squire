@@ -11,24 +11,6 @@ var fontSizes = {
 };
 
 var styleToSemantic = {
-    backgroundColor: {
-        regexp: notWS,
-        replace: function ( doc, classNames, colour ) {
-            return createElement( doc, 'SPAN', {
-                'class': classNames.highlight,
-                style: 'background-color:' + colour
-            });
-        }
-    },
-    color: {
-        regexp: notWS,
-        replace: function ( doc, classNames, colour ) {
-            return createElement( doc, 'SPAN', {
-                'class': classNames.colour,
-                style: 'color:' + colour
-            });
-        }
-    },
     fontWeight: {
         regexp: /^bold|^700/i,
         replace: function ( doc ) {
