@@ -1960,7 +1960,7 @@ var replaceStyles = function ( node, parent, config ) {
 
     if ( newTreeTop ) {
         newTreeBottom.appendChild( empty( node ) );
-        parent.replaceChild( newTreeTop, node );
+        node.appendChild( newTreeTop );
     }
 
     return newTreeBottom || node;
