@@ -189,6 +189,7 @@ var deleteContentsOfRange = function ( range, root ) {
 // Contents of range will be deleted.
 // After method, range will be around inserted content
 var insertTreeFragmentIntoRange = function ( range, frag, root ) {
+    var firstInFragIsInline = frag.firstChild && isInline( frag.firstChild );
     var node, block, blockContentsAfterSplit, stopPoint, container, offset;
     var replaceBlock, firstBlockInFrag, nodeAfterSplit, nodeBeforeSplit;
     var tempRange;
@@ -214,11 +215,17 @@ var insertTreeFragmentIntoRange = function ( range, frag, root ) {
 
     // Merge the contents of the first block in the frag with the focused block.
     // If there are contents in the block after the focus point, collect this
-    // up to insert in the last block later. If the block is empty, replace
-    // it instead of merging.
+    // up to insert in the last block later. This preserves the style that was
+    // present in this bit of the page.
+    //
+    // If the block being inserted into is empty though, replace it instead of
+    // merging if the fragment had block contents.
+    // e.g. <blockquote><p>Foo</p></blockquote>
+    // This seems a reasonable approximation of user intent.
+
     block = getStartBlockOfRange( range, root );
     firstBlockInFrag = getNextBlock( frag, frag );
-    replaceBlock = !!block && isEmptyBlock( block );
+    replaceBlock = !firstInFragIsInline && !!block && isEmptyBlock( block );
     if ( block && firstBlockInFrag && !replaceBlock &&
             // Don't merge table cells or PRE elements into block
             !getNearest( firstBlockInFrag, frag, 'PRE' ) &&
