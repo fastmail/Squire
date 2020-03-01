@@ -2020,7 +2020,9 @@ proto.insertPlainText = function ( plainText, isPaste ) {
     }
     openBlock += '>';
 
-    for ( i = 0, l = lines.length; i < l; i += 1 ) {
+    // We don't wrap the first line in the block, so if it gets inserted into
+    // a blank line it keeps that line's formatting.
+    for ( i = 1, l = lines.length; i < l; i += 1 ) {
         line = lines[i];
         line = escapeHTML( line ).replace( / (?= )/g, '&nbsp;' );
         // Wrap each line in <div></div>

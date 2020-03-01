@@ -4524,11 +4524,11 @@ proto.insertHTML = function ( html, isPaste ) {
     return this;
 };
 
-var escapeHTMLFragement = function ( text ) {
+var escapeHTML = function ( text ) {
     return text.split( '&' ).join( '&amp;' )
-               .split( '<' ).join( '&lt;'  )
-               .split( '>' ).join( '&gt;'  )
-               .split( '"' ).join( '&quot;'  );
+               .split( '<' ).join( '&lt;' )
+               .split( '>' ).join( '&gt;' )
+               .split( '"' ).join( '&quot;' );
 };
 
 proto.insertPlainText = function ( plainText, isPaste ) {
@@ -4574,14 +4574,16 @@ proto.insertPlainText = function ( plainText, isPaste ) {
 
     for ( attr in attributes ) {
         openBlock += ' ' + attr + '="' +
-            escapeHTMLFragement( attributes[ attr ] ) +
+            escapeHTML( attributes[ attr ] ) +
         '"';
     }
     openBlock += '>';
 
-    for ( i = 0, l = lines.length; i < l; i += 1 ) {
+    // We don't wrap the first line in the block, so if it gets inserted into
+    // a blank line it keeps that line's formatting.
+    for ( i = 1, l = lines.length; i < l; i += 1 ) {
         line = lines[i];
-        line = escapeHTMLFragement( line ).replace( / (?= )/g, '&nbsp;' );
+        line = escapeHTML( line ).replace( / (?= )/g, '&nbsp;' );
         // Wrap each line in <div></div>
         lines[i] = openBlock + ( line || '<BR>' ) + closeBlock;
     }
