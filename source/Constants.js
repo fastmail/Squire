@@ -20,8 +20,9 @@ var win = doc.defaultView;
 var ua = navigator.userAgent;
 
 var isAndroid = /Android/.test( ua );
-var isIOS = /iP(?:ad|hone|od)/.test( ua );
-var isMac = /Mac OS X/.test( ua );
+var isMac = /Mac OS X/.test( ua ) && window.TouchEvent == null;
+// Since iOS 13 iPad pretends to be macOS unless it's disabled in settings. See https://stackoverflow.com/a/56923008/1923879
+var isIOS = /iP(?:ad|hone|od)/.test( ua ) || ( /Mac OS X/.test( ua ) && window.TouchEvent );
 var isWin = /Windows NT/.test( ua );
 
 var isGecko = /Gecko\//.test( ua );
