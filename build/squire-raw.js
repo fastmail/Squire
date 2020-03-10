@@ -4579,13 +4579,16 @@ proto.insertPlainText = function ( plainText, isPaste ) {
     }
     openBlock += '>';
 
-    // We don't wrap the first line in the block, so if it gets inserted into
-    // a blank line it keeps that line's formatting.
-    for ( i = 1, l = lines.length; i < l; i += 1 ) {
+    for ( i = 0, l = lines.length; i < l; i += 1 ) {
         line = lines[i];
         line = escapeHTML( line ).replace( / (?= )/g, '&nbsp;' );
+        // We don't wrap the first line in the block, so if it gets inserted
+        // into a blank line it keeps that line's formatting.
         // Wrap each line in <div></div>
-        lines[i] = openBlock + ( line || '<BR>' ) + closeBlock;
+        if ( i ) {
+            line = openBlock + ( line || '<BR>' ) + closeBlock;
+        }
+        lines[i] = line;
     }
     return this.insertHTML( lines.join( '' ), isPaste );
 };
