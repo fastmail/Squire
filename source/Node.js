@@ -499,18 +499,6 @@ function mergeWithBlock ( block, next, range, root ) {
     range.setStart( block, offset );
     range.collapse( true );
     mergeInlines( block, range );
-
-    // Opera inserts a BR if you delete the last piece of text
-    // in a block-level element. Unfortunately, it then gets
-    // confused when setting the selection subsequently and
-    // refuses to accept the range that finishes just before the
-    // BR. Removing the BR fixes the bug.
-    // Steps to reproduce bug: Type "a-b-c" (where - is return)
-    // then backspace twice. The cursor goes to the top instead
-    // of after "b".
-    if ( isPresto && ( last = block.lastChild ) && last.nodeName === 'BR' ) {
-        block.removeChild( last );
-    }
 }
 
 function mergeContainers ( node, root ) {

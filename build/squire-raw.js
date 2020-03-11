@@ -670,18 +670,6 @@ function mergeWithBlock ( block, next, range, root ) {
     range.setStart( block, offset );
     range.collapse( true );
     mergeInlines( block, range );
-
-    // Opera inserts a BR if you delete the last piece of text
-    // in a block-level element. Unfortunately, it then gets
-    // confused when setting the selection subsequently and
-    // refuses to accept the range that finishes just before the
-    // BR. Removing the BR fixes the bug.
-    // Steps to reproduce bug: Type "a-b-c" (where - is return)
-    // then backspace twice. The cursor goes to the top instead
-    // of after "b".
-    if ( isPresto && ( last = block.lastChild ) && last.nodeName === 'BR' ) {
-        block.removeChild( last );
-    }
 }
 
 function mergeContainers ( node, root ) {
@@ -1311,12 +1299,6 @@ var onKey = function ( event ) {
         }
     }
 
-    // On keypress, delete and '.' both have event.keyCode 46
-    // Must check event.which to differentiate.
-    if ( isPresto && event.which === 46 ) {
-        key = '.';
-    }
-
     // Function keys
     if ( 111 < code && code < 124 ) {
         key = 'f' + ( code - 111 );
@@ -1568,7 +1550,7 @@ var handleEnter = function ( self, shiftKey, range ) {
         // If you try to select the contents of a 'BR', FF will not let
         // you type anything!
         if ( !child || child.nodeName === 'BR' ||
-                ( child.nodeType === TEXT_NODE && !isPresto ) ) {
+                child.nodeType === TEXT_NODE ) {
             break;
         }
         nodeAfterSplit = child;
@@ -2644,9 +2626,7 @@ function Squire ( root, config ) {
     this.addEventListener( 'keyup', monitorShiftKey );
     this.addEventListener( isIElt11 ? 'beforepaste' : 'paste', onPaste );
     this.addEventListener( 'drop', onDrop );
-
-    // Opera does not fire keydown repeatedly.
-    this.addEventListener( isPresto ? 'keypress' : 'keydown', onKey );
+    this.addEventListener( 'keydown', onKey );
 
     // Add key handlers
     this._keyHandlers = Object.create( keyHandlers );

@@ -93,9 +93,7 @@ function Squire ( root, config ) {
     this.addEventListener( 'keyup', monitorShiftKey );
     this.addEventListener( isIElt11 ? 'beforepaste' : 'paste', onPaste );
     this.addEventListener( 'drop', onDrop );
-
-    // Opera does not fire keydown repeatedly.
-    this.addEventListener( isPresto ? 'keypress' : 'keydown', onKey );
+    this.addEventListener( 'keydown', onKey );
 
     // Add key handlers
     this._keyHandlers = Object.create( keyHandlers );

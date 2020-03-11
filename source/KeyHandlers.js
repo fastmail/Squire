@@ -33,12 +33,6 @@ var onKey = function ( event ) {
         }
     }
 
-    // On keypress, delete and '.' both have event.keyCode 46
-    // Must check event.which to differentiate.
-    if ( isPresto && event.which === 46 ) {
-        key = '.';
-    }
-
     // Function keys
     if ( 111 < code && code < 124 ) {
         key = 'f' + ( code - 111 );
@@ -290,7 +284,7 @@ var handleEnter = function ( self, shiftKey, range ) {
         // If you try to select the contents of a 'BR', FF will not let
         // you type anything!
         if ( !child || child.nodeName === 'BR' ||
-                ( child.nodeType === TEXT_NODE && !isPresto ) ) {
+                child.nodeType === TEXT_NODE ) {
             break;
         }
         nodeAfterSplit = child;
