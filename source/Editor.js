@@ -35,12 +35,6 @@ function Squire ( root, config ) {
     this._isFocused = false;
     this._lastSelection = null;
 
-    // IE loses selection state of iframe on blur, so make sure we
-    // cache it just before it loses focus.
-    if ( losesSelectionOnBlur ) {
-        this.addEventListener( 'beforedeactivate', this.getSelection );
-    }
-
     this._hasZWS = false;
 
     this._lastAnchorNode = null;
@@ -87,11 +81,11 @@ function Squire ( root, config ) {
     // IE sometimes fires the beforepaste event twice; make sure it is not run
     // again before our after paste function is called.
     this._awaitingPaste = false;
-    this.addEventListener( isIElt11 ? 'beforecut' : 'cut', onCut );
+    this.addEventListener( 'cut', onCut );
     this.addEventListener( 'copy', onCopy );
     this.addEventListener( 'keydown', monitorShiftKey );
     this.addEventListener( 'keyup', monitorShiftKey );
-    this.addEventListener( isIElt11 ? 'beforepaste' : 'paste', onPaste );
+    this.addEventListener( 'paste', onPaste );
     this.addEventListener( 'drop', onDrop );
     this.addEventListener( 'keydown', onKey );
 
@@ -100,35 +94,6 @@ function Squire ( root, config ) {
 
     // Override default properties
     this.setConfig( config );
-
-    // Fix IE<10's buggy implementation of Text#splitText.
-    // If the split is at the end of the node, it doesn't insert the newly split
-    // node into the document, and sets its value to undefined rather than ''.
-    // And even if the split is not at the end, the original node is removed
-    // from the document and replaced by another, rather than just having its
-    // data shortened.
-    // We used to feature test for this, but then found the feature test would
-    // sometimes pass, but later on the buggy behaviour would still appear.
-    // I think IE10 does not have the same bug, but it doesn't hurt to replace
-    // its native fn too and then we don't need yet another UA category.
-    if ( isIElt11 ) {
-        win.Text.prototype.splitText = function ( offset ) {
-            var afterSplit = this.ownerDocument.createTextNode(
-                    this.data.slice( offset ) ),
-                next = this.nextSibling,
-                parent = this.parentNode,
-                toDelete = this.length - offset;
-            if ( next ) {
-                parent.insertBefore( afterSplit, next );
-            } else {
-                parent.appendChild( afterSplit );
-            }
-            if ( toDelete ) {
-                this.deleteData( offset, toDelete );
-            }
-            return afterSplit;
-        };
-    }
 
     root.setAttribute( 'contenteditable', 'true' );
 
@@ -1649,24 +1614,7 @@ proto.getHTML = function ( withBookMark ) {
     if ( withBookMark && ( range = this.getSelection() ) ) {
         this._saveRangeToBookmark( range );
     }
-    if ( useTextFixer ) {
-        root = this._root;
-        node = root;
-        while ( node = getNextBlock( node, root ) ) {
-            if ( !node.textContent && !node.querySelector( 'BR' ) ) {
-                fixer = this.createElement( 'BR' );
-                node.appendChild( fixer );
-                brs.push( fixer );
-            }
-        }
-    }
     html = this._getHTML().replace( /\u200B/g, '' );
-    if ( useTextFixer ) {
-        l = brs.length;
-        while ( l-- ) {
-            detach( brs[l] );
-        }
-    }
     if ( range ) {
         this._getRangeAndRemoveBookmark( range );
     }

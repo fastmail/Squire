@@ -266,31 +266,10 @@ function fixCursor ( node, root ) {
                 fixer = doc.createTextNode( '' );
             }
         }
-    } else {
-        if ( useTextFixer ) {
-            while ( node.nodeType !== TEXT_NODE && !isLeaf( node ) ) {
-                child = node.firstChild;
-                if ( !child ) {
-                    fixer = doc.createTextNode( '' );
-                    break;
-                }
-                node = child;
-            }
-            if ( node.nodeType === TEXT_NODE ) {
-                // Opera will collapse the block element if it contains
-                // just spaces (but not if it contains no data at all).
-                if ( /^ +$/.test( node.data ) ) {
-                    node.data = '';
-                }
-            } else if ( isLeaf( node ) ) {
-                node.parentNode.insertBefore( doc.createTextNode( '' ), node );
-            }
-        }
-        else if ( !node.querySelector( 'BR' ) ) {
-            fixer = createElement( doc, 'BR' );
-            while ( ( child = node.lastElementChild ) && !isInline( child ) ) {
-                node = child;
-            }
+    } else if ( !node.querySelector( 'BR' ) ) {
+        fixer = createElement( doc, 'BR' );
+        while ( ( child = node.lastElementChild ) && !isInline( child ) ) {
+            node = child;
         }
     }
     if ( fixer ) {

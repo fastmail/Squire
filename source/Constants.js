@@ -26,16 +26,13 @@ var isIOS = /iP(?:ad|hone|od)/.test( ua ) ||
     ( isMac && !!navigator.maxTouchPoints );
 
 var isGecko = /Gecko\//.test( ua );
-var isIElt11 = /Trident\/[456]\./.test( ua );
 var isEdge = /Edge\//.test( ua );
 var isWebKit = !isEdge && /WebKit\//.test( ua );
 var isIE = /Trident\/[4567]\./.test( ua );
 
 var ctrlKey = isMac ? 'meta-' : 'ctrl-';
 
-var useTextFixer = isIElt11;
-var cantFocusEmptyTextNodes = isIElt11 || isWebKit;
-var losesSelectionOnBlur = isIElt11;
+var cantFocusEmptyTextNodes = isWebKit;
 
 var canObserveMutations = typeof MutationObserver !== 'undefined';
 var canWeakMap = typeof WeakMap !== 'undefined';
