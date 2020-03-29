@@ -139,6 +139,17 @@ var afterDelete = function ( self, range ) {
     }
 };
 
+var detachUneditableNode = function ( node, root ) {
+    var parent;
+    while (( parent = node.parentNode )) {
+        if ( parent === root || parent.isContentEditable ) {
+            break;
+        }
+        node = parent;
+    }
+    detach( node );
+};
+
 var handleEnter = function ( self, shiftKey, range ) {
     var root = self._root;
     var block, parent, node, offset, nodeAfterSplit;
@@ -352,7 +363,7 @@ var keyHandlers = {
             if ( previous ) {
                 // If not editable, just delete whole block.
                 if ( !previous.isContentEditable ) {
-                    detach( previous );
+                    detachUneditableNode( previous, root );
                     return;
                 }
                 // Otherwise merge.
@@ -419,7 +430,7 @@ var keyHandlers = {
             if ( next ) {
                 // If not editable, just delete whole block.
                 if ( !next.isContentEditable ) {
-                    detach( next );
+                    detachUneditableNode( next, root );
                     return;
                 }
                 // Otherwise merge.
