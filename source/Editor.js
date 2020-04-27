@@ -96,6 +96,8 @@ function Squire ( root, config ) {
     this.setConfig( config );
 
     root.setAttribute( 'contenteditable', 'true' );
+    // Grammarly breaks the editor, *sigh*
+    root.setAttribute( 'data_gramm', 'false' );
 
     // Remove Firefox's built-in controls
     try {
