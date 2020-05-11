@@ -1285,10 +1285,13 @@ var onKey = function ( event ) {
         if ( event.altKey  ) { modifiers += 'alt-'; }
         if ( event.ctrlKey ) { modifiers += 'ctrl-'; }
         if ( event.metaKey ) { modifiers += 'meta-'; }
+        if ( event.shiftKey ) { modifiers += 'shift-'; }
     }
     // However, on Windows, shift-delete is apparently "cut" (WTF right?), so
-    // we want to let the browser handle shift-delete.
-    if ( event.shiftKey ) { modifiers += 'shift-'; }
+    // we want to let the browser handle shift-delete in this situation.
+    if ( isWin && event.shiftKey && key === 'delete' ) {
+        modifiers += 'shift-';
+    }
 
     key = modifiers + key;
 
