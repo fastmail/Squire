@@ -1824,6 +1824,19 @@ if ( !isMac ) {
     };
 }
 
+const changeIndentationLevel = function ( methodIfInQuote, methodIfInList ) {
+    return function ( self, event ) {
+        event.preventDefault();
+        var path = self.getPath();
+        if ( /(?:^|>)BLOCKQUOTE/.test( path ) || 
+                !/(?:^|>)[OU]L/.test( path ) ) {
+            self[ methodIfInQuote ]();
+        } else {
+            self[ methodIfInList ]();
+        }
+    };
+};
+
 keyHandlers[ ctrlKey + 'b' ] = mapKeyToFormat( 'B' );
 keyHandlers[ ctrlKey + 'i' ] = mapKeyToFormat( 'I' );
 keyHandlers[ ctrlKey + 'u' ] = mapKeyToFormat( 'U' );
@@ -1832,8 +1845,10 @@ keyHandlers[ ctrlKey + 'shift-5' ] = mapKeyToFormat( 'SUB', { tag: 'SUP' } );
 keyHandlers[ ctrlKey + 'shift-6' ] = mapKeyToFormat( 'SUP', { tag: 'SUB' } );
 keyHandlers[ ctrlKey + 'shift-8' ] = mapKeyTo( 'makeUnorderedList' );
 keyHandlers[ ctrlKey + 'shift-9' ] = mapKeyTo( 'makeOrderedList' );
-keyHandlers[ ctrlKey + '[' ] = mapKeyTo( 'decreaseQuoteLevel' );
-keyHandlers[ ctrlKey + ']' ] = mapKeyTo( 'increaseQuoteLevel' );
+keyHandlers[ ctrlKey + '[' ] = 
+    changeIndentationLevel( 'decreaseQuoteLevel', 'decreaseListLevel' );
+keyHandlers[ ctrlKey + ']' ] = 
+    changeIndentationLevel( 'increaseQuoteLevel', 'increaseListLevel' );
 keyHandlers[ ctrlKey + 'd' ] = mapKeyTo( 'toggleCode' );
 keyHandlers[ ctrlKey + 'y' ] = mapKeyTo( 'redo' );
 keyHandlers[ ctrlKey + 'z' ] = mapKeyTo( 'undo' );
