@@ -1096,6 +1096,9 @@ var moveRangeBoundariesUpTree = function ( range, startMax, endMax, root ) {
     }
 
     while ( true ) {
+        if ( endContainer === endMax || endContainer === root ) {
+            break;
+        }
         if ( maySkipBR &&
                 endContainer.nodeType !== TEXT_NODE &&
                 endContainer.childNodes[ endOffset ] &&
@@ -1103,9 +1106,7 @@ var moveRangeBoundariesUpTree = function ( range, startMax, endMax, root ) {
             endOffset += 1;
             maySkipBR = false;
         }
-        if ( endContainer === endMax ||
-                endContainer === root ||
-                endOffset !== getLength( endContainer ) ) {
+        if ( endOffset !== getLength( endContainer ) ) {
             break;
         }
         parent = endContainer.parentNode;
@@ -1115,6 +1116,20 @@ var moveRangeBoundariesUpTree = function ( range, startMax, endMax, root ) {
 
     range.setStart( startContainer, startOffset );
     range.setEnd( endContainer, endOffset );
+};
+
+var moveRangeBoundaryOutOf = function ( range, nodeName, root ) {
+    var parent = getNearest( range.endContainer, root, 'A' );
+    if ( parent ) {
+        var clone = range.cloneRange();
+        parent = parent.parentNode;
+        moveRangeBoundariesUpTree( clone, parent, parent, root );
+        if ( clone.endContainer === parent ) {
+            range.setStart( clone.endContainer, clone.endOffset );
+            range.setEnd( clone.endContainer, clone.endOffset );
+        }
+    }
+    return range;
 };
 
 // Returns the first block at least partially contained by the range,
@@ -1468,12 +1483,7 @@ var handleEnter = function ( self, shiftKey, range ) {
     // just play it safe and insert a <br>.
     if ( !block || shiftKey || /^T[HD]$/.test( block.nodeName ) ) {
         // If inside an <a>, move focus out
-        parent = getNearest( range.endContainer, root, 'A' );
-        if ( parent ) {
-            parent = parent.parentNode;
-            moveRangeBoundariesUpTree( range, parent, parent, root );
-            range.collapse( false );
-        }
+        moveRangeBoundaryOutOf( range, 'A', root );
         insertNodeInRange( range, self.createElement( 'BR' ) );
         range.collapse( false );
         self.setSelection( range );
@@ -4435,6 +4445,12 @@ proto.insertHTML = function ( html, isPaste ) {
                 this._docWasChanged();
             }
             range.collapse( false );
+
+            // After inserting the fragment, check whether the cursor is inside
+            // an <a> element and if so if there is an equivalent cursor
+            // position after the <a> element. If there is, move it there.
+            moveRangeBoundaryOutOf( range, 'A', root );
+
             this._ensureBottomLine();
         }
 

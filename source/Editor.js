@@ -1898,6 +1898,12 @@ proto.insertHTML = function ( html, isPaste ) {
                 this._docWasChanged();
             }
             range.collapse( false );
+
+            // After inserting the fragment, check whether the cursor is inside
+            // an <a> element and if so if there is an equivalent cursor
+            // position after the <a> element. If there is, move it there.
+            moveRangeBoundaryOutOf( range, 'A', root );
+
             this._ensureBottomLine();
         }
 
