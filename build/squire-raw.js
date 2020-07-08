@@ -460,7 +460,6 @@ function fixContainer ( container, root ) {
     var doc = container.ownerDocument;
     var wrapper = null;
     var i, l, child, isBR;
-    var config = root.__squire__._config;
 
     for ( i = 0, l = children.length; i < l; i += 1 ) {
         child = children[i];
@@ -1762,7 +1761,7 @@ var keyHandlers = {
         }
     },
     space: function ( self, _, range ) {
-        var node, parent;
+        var node;
         var root = self._root;
         self._recordUndoState( range );
         if ( self._config.addLinks ) {
@@ -2225,23 +2224,32 @@ var cleanupBRs = function ( node, root, keepForBlankLine ) {
 // The (non-standard but supported enough) innerText property is based on the
 // render tree in Firefox and possibly other browsers, so we must insert the
 // DOM node into the document to ensure the text part is correct.
-var setClipboardData = function ( clipboardData, node, root, config ) {
-    var body = node.ownerDocument.body;
-    var willCutCopy = config.willCutCopy;
+var setClipboardData =
+        function ( event, contents, root, willCutCopy, toPlainText, plainTextOnly ) {
+    var clipboardData = event.clipboardData;
+    var doc = event.target.ownerDocument;
+    var body = doc.body;
+    var node = createElement( doc, 'div' );
     var html, text;
 
+    node.appendChild( contents );
     // Firefox will add an extra new line for BRs at the end of block when
     // calculating innerText, even though they don't actually affect display.
     // So we need to remove them first.
     cleanupBRs( node, root, true );
-
     node.setAttribute( 'style',
         'position:fixed;overflow:hidden;bottom:100%;right:100%;' );
-    body.appendChild( node );
-    html = node.innerHTML;
-    text = node.innerText || node.textContent;
+    html = plainTextOnly ? '' : node.innerHTML;
+    if ( toPlainText ) {
+        text = toPlainText( html );
+    } else {
+        body.appendChild( node );
+        text = node.innerText || node.textContent;
+        text = text.replace( / /g, ' ' ); // Replace nbsp with regular space
+        body.removeChild( node );
+    }
 
-    if ( willCutCopy ) {
+    if ( !plainTextOnly && willCutCopy ) {
         html = willCutCopy( html );
     }
 
@@ -2252,18 +2260,18 @@ var setClipboardData = function ( clipboardData, node, root, config ) {
         text = text.replace( /\r?\n/g, '\r\n' );
     }
 
-    clipboardData.setData( 'text/html', html );
+    if ( !plainTextOnly ) {
+        clipboardData.setData( 'text/html', html );
+    }
     clipboardData.setData( 'text/plain', text );
-
-    body.removeChild( node );
+    event.preventDefault();
 };
 
 var onCut = function ( event ) {
-    var clipboardData = event.clipboardData;
     var range = this.getSelection();
     var root = this._root;
     var self = this;
-    var startBlock, endBlock, copyRoot, contents, parent, newContents, node;
+    var startBlock, endBlock, copyRoot, contents, parent, newContents;
 
     // Nothing to do
     if ( range.collapsed ) {
@@ -2275,7 +2283,7 @@ var onCut = function ( event ) {
     this.saveUndoState( range );
 
     // Edge only seems to support setting plain text as of 2016-03-11.
-    if ( !isEdge && clipboardData ) {
+    if ( !isEdge && event.clipboardData ) {
         // Clipboard content should include all parents within block, or all
         // parents up to root if selection across blocks
         startBlock = getStartBlockOfRange( range, root );
@@ -2295,10 +2303,8 @@ var onCut = function ( event ) {
             parent = parent.parentNode;
         }
         // Set clipboard data
-        node = this.createElement( 'div' );
-        node.appendChild( contents );
-        setClipboardData( clipboardData, node, root, this._config );
-        event.preventDefault();
+        setClipboardData(
+            event, contents, root, this._config.willCutCopy, null, false );
     } else {
         setTimeout( function () {
             try {
@@ -2313,14 +2319,10 @@ var onCut = function ( event ) {
     this.setSelection( range );
 };
 
-var onCopy = function ( event ) {
-    var clipboardData = event.clipboardData;
-    var range = this.getSelection();
-    var root = this._root;
-    var startBlock, endBlock, copyRoot, contents, parent, newContents, node;
-
+var _onCopy = function ( event, range, root, willCutCopy, toPlainText, plainTextOnly ) {
+    var startBlock, endBlock, copyRoot, contents, parent, newContents;
     // Edge only seems to support setting plain text as of 2016-03-11.
-    if ( !isEdge && clipboardData ) {
+    if ( !isEdge && event.clipboardData ) {
         // Clipboard content should include all parents within block, or all
         // parents up to root if selection across blocks
         startBlock = getStartBlockOfRange( range, root );
@@ -2345,11 +2347,19 @@ var onCopy = function ( event ) {
             parent = parent.parentNode;
         }
         // Set clipboard data
-        node = this.createElement( 'div' );
-        node.appendChild( contents );
-        setClipboardData( clipboardData, node, root, this._config );
-        event.preventDefault();
+        setClipboardData( event, contents, root, willCutCopy, toPlainText, plainTextOnly );
     }
+};
+
+var onCopy = function ( event ) {
+    _onCopy(
+        event,
+        this.getSelection(),
+        this._root,
+        this._config.willCutCopy,
+        null,
+        false
+    );
 };
 
 // Need to monitor for shift key like this, as event.shiftKey is not available
@@ -3160,7 +3170,7 @@ proto._updatePath = function ( range, force ) {
 // selectionchange is fired synchronously in IE when removing current selection
 // and when setting new selection; keyup/mouseup may have processing we want
 // to do first. Either way, send to next event loop.
-proto._updatePathOnEvent = function ( event ) {
+proto._updatePathOnEvent = function () {
     var self = this;
     if ( self._isFocused && !self._willUpdatePath ) {
         self._willUpdatePath = true;
@@ -4172,8 +4182,7 @@ proto._setHTML = function ( html ) {
 };
 
 proto.getHTML = function ( withBookMark ) {
-    var brs = [],
-        root, node, fixer, html, l, range;
+    var html, range;
     if ( withBookMark && ( range = this.getSelection() ) ) {
         this._saveRangeToBookmark( range );
     }
@@ -4968,6 +4977,7 @@ Squire.rangeDoesEndAtBlockBoundary = rangeDoesEndAtBlockBoundary;
 Squire.expandRangeToBlockBoundaries = expandRangeToBlockBoundaries;
 
 // Clipboard.js exports
+Squire.onCopy = _onCopy;
 Squire.onPaste = onPaste;
 
 // Editor.js exports

@@ -33,6 +33,7 @@ Squire.rangeDoesEndAtBlockBoundary = rangeDoesEndAtBlockBoundary;
 Squire.expandRangeToBlockBoundaries = expandRangeToBlockBoundaries;
 
 // Clipboard.js exports
+Squire.onCopy = _onCopy;
 Squire.onPaste = onPaste;
 
 // Editor.js exports
