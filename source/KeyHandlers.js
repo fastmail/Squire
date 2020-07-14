@@ -506,7 +506,7 @@ var keyHandlers = {
         }
     },
     space: function ( self, _, range ) {
-        var node, parent;
+        var node;
         var root = self._root;
         self._recordUndoState( range );
         if ( self._config.addLinks ) {

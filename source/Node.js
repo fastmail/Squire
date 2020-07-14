@@ -293,7 +293,6 @@ function fixContainer ( container, root ) {
     var doc = container.ownerDocument;
     var wrapper = null;
     var i, l, child, isBR;
-    var config = root.__squire__._config;
 
     for ( i = 0, l = children.length; i < l; i += 1 ) {
         child = children[i];
