@@ -2237,22 +2237,22 @@ var setClipboardData =
     // calculating innerText, even though they don't actually affect display.
     // So we need to remove them first.
     cleanupBRs( node, root, true );
-    node.setAttribute( 'style',
-        'position:fixed;overflow:hidden;bottom:100%;right:100%;' );
-    html = plainTextOnly ? '' : node.innerHTML;
+
+    html = node.innerHTML;
+    if ( willCutCopy ) {
+        html = willCutCopy( html );
+    }
+
     if ( toPlainText ) {
         text = toPlainText( html );
     } else {
+        node.setAttribute( 'style',
+            'position:fixed;overflow:hidden;bottom:100%;right:100%;' );
         body.appendChild( node );
         text = node.innerText || node.textContent;
         text = text.replace( / /g, ' ' ); // Replace nbsp with regular space
         body.removeChild( node );
     }
-
-    if ( !plainTextOnly && willCutCopy ) {
-        html = willCutCopy( html );
-    }
-
     // Firefox (and others?) returns unix line endings (\n) even on Windows.
     // If on Windows, normalise to \r\n, since Notepad and some other crappy
     // apps do not understand just \n.
