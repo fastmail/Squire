@@ -18,7 +18,7 @@ var setClipboardData =
     cleanupBRs( node, root, true );
     node.setAttribute( 'style',
         'position:fixed;overflow:hidden;bottom:100%;right:100%;' );
-    html = plainTextOnly ? '' : node.innerHTML;
+    html = node.innerHTML;
     if ( toPlainText ) {
         text = toPlainText( html );
     } else {
