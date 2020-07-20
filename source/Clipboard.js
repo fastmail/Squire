@@ -12,10 +12,6 @@ var setClipboardData =
     var html, text;
 
     node.appendChild( contents );
-    // Firefox will add an extra new line for BRs at the end of block when
-    // calculating innerText, even though they don't actually affect display.
-    // So we need to remove them first.
-    cleanupBRs( node, root, true );
 
     html = node.innerHTML;
     if ( willCutCopy ) {
@@ -25,6 +21,10 @@ var setClipboardData =
     if ( toPlainText ) {
         text = toPlainText( html );
     } else {
+        // Firefox will add an extra new line for BRs at the end of block when
+        // calculating innerText, even though they don't actually affect
+        // display, so we need to remove them first.
+        cleanupBRs( node, root, true );
         node.setAttribute( 'style',
             'position:fixed;overflow:hidden;bottom:100%;right:100%;' );
         body.appendChild( node );
