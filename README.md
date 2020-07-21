@@ -9,7 +9,7 @@ Squire was designed to be integrated with your own UI framework, and so does not
 
 Squire supports all reasonably recent, and even moderately old, browsers (even IE11, although this is not tested much these days).
 
-In addition to its use at [Fastmail](https://www.fastmail.com), is is also currently used in production at [ProtonMail](https://protonmail.com/), [Tutanota](https://tutanota.com), [Zoho Mail](https://www.zoho.com/mail/) and [Superhuman](https://superhuman.com/), as well as other non-mail apps (drop me a line if you're using Squire elsewhere, I'm always interested to hear about it!).
+In addition to its use at [Fastmail](https://www.fastmail.com), it is also currently used in production at [ProtonMail](https://protonmail.com/), [StartMail](https://startmail.com/), [Tutanota](https://tutanota.com), [Zoho Mail](https://www.zoho.com/mail/) and [Superhuman](https://superhuman.com/), as well as other non-mail apps (drop me a line if you're using Squire elsewhere, I'm always interested to hear about it!).
 
 An example UI integration can be tried at http://neilj.github.io/Squire/. Please note though, this is an out-of-date version of Squire and a slightly buggy implementation written by an intern many years ago. For a demo of the latest version with a production-level UI integration, [sign up for a free Fastmail trial](https://www.fastmail.com/signup/) :). There's also a very bare-bones integration in the repo; just clone it and open `Demo.html`. If you are reporting a bug, please report the steps to reproduce using `Demo.html`, to make sure it's not a bug in your integration.
 
