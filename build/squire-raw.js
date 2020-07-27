@@ -2260,7 +2260,7 @@ var setClipboardData =
         text = text.replace( /\r?\n/g, '\r\n' );
     }
 
-    if ( !plainTextOnly ) {
+    if ( !plainTextOnly && text !== html ) {
         clipboardData.setData( 'text/html', html );
     }
     clipboardData.setData( 'text/plain', text );
