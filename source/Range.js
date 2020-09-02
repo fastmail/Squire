@@ -496,7 +496,7 @@ var contentWalker = new TreeWalker( null,
     function ( node ) {
         return node.nodeType === TEXT_NODE ?
             notWS.test( node.data ) :
-            node.nodeName === 'IMG';
+            node.nodeName === 'INPUT' || node.nodeName === 'IMG' || !node.isContentEditable;
     }
 );
 

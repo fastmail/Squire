@@ -1180,7 +1180,7 @@ var contentWalker = new TreeWalker( null,
     function ( node ) {
         return node.nodeType === TEXT_NODE ?
             notWS.test( node.data ) :
-            node.nodeName === 'IMG';
+            node.nodeName === 'INPUT' || node.nodeName === 'IMG' || !node.isContentEditable;
     }
 );
 
@@ -1615,7 +1615,7 @@ var keyHandlers = {
             // Must not be at the very beginning of the text area.
             if ( previous ) {
                 // If not editable, just delete whole block.
-                if ( !previous.isContentEditable ) {
+                if ( !previous.isContentEditable || previous.nodeName == 'INPUT' ) {
                     detachUneditableNode( previous, root );
                     return;
                 }
@@ -1730,7 +1730,8 @@ var keyHandlers = {
         var node, parent;
         self._removeZWS();
         // If no selection and at start of block
-        if ( range.collapsed && rangeDoesStartAtBlockBoundary( range, root ) ) {
+        // DISABLE USE OF increaseListLevel
+        if ( false && range.collapsed && rangeDoesStartAtBlockBoundary( range, root ) ) {
             node = getStartBlockOfRange( range, root );
             // Iterate through the block's parents
             while ( ( parent = node.parentNode ) ) {
@@ -2989,7 +2990,7 @@ proto.setSelection = function ( range ) {
                     range.startContainer,
                     range.startOffset,
                     range.endContainer,
-                    range.endOffset,
+                    range.endOffset
                 );
             } else if ( sel ) {
                 // This is just for IE11
@@ -4364,7 +4365,7 @@ var addLinks = function ( frag, root, self ) {
     });
     var linkRegExp = self.linkRegExp;
     var defaultAttributes = self._config.tagAttributes.a;
-    var node, data, parent, match, index, endIndex, child;
+    var node, data, parent, match, index, endIndex, child, href;
     if ( !linkRegExp ) {
         return;
     }
@@ -4378,16 +4379,18 @@ var addLinks = function ( frag, root, self ) {
                 child = doc.createTextNode( data.slice( 0, index ) );
                 parent.insertBefore( child, node );
             }
-            child = self.createElement( 'A', mergeObjects({
-                href: match[1] ?
+            href = match[1] ?
                     /^(?:ht|f)tps?:/i.test( match[1] ) ?
                         match[1] :
                         'http://' + match[1] :
-                    'mailto:' + match[0]
+                    'mailto:' + match[0];
+            child = self.createElement( 'A', mergeObjects({
+                href: href
             }, defaultAttributes, false ));
             child.textContent = data.slice( index, endIndex );
             parent.insertBefore( child, node );
             node.data = data = data.slice( endIndex );
+            self.fireEvent('addLink', { link: href });
         }
     }
 };

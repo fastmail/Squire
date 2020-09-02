@@ -360,7 +360,7 @@ var keyHandlers = {
             // Must not be at the very beginning of the text area.
             if ( previous ) {
                 // If not editable, just delete whole block.
-                if ( !previous.isContentEditable ) {
+                if ( !previous.isContentEditable || previous.nodeName == 'INPUT' ) {
                     detachUneditableNode( previous, root );
                     return;
                 }
@@ -475,7 +475,8 @@ var keyHandlers = {
         var node, parent;
         self._removeZWS();
         // If no selection and at start of block
-        if ( range.collapsed && rangeDoesStartAtBlockBoundary( range, root ) ) {
+        // DISABLE USE OF increaseListLevel
+        if ( false && range.collapsed && rangeDoesStartAtBlockBoundary( range, root ) ) {
             node = getStartBlockOfRange( range, root );
             // Iterate through the block's parents
             while ( ( parent = node.parentNode ) ) {

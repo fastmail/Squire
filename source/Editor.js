@@ -418,7 +418,7 @@ proto.setSelection = function ( range ) {
                     range.startContainer,
                     range.startOffset,
                     range.endContainer,
-                    range.endOffset,
+                    range.endOffset
                 );
             } else if ( sel ) {
                 // This is just for IE11
@@ -1793,7 +1793,7 @@ var addLinks = function ( frag, root, self ) {
     });
     var linkRegExp = self.linkRegExp;
     var defaultAttributes = self._config.tagAttributes.a;
-    var node, data, parent, match, index, endIndex, child;
+    var node, data, parent, match, index, endIndex, child, href;
     if ( !linkRegExp ) {
         return;
     }
@@ -1807,16 +1807,18 @@ var addLinks = function ( frag, root, self ) {
                 child = doc.createTextNode( data.slice( 0, index ) );
                 parent.insertBefore( child, node );
             }
-            child = self.createElement( 'A', mergeObjects({
-                href: match[1] ?
+            href = match[1] ?
                     /^(?:ht|f)tps?:/i.test( match[1] ) ?
                         match[1] :
                         'http://' + match[1] :
-                    'mailto:' + match[0]
+                    'mailto:' + match[0];
+            child = self.createElement( 'A', mergeObjects({
+                href: href
             }, defaultAttributes, false ));
             child.textContent = data.slice( index, endIndex );
             parent.insertBefore( child, node );
             node.data = data = data.slice( endIndex );
+            self.fireEvent('addLink', { link: href });
         }
     }
 };
