@@ -175,6 +175,15 @@ var handleEnter = function ( self, shiftKey, range ) {
 
     block = getStartBlockOfRange( range, root );
 
+    // If the block is begining with CHECKBOX,
+    // the splitted next line should begin with CHECKBOX.
+    var beginingCheckbox = (
+        block.firstChild.nodeName == 'SPAN' &&
+        !block.firstChild.isContentEditable &&
+        block.firstChild.firstChild.nodeName == 'INPUT' &&
+        block.firstChild.firstChild.getAttribute('TYPE') == 'checkbox'
+    ) && block.firstChild.cloneNode(true) || null;
+
     // Inside a PRE, insert literal newline, unless on blank line.
     if ( block && ( parent = getNearest( block, root, 'PRE' ) ) ) {
         moveRangeBoundariesDownTree( range );
@@ -255,6 +264,14 @@ var handleEnter = function ( self, shiftKey, range ) {
     // Otherwise, split at cursor point.
     nodeAfterSplit = splitBlock( self, block,
         range.startContainer, range.startOffset );
+
+    // If the block is begining with CHECKBOX,
+    // the splitted next line should begin with CHECKBOX,
+    // and the cursor should located at the next to the CHECKBOX.
+    if (beginingCheckbox) {
+        nodeAfterSplit.prepend(beginingCheckbox);
+        nodeAfterSplit = nodeAfterSplit.firstChild.nextSibling;
+    }
 
     // Clean up any empty inlines if we hit enter at the beginning of the
     // block
