@@ -1317,10 +1317,9 @@ var increaseBlockQuoteLevel = function ( frag ) {
 };
 
 var decreaseBlockQuoteLevel = function ( frag ) {
-    var root = this._root;
     var blockquotes = frag.querySelectorAll( 'blockquote' );
     Array.prototype.filter.call( blockquotes, function ( el ) {
-        return !getNearest( el.parentNode, root, 'BLOCKQUOTE' );
+        return !getNearest( el.parentNode, frag, 'BLOCKQUOTE' );
     }).forEach( function ( el ) {
         replaceWith( el, empty( el ) );
     });
