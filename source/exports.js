@@ -9,6 +9,7 @@ Squire.getPreviousBlock = getPreviousBlock;
 Squire.getNextBlock = getNextBlock;
 Squire.areAlike = areAlike;
 Squire.hasTagAttributes = hasTagAttributes;
+Squire.getClosest = getClosest;
 Squire.getNearest = getNearest;
 Squire.isOrContains = isOrContains;
 Squire.detach = detach;

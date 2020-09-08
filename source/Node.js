@@ -20,6 +20,20 @@ function every ( nodeList, fn ) {
     return true;
 }
 
+/*
+// Internet Explorer
+if (!Element.prototype.closest) {
+	Element.prototype.closest = function(s) {
+		let el = this;
+		do {
+			if (el.matches(s)) return el;
+			el = el.parentElement;
+		} while (el && el.nodeType === 1);
+		return null;
+	};
+}
+*/
+
 // ---
 
 var UNKNOWN = 0;
@@ -109,6 +123,11 @@ function hasTagAttributes ( node, tag, attributes ) {
         }
     }
     return true;
+}
+function getClosest ( node, root, selector ) {
+    node = ( !node || node.closest ? node : node.parentElement );
+    node = node && node.closest( selector );
+    return node && root.contains(node) ? node : null;
 }
 function getNearest ( node, root, tag, attributes ) {
     while ( node && node !== root ) {
@@ -357,7 +376,7 @@ function split ( node, offset, stopNode, root ) {
 
         // Maintain li numbering if inside a quote.
         if ( node.nodeName === 'OL' &&
-                getNearest( node, root, 'BLOCKQUOTE' ) ) {
+                getClosest( node, root, 'BLOCKQUOTE' ) ) {
             clone.start = ( +node.start || 1 ) + node.childNodes.length - 1;
         }
 

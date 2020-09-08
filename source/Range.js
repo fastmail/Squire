@@ -211,7 +211,7 @@ var insertTreeFragmentIntoRange = function ( range, frag, root ) {
     range.collapse( false ); // collapse to end
 
     // Where will we split up to? First blockquote parent, otherwise root.
-    stopPoint = getNearest( range.endContainer, root, 'BLOCKQUOTE' ) || root;
+    stopPoint = getClosest( range.endContainer, root, 'BLOCKQUOTE' ) || root;
 
     // Merge the contents of the first block in the frag with the focused block.
     // If there are contents in the block after the focus point, collect this
@@ -228,8 +228,7 @@ var insertTreeFragmentIntoRange = function ( range, frag, root ) {
     replaceBlock = !firstInFragIsInline && !!block && isEmptyBlock( block );
     if ( block && firstBlockInFrag && !replaceBlock &&
             // Don't merge table cells or PRE elements into block
-            !getNearest( firstBlockInFrag, frag, 'PRE' ) &&
-            !getNearest( firstBlockInFrag, frag, 'TABLE' ) ) {
+            !getClosest( firstBlockInFrag, frag, 'PRE,TABLE' ) ) {
         moveRangeBoundariesUpTree( range, block, block, root );
         range.collapse( true ); // collapse to start
         container = range.endContainer;
@@ -434,7 +433,7 @@ var moveRangeBoundariesUpTree = function ( range, startMax, endMax, root ) {
 };
 
 var moveRangeBoundaryOutOf = function ( range, nodeName, root ) {
-    var parent = getNearest( range.endContainer, root, 'A' );
+    var parent = getClosest( range.endContainer, root, 'A' );
     if ( parent ) {
         var clone = range.cloneRange();
         parent = parent.parentNode;

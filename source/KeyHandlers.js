@@ -176,7 +176,7 @@ var handleEnter = function ( self, shiftKey, range ) {
     block = getStartBlockOfRange( range, root );
 
     // Inside a PRE, insert literal newline, unless on blank line.
-    if ( block && ( parent = getNearest( block, root, 'PRE' ) ) ) {
+    if ( block && ( parent = getClosest( block, root, 'PRE' ) ) ) {
         moveRangeBoundariesDownTree( range );
         node = range.startContainer;
         offset = range.startOffset;
@@ -236,20 +236,16 @@ var handleEnter = function ( self, shiftKey, range ) {
     }
 
     // If in a list, we'll split the LI instead.
-    if ( parent = getNearest( block, root, 'LI' ) ) {
+    if ( parent = getClosest( block, root, 'LI' ) ) {
         block = parent;
     }
 
-    if ( isEmptyBlock( block ) ) {
-        // Break list
-        if ( getNearest( block, root, 'UL' ) ||
-                getNearest( block, root, 'OL' ) ) {
-            return self.decreaseListLevel( range );
-        }
-        // Break blockquote
-        else if ( getNearest( block, root, 'BLOCKQUOTE' ) ) {
-            return self.modifyBlocks( removeBlockQuote, range );
-        }
+    if ( isEmptyBlock( block ) && ( parent = getClosest( block, root, 'UL,OL,BLOCKQUOTE' ) ) ) {
+        return 'BLOCKQUOTE' === parent.nodeName
+            // Break blockquote
+            ? self.modifyBlocks( removeBlockQuote, range )
+            // Break list
+            : self.decreaseListLevel( range );
     }
 
     // Otherwise, split at cursor point.
@@ -380,14 +376,13 @@ var keyHandlers = {
             // If at very beginning of text area, allow backspace
             // to break lists/blockquote.
             else if ( current ) {
-                // Break list
-                if ( getNearest( current, root, 'UL' ) ||
-                        getNearest( current, root, 'OL' ) ) {
-                    return self.decreaseListLevel( range );
-                }
-                // Break blockquote
-                else if ( getNearest( current, root, 'BLOCKQUOTE' ) ) {
-                    return self.modifyBlocks( decreaseBlockQuoteLevel, range );
+                let parent = getClosest( current, root, 'UL,OL,BLOCKQUOTE' );
+                if (parent) {
+                    return ( 'BLOCKQUOTE' === parent.nodeName )
+                        // Break blockquote
+                        ? self.modifyBlocks( decreaseBlockQuoteLevel, range )
+                        // Break list
+                        : self.decreaseListLevel( range );
                 }
                 self.setSelection( range );
                 self._updatePath( range, true );
@@ -498,8 +493,7 @@ var keyHandlers = {
         if ( range.collapsed && rangeDoesStartAtBlockBoundary( range, root ) ) {
             // Break list
             node = range.startContainer;
-            if ( getNearest( node, root, 'UL' ) ||
-                    getNearest( node, root, 'OL' ) ) {
+            if ( getClosest( node, root, 'UL,OL' ) ) {
                 event.preventDefault();
                 self.decreaseListLevel( range );
             }
