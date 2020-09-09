@@ -45,8 +45,7 @@ function Squire ( root, config ) {
     if ( 'onselectionchange' in doc ) {
         this.addEventListener( 'selectionchange', this._updatePathOnEvent );
     } else {
-        this.addEventListener( 'keyup', this._updatePathOnEvent );
-        this.addEventListener( 'mouseup', this._updatePathOnEvent );
+        this.addEventListener( 'keyup mouseup', this._updatePathOnEvent );
     }
 
     this._undoIndex = -1;
@@ -73,21 +72,19 @@ function Squire ( root, config ) {
     // specific point. Can't actually use click event because focus happens
     // before click, so use mousedown/touchstart
     this._restoreSelection = false;
-    this.addEventListener( 'blur', enableRestoreSelection );
-    this.addEventListener( 'mousedown', disableRestoreSelection );
-    this.addEventListener( 'touchstart', disableRestoreSelection );
-    this.addEventListener( 'focus', restoreSelection );
+    this.addEventListener( 'blur', enableRestoreSelection )
+        .addEventListener( 'pointerdown mousedown touchstart', disableRestoreSelection )
+        .addEventListener( 'focus', restoreSelection );
 
     // IE sometimes fires the beforepaste event twice; make sure it is not run
     // again before our after paste function is called.
     this._awaitingPaste = false;
-    this.addEventListener( 'cut', onCut );
-    this.addEventListener( 'copy', onCopy );
-    this.addEventListener( 'keydown', monitorShiftKey );
-    this.addEventListener( 'keyup', monitorShiftKey );
-    this.addEventListener( 'paste', onPaste );
-    this.addEventListener( 'drop', onDrop );
-    this.addEventListener( 'keydown', onKey );
+    this.addEventListener( 'cut', onCut )
+        .addEventListener( 'copy', onCopy )
+        .addEventListener( 'keydown keyup', monitorShiftKey )
+        .addEventListener( 'paste', onPaste )
+        .addEventListener( 'drop', onDrop )
+        .addEventListener( 'keydown', onKey );
 
     // Add key handlers
     this._keyHandlers = Object.create( keyHandlers );
@@ -291,25 +288,27 @@ proto.handleEvent = function ( event ) {
 };
 
 proto.addEventListener = function ( type, fn ) {
-    var handlers = this._events[ type ];
-    var target = this._root;
-    if ( !fn ) {
-        this.didError({
-            name: 'Squire: addEventListener with null or undefined fn',
-            message: 'Event type: ' + type
-        });
-        return this;
-    }
-    if ( !handlers ) {
-        handlers = this._events[ type ] = [];
-        if ( !customEvents[ type ] ) {
-            if ( type === 'selectionchange' ) {
-                target = this._doc;
-            }
-            target.addEventListener( type, this, true );
+    type.split( /\s+/ ).forEach( type => {
+        var handlers = this._events[ type ];
+        var target = this._root;
+        if ( !fn ) {
+            this.didError({
+                name: 'Squire: addEventListener with null or undefined fn',
+                message: 'Event type: ' + type
+            });
+            return this;
         }
-    }
-    handlers.push( fn );
+        if ( !handlers ) {
+            handlers = this._events[ type ] = [];
+            if ( !customEvents[ type ] ) {
+                if ( type === 'selectionchange' ) {
+                    target = this._doc;
+                }
+                target.addEventListener( type, this, true );
+            }
+        }
+        handlers.push( fn );
+    });
     return this;
 };
 
