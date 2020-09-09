@@ -2373,6 +2373,15 @@ proto.removeAllFormatting = function ( range ) {
 proto.increaseQuoteLevel = command( 'modifyBlocks', increaseBlockQuoteLevel );
 proto.decreaseQuoteLevel = command( 'modifyBlocks', decreaseBlockQuoteLevel );
 
+// direction = increase or decrease
+proto.changeIndentationLevel = function (direction) {
+	let parent = this.getSelectionClosest('UL,OL,BLOCKQUOTE');
+	if (parent || 'increase' === direction) {
+		let method = ( !parent || 'BLOCKQUOTE' === parent.nodeName ) ? 'Quote' : 'List';
+		this[ direction + method + 'Level' ]();
+	}
+};
+
 proto.makeUnorderedList = command( 'modifyBlocks', makeUnorderedList );
 proto.makeOrderedList = command( 'modifyBlocks', makeOrderedList );
 proto.removeList = command( 'modifyBlocks', removeList );

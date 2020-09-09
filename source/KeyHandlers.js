@@ -572,17 +572,10 @@ if ( !isMac ) {
     };
 }
 
-const changeIndentationLevel = function ( methodIfInQuote, methodIfInList ) {
-    return function ( self, event ) {
-        event.preventDefault();
-        var path = self.getPath();
-        if ( /(?:^|>)BLOCKQUOTE/.test( path ) ||
-                !/(?:^|>)[OU]L/.test( path ) ) {
-            self[ methodIfInQuote ]();
-        } else {
-            self[ methodIfInList ]();
-        }
-    };
+// (decrease|increase)(Quote|List)Level
+const changeIndentationLevel = direction => ( self, event ) => {
+	event.preventDefault();
+	self.changeIndentationLevel(direction);
 };
 
 const toggleList = function ( listRegex, methodIfNotInList ) {
@@ -607,10 +600,8 @@ keyHandlers[ ctrlKey + 'shift-8' ] =
     toggleList( /(?:^|>)UL/, 'makeUnorderedList' );
 keyHandlers[ ctrlKey + 'shift-9' ] =
     toggleList( /(?:^|>)OL/, 'makeOrderedList' );
-keyHandlers[ ctrlKey + '[' ] =
-    changeIndentationLevel( 'decreaseQuoteLevel', 'decreaseListLevel' );
-keyHandlers[ ctrlKey + ']' ] =
-    changeIndentationLevel( 'increaseQuoteLevel', 'increaseListLevel' );
+keyHandlers[ ctrlKey + '[' ] = changeIndentationLevel( 'decrease' );
+keyHandlers[ ctrlKey + ']' ] = changeIndentationLevel( 'increase' );
 keyHandlers[ ctrlKey + 'd' ] = mapKeyTo( 'toggleCode' );
 keyHandlers[ ctrlKey + 'y' ] = mapKeyTo( 'redo' );
 keyHandlers[ ctrlKey + 'z' ] = mapKeyTo( 'undo' );
