@@ -23,14 +23,14 @@ function every ( nodeList, fn ) {
 /*
 // Internet Explorer
 if (!Element.prototype.closest) {
-	Element.prototype.closest = function(s) {
-		let el = this;
-		do {
-			if (el.matches(s)) return el;
-			el = el.parentElement;
-		} while (el && el.nodeType === 1);
-		return null;
-	};
+    Element.prototype.closest = function(s) {
+        let el = this;
+        do {
+            if (el.matches(s)) return el;
+            el = el.parentElement;
+        } while (el && el.nodeType === 1);
+        return null;
+    };
 }
 */
 

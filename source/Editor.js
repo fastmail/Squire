@@ -467,10 +467,8 @@ proto.getSelection = function () {
 };
 
 proto.getSelectionClosest = function (selector) {
-	let range = this.getSelection();
-	if (range) {
-		return getClosest(range.commonAncestorContainer, this._root, selector);
-	}
+    let range = this.getSelection();
+    return range && getClosest( range.commonAncestorContainer, this._root, selector );
 };
 
 function enableRestoreSelection () {
@@ -2375,11 +2373,11 @@ proto.decreaseQuoteLevel = command( 'modifyBlocks', decreaseBlockQuoteLevel );
 
 // direction = increase or decrease
 proto.changeIndentationLevel = function (direction) {
-	let parent = this.getSelectionClosest('UL,OL,BLOCKQUOTE');
-	if (parent || 'increase' === direction) {
-		let method = ( !parent || 'BLOCKQUOTE' === parent.nodeName ) ? 'Quote' : 'List';
-		this[ direction + method + 'Level' ]();
-	}
+    let parent = this.getSelectionClosest('UL,OL,BLOCKQUOTE');
+    if (parent || 'increase' === direction) {
+        let method = ( !parent || 'BLOCKQUOTE' === parent.nodeName ) ? 'Quote' : 'List';
+        this[ direction + method + 'Level' ]();
+    }
 };
 
 proto.makeUnorderedList = command( 'modifyBlocks', makeUnorderedList );
