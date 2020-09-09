@@ -466,6 +466,13 @@ proto.getSelection = function () {
     return selection;
 };
 
+proto.getSelectionClosest = function (selector) {
+	let range = this.getSelection();
+	if (range) {
+		return getClosest(range.commonAncestorContainer, this._root, selector);
+	}
+};
+
 function enableRestoreSelection () {
     this._restoreSelection = true;
 }
