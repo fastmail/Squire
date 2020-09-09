@@ -578,16 +578,14 @@ const changeIndentationLevel = direction => ( self, event ) => {
 	self.changeIndentationLevel(direction);
 };
 
-const toggleList = function ( listRegex, methodIfNotInList ) {
-    return function ( self, event ) {
-        event.preventDefault();
-        var path = self.getPath();
-        if ( !listRegex.test( path ) ) {
-            self[ methodIfNotInList ]();
-        } else {
-            self.removeList();
-        }
-    };
+const toggleList = ( type, methodIfNotInList ) => ( self, event ) => {
+	event.preventDefault();
+	let parent = self.getSelectionClosest('UL,OL');
+	if (parent && type == parent.nodeName) {
+		self.removeList();
+	} else {
+		self[ methodIfNotInList ]();
+	}
 };
 
 keyHandlers[ ctrlKey + 'b' ] = mapKeyToFormat( 'B' );
@@ -596,10 +594,8 @@ keyHandlers[ ctrlKey + 'u' ] = mapKeyToFormat( 'U' );
 keyHandlers[ ctrlKey + 'shift-7' ] = mapKeyToFormat( 'S' );
 keyHandlers[ ctrlKey + 'shift-5' ] = mapKeyToFormat( 'SUB', { tag: 'SUP' } );
 keyHandlers[ ctrlKey + 'shift-6' ] = mapKeyToFormat( 'SUP', { tag: 'SUB' } );
-keyHandlers[ ctrlKey + 'shift-8' ] =
-    toggleList( /(?:^|>)UL/, 'makeUnorderedList' );
-keyHandlers[ ctrlKey + 'shift-9' ] =
-    toggleList( /(?:^|>)OL/, 'makeOrderedList' );
+keyHandlers[ ctrlKey + 'shift-8' ] = toggleList( 'UL', 'makeUnorderedList' );
+keyHandlers[ ctrlKey + 'shift-9' ] = toggleList( 'OL', 'makeOrderedList' );
 keyHandlers[ ctrlKey + '[' ] = changeIndentationLevel( 'decrease' );
 keyHandlers[ ctrlKey + ']' ] = changeIndentationLevel( 'increase' );
 keyHandlers[ ctrlKey + 'd' ] = mapKeyTo( 'toggleCode' );
