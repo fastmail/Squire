@@ -10,16 +10,6 @@ var leafNodeNames = {
     INPUT: 1
 };
 
-function every ( nodeList, fn ) {
-    var l = nodeList.length;
-    while ( l-- ) {
-        if ( !fn( nodeList[l] ) ) {
-            return false;
-        }
-    }
-    return true;
-}
-
 // ---
 
 var UNKNOWN = 0;
@@ -47,7 +37,7 @@ function getNodeCategory ( node ) {
     }
 
     var nodeCategory;
-    if ( !every( node.childNodes, isInline ) ) {
+    if ( !Array.prototype.every.call( node.childNodes, isInline ) ) {
         // Malformed HTML can have block tags inside inline tags. Need to treat
         // these as containers rather than inline. See #239.
         nodeCategory = CONTAINER;
