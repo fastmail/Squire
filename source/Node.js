@@ -120,7 +120,7 @@ function getNearest ( node, root, tag, attributes ) {
     return null;
 }
 function isOrContains ( parent, node ) {
-    return parent.contains(node);
+    return parent.contains( node );
 }
 
 function getPath ( node, root, config ) {
