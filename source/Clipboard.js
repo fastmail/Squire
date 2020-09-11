@@ -30,7 +30,7 @@ var setClipboardData =
         body.appendChild( node );
         text = node.innerText || node.textContent;
         text = text.replace( / /g, ' ' ); // Replace nbsp with regular space
-        body.removeChild( node );
+        node.remove();
     }
     // Firefox (and others?) returns unix line endings (\n) even on Windows.
     // If on Windows, normalise to \r\n, since Notepad and some other crappy

@@ -26,6 +26,8 @@ function Squire ( root, config ) {
     var win = doc.defaultView;
     var mutation;
 
+    IEPolyfill(win);
+
     this._win = win;
     this._doc = doc;
     this._root = root;
@@ -373,7 +375,7 @@ proto.getCursorPosition = function ( range ) {
         insertNodeInRange( range, node );
         rect = node.getBoundingClientRect();
         parent = node.parentNode;
-        parent.removeChild( node );
+        node.remove();
         mergeInlines( parent, range );
     }
     return rect;
@@ -551,7 +553,7 @@ var removeZWS = function ( root, keepNode ) {
             if ( node.length === 1 ) {
                 do {
                     parent = node.parentNode;
-                    parent.removeChild( node );
+                    node.remove();
                     node = parent;
                     walker.currentNode = parent;
                 } while ( isInline( node ) && !getLength( node ) );
@@ -1551,7 +1553,7 @@ proto.decreaseListLevel = function ( range ) {
         makeNotList = !/^[OU]L$/.test( newParent.nodeName );
         do {
             next = startLi === endLi ? null : startLi.nextSibling;
-            list.removeChild( startLi );
+            startLi.remove();
             if ( makeNotList && startLi.nodeName === 'LI' ) {
                 startLi = this.createDefaultBlock([ empty( startLi ) ]);
             }
@@ -1657,7 +1659,7 @@ proto.setHTML = function ( html ) {
 
     // Remove existing root children
     while ( child = root.lastChild ) {
-        root.removeChild( child );
+        child.remove();
     }
 
     // And insert new content

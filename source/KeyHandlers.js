@@ -117,7 +117,7 @@ var afterDelete = function ( self, range ) {
                 indexOf.call( parent.childNodes, node ) );
             range.collapse( true );
             // Remove empty inline(s)
-            parent.removeChild( node );
+            node.remove();
             // Fix cursor in block
             if ( !isBlock( parent ) ) {
                 parent = getPreviousBlock( parent, self._root );

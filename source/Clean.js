@@ -200,7 +200,7 @@ var cleanTree = function cleanTree ( node, config, preserveWS ) {
             if ( rewriter ) {
                 child = rewriter( child, node, config );
             } else if ( blacklist.test( nodeName ) ) {
-                node.removeChild( child );
+                child.remove();
                 i -= 1;
                 l -= 1;
                 continue;
@@ -260,7 +260,7 @@ var cleanTree = function cleanTree ( node, config, preserveWS ) {
                     continue;
                 }
             }
-            node.removeChild( child );
+            child.remove();
             i -= 1;
             l -= 1;
         }
@@ -279,10 +279,10 @@ var removeEmptyInlines = function removeEmptyInlines ( node ) {
         if ( child.nodeType === ELEMENT_NODE && !isLeaf( child ) ) {
             removeEmptyInlines( child );
             if ( isInline( child ) && !child.firstChild ) {
-                node.removeChild( child );
+                child.remove();
             }
         } else if ( child.nodeType === TEXT_NODE && !child.data ) {
-            node.removeChild( child );
+            child.remove();
         }
     }
 };

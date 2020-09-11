@@ -20,19 +20,37 @@ function every ( nodeList, fn ) {
     return true;
 }
 
-/*
-// Internet Explorer
-if (!Element.prototype.closest) {
-    Element.prototype.closest = function(s) {
+// Internet Explorer 9+
+function IEPolyfill ( win ) {
+    const defineFunction = ( item, name, fn ) => {
+        let proto = item.prototype;
+        if ( !win.Object.prototype.hasOwnProperty.call( proto, name ) ) {
+            win.Object.defineProperty( proto, name, {
+                configurable: true,
+                enumerable: true,
+                writable: true,
+                value: fn
+            } );
+        }
+    }
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/ChildNode/remove
+    [win.Element, win.CharacterData, win.DocumentType].forEach( item =>
+        defineFunction( item, 'remove', function() {
+            this.parentNode.removeChild( this );
+        } )
+    );
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Element/closest
+    defineFunction( win.Element, 'closest', function( selector ) {
         let el = this;
         do {
-            if (el.matches(s)) return el;
+            if ( el.matches( selector ) ) return el;
             el = el.parentElement;
-        } while (el && el.nodeType === 1);
+        } while ( el && 1 === el.nodeType );
         return null;
-    };
+    } );
 }
-*/
 
 // ---
 
@@ -199,7 +217,7 @@ function getLength ( node ) {
 function detach ( node ) {
     var parent = node.parentNode;
     if ( parent ) {
-        parent.removeChild( node );
+        node.remove();
     }
     return node;
 }
@@ -274,7 +292,7 @@ function fixCursor ( node, root ) {
         child = node.firstChild;
         while ( cantFocusEmptyTextNodes && child &&
                 child.nodeType === TEXT_NODE && !child.data ) {
-            node.removeChild( child );
+            child.remove();
             child = node.firstChild;
         }
         if ( !child ) {
@@ -487,7 +505,7 @@ function mergeWithBlock ( block, next, range, root ) {
     // Remove extra <BR> fixer if present.
     last = block.lastChild;
     if ( last && last.nodeName === 'BR' ) {
-        block.removeChild( last );
+        last.remove();
         offset -= 1;
     }
 
