@@ -26,7 +26,7 @@ function Squire ( root, config ) {
     var win = doc.defaultView;
     var mutation;
 
-    IEPolyfill(win);
+    IEPolyfill( win );
 
     this._win = win;
     this._doc = doc;

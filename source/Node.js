@@ -22,7 +22,7 @@ function every ( nodeList, fn ) {
 
 // Internet Explorer 9+
 function IEPolyfill ( win ) {
-    const defineFunction = ( item, name, fn ) => {
+    const defineFunction = function( item, name, fn ) {
         let proto = item.prototype;
         if ( !win.Object.prototype.hasOwnProperty.call( proto, name ) ) {
             win.Object.defineProperty( proto, name, {
@@ -32,14 +32,14 @@ function IEPolyfill ( win ) {
                 value: fn
             } );
         }
-    }
+    };
 
     // https://developer.mozilla.org/en-US/docs/Web/API/ChildNode/remove
-    [win.Element, win.CharacterData, win.DocumentType].forEach( item =>
+    [win.Element, win.CharacterData, win.DocumentType].forEach( function( item ) {
         defineFunction( item, 'remove', function() {
             this.parentNode.removeChild( this );
-        } )
-    );
+        } );
+    } );
 
     // https://developer.mozilla.org/en-US/docs/Web/API/Element/closest
     defineFunction( win.Element, 'closest', function( selector ) {

@@ -573,19 +573,23 @@ if ( !isMac ) {
 }
 
 // (decrease|increase)(Quote|List)Level
-const changeIndentationLevel = direction => ( self, event ) => {
-    event.preventDefault();
-    self.changeIndentationLevel(direction);
+const changeIndentationLevel = function( direction ) {
+    return function( self, event ) {
+        event.preventDefault();
+        self.changeIndentationLevel(direction);
+    };
 };
 
-const toggleList = ( type, methodIfNotInList ) => ( self, event ) => {
-    event.preventDefault();
-    let parent = self.getSelectionClosest('UL,OL');
-    if (parent && type == parent.nodeName) {
-        self.removeList();
-    } else {
-        self[ methodIfNotInList ]();
-    }
+const toggleList = function( type, methodIfNotInList ) {
+    return function ( self, event ) {
+        event.preventDefault();
+        let parent = self.getSelectionClosest('UL,OL');
+        if (parent && type == parent.nodeName) {
+            self.removeList();
+        } else {
+            self[ methodIfNotInList ]();
+        }
+    };
 };
 
 keyHandlers[ ctrlKey + 'b' ] = mapKeyToFormat( 'B' );
