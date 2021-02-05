@@ -1600,7 +1600,14 @@ proto._getHTML = function () {
 proto._setHTML = function ( html ) {
     var root = this._root;
     var node = root;
-    node.innerHTML = html;
+    var sanitizeToDOMFragment = this._config.sanitizeToDOMFragment;
+    if ( typeof sanitizeToDOMFragment === 'function' ) {
+        var frag = sanitizeToDOMFragment( html, false, this );
+        empty( node );
+        node.appendChild( frag );
+    } else {
+        node.innerHTML = html;
+    }
     do {
         fixCursor( node, root );
     } while ( node = getNextBlock( node, root ) );

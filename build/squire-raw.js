@@ -1265,7 +1265,9 @@ var keys = {
     37: 'left',
     39: 'right',
     46: 'delete',
+    191: '/',
     219: '[',
+    220: '\\',
     221: ']'
 };
 
@@ -3888,10 +3890,9 @@ var increaseBlockQuoteLevel = function ( frag ) {
 };
 
 var decreaseBlockQuoteLevel = function ( frag ) {
-    var root = this._root;
     var blockquotes = frag.querySelectorAll( 'blockquote' );
     Array.prototype.filter.call( blockquotes, function ( el ) {
-        return !getNearest( el.parentNode, root, 'BLOCKQUOTE' );
+        return !getNearest( el.parentNode, frag, 'BLOCKQUOTE' );
     }).forEach( function ( el ) {
         replaceWith( el, empty( el ) );
     });
@@ -4172,7 +4173,14 @@ proto._getHTML = function () {
 proto._setHTML = function ( html ) {
     var root = this._root;
     var node = root;
-    node.innerHTML = html;
+    var sanitizeToDOMFragment = this._config.sanitizeToDOMFragment;
+    if ( typeof sanitizeToDOMFragment === 'function' ) {
+        var frag = sanitizeToDOMFragment( html, false, this );
+        empty( node );
+        node.appendChild( frag );
+    } else {
+        node.innerHTML = html;
+    }
     do {
         fixCursor( node, root );
     } while ( node = getNextBlock( node, root ) );
