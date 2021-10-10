@@ -120,7 +120,8 @@ var sanitizeToDOMFragment = function ( html, isPaste, self ) {
         ALLOW_UNKNOWN_PROTOCOLS: true,
         WHOLE_DOCUMENT: false,
         RETURN_DOM: true,
-        RETURN_DOM_FRAGMENT: true
+        RETURN_DOM_FRAGMENT: true,
+        FORCE_BODY: false
     }) : null;
     return frag ? doc.importNode( frag, true ) : doc.createDocumentFragment();
 };

@@ -238,7 +238,7 @@ var cleanTree = function cleanTree ( node, config, preserveWS ) {
                             break;
                         }
                     }
-                    data = data.replace( /^[ \t\r\n]+/g, sibling ? ' ' : '' );
+                    data = data.replace( /^[ \r\n]+/g, sibling ? ' ' : '' );
                 }
                 if ( endsWithWS ) {
                     walker.currentNode = child;
@@ -253,7 +253,7 @@ var cleanTree = function cleanTree ( node, config, preserveWS ) {
                             break;
                         }
                     }
-                    data = data.replace( /[ \t\r\n]+$/g, sibling ? ' ' : '' );
+                    data = data.replace( /[ \r\n]+$/g, sibling ? ' ' : '' );
                 }
                 if ( data ) {
                     child.data = data;
