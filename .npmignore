@@ -5,3 +5,5 @@ Makefile
 .editorconfig
 bower.json
 source/
+test/
+Demo.html
