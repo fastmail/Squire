@@ -2117,7 +2117,7 @@ var cleanTree = function cleanTree ( node, config, preserveWS ) {
                             break;
                         }
                     }
-                    data = data.replace( /^[ \t\r\n]+/g, sibling ? ' ' : '' );
+                    data = data.replace( /^[ \r\n]+/g, sibling ? ' ' : '' );
                 }
                 if ( endsWithWS ) {
                     walker.currentNode = child;
@@ -2132,7 +2132,7 @@ var cleanTree = function cleanTree ( node, config, preserveWS ) {
                             break;
                         }
                     }
-                    data = data.replace( /[ \t\r\n]+$/g, sibling ? ' ' : '' );
+                    data = data.replace( /[ \r\n]+$/g, sibling ? ' ' : '' );
                 }
                 if ( data ) {
                     child.data = data;
@@ -2693,7 +2693,8 @@ var sanitizeToDOMFragment = function ( html, isPaste, self ) {
         ALLOW_UNKNOWN_PROTOCOLS: true,
         WHOLE_DOCUMENT: false,
         RETURN_DOM: true,
-        RETURN_DOM_FRAGMENT: true
+        RETURN_DOM_FRAGMENT: true,
+        FORCE_BODY: false
     }) : null;
     return frag ? doc.importNode( frag, true ) : doc.createDocumentFragment();
 };
