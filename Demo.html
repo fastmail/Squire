@@ -3,7 +3,7 @@
 <head>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <meta charset="UTF-8">
-  <title>HTML Editor Test</title>
+  <title>Squire Editor Demo</title>
   <style type="text/css" media="screen">
   body {
     position: relative;
@@ -72,9 +72,9 @@ white-space: pre-wrap;word-wrap: break-word;overflow-wrap: break-word;border-rad
   </style>
 </head>
 <body>
-<h1>HTML Editor Test</h1>
+<h1>Squire Editor Demo</h1>
 <header>
-  <p>This is a really simple demo, with the most trivial of UI integrations</p>
+  <p>Squire is a rich text editor primarily built for email apps. It’s designed to be integrated with your own UI framework, and so does not provide its own UI toolbar, widgets or overlays. This is a really simple demo, with the most trivial of UI integrations, to show the raw component in action. <a href="https://github.com/neilj/squire">Learn more and see the source on GitHub</a>.</p>
   <p>
   <span id="bold">Bold</span>
   <span id="removeBold">Unbold</span>
@@ -90,12 +90,11 @@ white-space: pre-wrap;word-wrap: break-word;overflow-wrap: break-word;border-rad
   <span id="setFontFace" class="prompt">Font face</span>
   </p>
   <p>
-  <span id="setTextColour" class="prompt">Text colour</span>
-  <span id="setHighlightColour" class="prompt">Text highlight</span>
+  <span id="setTextColor" class="prompt">Text color</span>
+  <span id="setHighlightColor" class="prompt">Text highlight</span>
   <span id="makeLink" class="prompt">Link</span>
   </p>
   <p>
-    <span id="makeHeader">Make Header</span>
     <span id="increaseQuoteLevel">Quote</span>
     <span id="decreaseQuoteLevel">Dequote</span>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -114,12 +113,13 @@ white-space: pre-wrap;word-wrap: break-word;overflow-wrap: break-word;border-rad
     <span id="redo">Redo</span>
   </p>
 </header>
-<script type="text/javascript" src="build/squire-raw.js"></script>
 <div id="editor"></div>
-<script type="text/javascript" charset="utf-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.3/purify.min.js" integrity="sha512-3dcbndbDLLWfKWevQu8C/1qVRcxx6h+eRDSnn3/pcBZHISRJgsj3u71U/Ad6nQVHrEi05hOSr6Hnb/p0pWc94w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="text/javascript" src="dist/squire-raw.js"></script>
+<script type="module" charset="utf-8">
   var div = document.getElementById( 'editor' );
   var editor = new Squire( div, {
-      blockTag: 'p',
+      blockTag: 'div',
       blockAttributes: {'class': 'paragraph'},
       tagAttributes: {
           ul: {'class': 'UL'},
@@ -134,18 +134,6 @@ white-space: pre-wrap;word-wrap: break-word;overflow-wrap: break-word;border-rad
           },
       }
   });
-  Squire.prototype.makeHeader = function() {
-    return this.modifyBlocks( function( frag ) {
-      var output = this._doc.createDocumentFragment();
-      var block = frag;
-      while ( block = Squire.getNextBlock( block ) ) {
-        output.appendChild(
-          this.createElement( 'h2', [ Squire.empty( block ) ] )
-        );
-      }
-      return output;
-    });
-  };
 
   document.addEventListener( 'click', function ( e ) {
     var id = e.target.id,

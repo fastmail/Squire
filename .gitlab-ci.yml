@@ -1,0 +1,5 @@
+test:
+  stage: test
+  script: npm ci --ignore-scripts --force && npm run test
+  only:
+    - merge_requests

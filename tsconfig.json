@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "ES2015",
+        "module": "ES2020",
+        "strict": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "./dist",
+        "allowUnreachableCode": false,
+        "allowUnusedLabels": false,
+        "noImplicitAny": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+        // "noUncheckedIndexedAccess": true
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "skipLibCheck": true
+    },
+    "include": ["./source"]
+}
