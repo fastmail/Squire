@@ -639,12 +639,17 @@ class Squire {
         } else {
             const selection = window.getSelection();
             if (selection) {
-                selection.setBaseAndExtent(
-                    range.startContainer,
-                    range.startOffset,
-                    range.endContainer,
-                    range.endOffset,
-                );
+                if ('setBaseAndExtent' in Selection.prototype) {
+                    selection.setBaseAndExtent(
+                        range.startContainer,
+                        range.startOffset,
+                        range.endContainer,
+                        range.endOffset,
+                    );
+                } else {
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
             }
         }
         return this;
