@@ -1,6 +1,6 @@
 import { notWS } from './Constants';
 import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from './node/TreeIterator';
-import { createElement, empty, detach } from './node/Node';
+import { createElement, empty, detach, replaceWith } from './node/Node';
 import { isInline, isLeaf } from './node/Category';
 import { fixContainer } from './node/MergeSplit';
 import { isLineBreak } from './node/Whitespace';
@@ -95,7 +95,11 @@ const replaceStyles = (
 
     if (newTreeTop && newTreeBottom) {
         newTreeBottom.appendChild(empty(node));
-        node.appendChild(newTreeTop);
+        if (node.style.cssText) {
+            node.appendChild(newTreeTop);
+        } else {
+            replaceWith(node, newTreeTop);
+        }
     }
 
     return newTreeBottom || node;
