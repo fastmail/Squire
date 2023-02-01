@@ -44,10 +44,23 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
     let { startContainer, startOffset, endContainer, endOffset } = range;
 
     while (!(startContainer instanceof Text)) {
-        let child = startContainer.childNodes[startOffset];
+        let child: ChildNode | null = startContainer.childNodes[startOffset];
         if (!child || isLeaf(child)) {
             if (startOffset) {
                 child = startContainer.childNodes[startOffset - 1];
+                let prev = child.previousSibling;
+                // If we have an empty text node next to another text node,
+                // just skip and remove it.
+                while (
+                    child instanceof Text &&
+                    !child.length &&
+                    prev &&
+                    prev instanceof Text
+                ) {
+                    child.remove();
+                    child = prev;
+                    continue;
+                }
                 if (child instanceof Text) {
                     startContainer = child;
                     startOffset = child.data.length;
