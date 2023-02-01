@@ -89,7 +89,7 @@ const replaceStyles = (
                 newTreeBottom.appendChild(el);
             }
             newTreeBottom = el;
-            node.style.setProperty(attr, css);
+            node.style.removeProperty(attr);
         }
     }
 
