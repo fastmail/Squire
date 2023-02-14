@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2023-02-14
+
+### Changed
+
+-   Auto delink if backspacing inside auto-linked URL. This means if you make a
+    mistake and backspace, you don't end up accidentally fixing the text but
+    leaving the link to the wrong URL.
+
+### Fixed
+
+-   Fix duplicate CSS created when replacing styles
+-   Support browsers without Selection#setBaseAndExtent API. This includes some
+    older Firefox versions.
+
 ## [2.0.0] - 2023-01-23
 
 ### Added

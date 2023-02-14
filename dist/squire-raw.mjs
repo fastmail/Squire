@@ -340,6 +340,12 @@ var moveRangeBoundariesDownTree = (range) => {
     if (!child || isLeaf(child)) {
       if (startOffset) {
         child = startContainer.childNodes[startOffset - 1];
+        let prev = child.previousSibling;
+        while (child instanceof Text && !child.length && prev && prev instanceof Text) {
+          child.remove();
+          child = prev;
+          continue;
+        }
         if (child instanceof Text) {
           startContainer = child;
           startOffset = child.data.length;
@@ -697,12 +703,16 @@ var replaceStyles = (node, _, config) => {
         newTreeBottom.appendChild(el);
       }
       newTreeBottom = el;
-      node.style.setProperty(attr, css);
+      node.style.removeProperty(attr);
     }
   }
   if (newTreeTop && newTreeBottom) {
     newTreeBottom.appendChild(empty(node));
-    node.appendChild(newTreeTop);
+    if (node.style.cssText) {
+      node.appendChild(newTreeTop);
+    } else {
+      replaceWith(node, newTreeTop);
+    }
   }
   return newTreeBottom || node;
 };
@@ -1705,10 +1715,20 @@ var Backspace = (self, event, range) => {
       self._updatePath(range, true);
     }
   } else {
-    self.setSelection(range);
-    setTimeout(() => {
-      afterDelete(self);
-    }, 0);
+    moveRangeBoundariesDownTree(range);
+    const text = range.startContainer;
+    const offset = range.startOffset;
+    const a = text.parentNode;
+    if (text instanceof Text && a instanceof HTMLAnchorElement && offset && a.href.includes(text.data)) {
+      text.deleteData(offset - 1, 1);
+      self.setSelection(range);
+      self.removeLink();
+    } else {
+      self.setSelection(range);
+      setTimeout(() => {
+        afterDelete(self);
+      }, 0);
+    }
   }
 };
 
@@ -2436,12 +2456,17 @@ var Squire = class {
     } else {
       const selection = window.getSelection();
       if (selection) {
-        selection.setBaseAndExtent(
-          range.startContainer,
-          range.startOffset,
-          range.endContainer,
-          range.endOffset
-        );
+        if ("setBaseAndExtent" in Selection.prototype) {
+          selection.setBaseAndExtent(
+            range.startContainer,
+            range.startOffset,
+            range.endContainer,
+            range.endOffset
+          );
+        } else {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
       }
     }
     return this;
