@@ -48,22 +48,23 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
         if (!child || isLeaf(child)) {
             if (startOffset) {
                 child = startContainer.childNodes[startOffset - 1];
-                let prev = child.previousSibling;
-                // If we have an empty text node next to another text node,
-                // just skip and remove it.
-                while (
-                    child instanceof Text &&
-                    !child.length &&
-                    prev &&
-                    prev instanceof Text
-                ) {
-                    child.remove();
-                    child = prev;
-                    continue;
-                }
                 if (child instanceof Text) {
-                    startContainer = child;
-                    startOffset = child.data.length;
+                    // Need a new variable to satisfy TypeScript's type checker
+                    // for some reason.
+                    let textChild: Text = child;
+                    // If we have an empty text node next to another text node,
+                    // just skip and remove it.
+                    let prev: ChildNode | null;
+                    while (
+                        !textChild.length &&
+                        (prev = textChild.previousSibling) &&
+                        prev instanceof Text
+                    ) {
+                        textChild.remove();
+                        textChild = prev;
+                    }
+                    startContainer = textChild;
+                    startOffset = textChild.data.length;
                 }
             }
             break;
