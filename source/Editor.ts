@@ -2739,7 +2739,7 @@ class Squire {
             range = this.getSelection();
         }
         if (range.collapsed) {
-            return this;
+            return this.focus();
         }
 
         const root = this._root;
@@ -2752,7 +2752,7 @@ class Squire {
             stopNode = root;
         }
         if (stopNode instanceof Text) {
-            return this;
+            return this.focus();
         }
 
         // Record undo point
