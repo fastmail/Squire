@@ -60,7 +60,7 @@ const fixContainer = (
     root: Element | DocumentFragment,
 ): Node => {
     let wrapper: HTMLElement | null = null;
-    [...container.childNodes].forEach((child) => {
+    Array.from(container.childNodes).forEach((child) => {
         const isBR = child.nodeName === 'BR';
         if (!isBR && isInline(child)) {
             if (!wrapper) {
