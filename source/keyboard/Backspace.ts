@@ -94,6 +94,7 @@ const Backspace = (self: Squire, event: KeyboardEvent, range: Range): void => {
             text.deleteData(offset - 1, 1);
             self.setSelection(range);
             self.removeLink();
+            event.preventDefault();
         } else {
             // Otherwise, leave to browser but check afterwards whether it has
             // left behind an empty inline tag.
