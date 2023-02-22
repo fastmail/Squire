@@ -12,6 +12,8 @@ import { Backspace } from './Backspace';
 import { Delete } from './Delete';
 import { ShiftTab, Tab } from './Tab';
 import { Space } from './Space';
+import { rangeDoesEndAtBlockBoundary } from '../range/Block';
+import { moveRangeBoundariesDownTree } from '../range/Boundaries';
 
 // ---
 
@@ -116,8 +118,32 @@ const keyHandlers: Record<string, KeyHandler> = {
     'ArrowLeft'(self: Squire): void {
         self._removeZWS();
     },
-    'ArrowRight'(self: Squire): void {
+    'ArrowRight'(self: Squire, event: KeyboardEvent, range: Range): void {
         self._removeZWS();
+        // Allow right arrow to always break out of <code> block.
+        const root = self.getRoot();
+        if (rangeDoesEndAtBlockBoundary(range, root)) {
+            moveRangeBoundariesDownTree(range);
+            let node: Node | null = range.endContainer;
+            do {
+                if (node.nodeName === 'CODE') {
+                    let next = node.nextSibling;
+                    if (!(next instanceof Text)) {
+                        const textNode = document.createTextNode(' '); // nbsp
+                        node.parentNode!.insertBefore(textNode, next);
+                        next = textNode;
+                    }
+                    range.setStart(next, 1);
+                    self.setSelection(range);
+                    event.preventDefault();
+                    break;
+                }
+            } while (
+                !node.nextSibling &&
+                (node = node.parentNode) &&
+                node !== root
+            );
+        }
     },
 };
 
