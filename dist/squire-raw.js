@@ -466,18 +466,14 @@
     return node;
   };
   var fixContainer = (container, root) => {
-    const children = container.childNodes;
     let wrapper = null;
-    for (let i = 0, l = children.length; i < l; i += 1) {
-      const child = children[i];
+    [...container.childNodes].forEach((child) => {
       const isBR = child.nodeName === "BR";
       if (!isBR && isInline(child)) {
         if (!wrapper) {
           wrapper = createElement("DIV");
         }
         wrapper.appendChild(child);
-        i -= 1;
-        l -= 1;
       } else if (isBR || wrapper) {
         if (!wrapper) {
           wrapper = createElement("DIV");
@@ -487,15 +483,13 @@
           container.replaceChild(wrapper, child);
         } else {
           container.insertBefore(wrapper, child);
-          i += 1;
-          l += 1;
         }
         wrapper = null;
       }
       if (isContainer(child)) {
         fixContainer(child, root);
       }
-    }
+    });
     if (wrapper) {
       container.appendChild(fixCursor(wrapper));
     }

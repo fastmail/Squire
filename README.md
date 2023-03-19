@@ -4,7 +4,7 @@ Squire is an HTML5 rich text editor, which provides powerful cross-browser norma
 
 It was designed to handle email composition for the [Fastmail](https://www.fastmail.com) web app. The most important consequence of this (and where Squire differs from most other modern rich text editors) is that it must handle arbitrary HTML, because it may be used to forward or quote emails from third-parties and must be able to preserve their HTML without breaking the formatting. This means that it can't use a more structured (but limited) internal data model (as most other modern HTML editors do) and the HTML remains the source-of-truth. The other consequence is excellent handling of multiple levels of blockquotes.
 
-Squire is designed to be integrated with your own UI framework, and so does not provide its own UI toolbar, widgets or overlays. Instead, you get a component you can insert in place of a `<textarea>` and manipulate programatically, allowing you to integrate seamlessly with the rest of your application and lose the bloat of having two UI toolkits loaded.
+Squire is designed to be integrated with your own UI framework, and so does not provide its own UI toolbar, widgets or overlays. Instead, you get a component you can insert in place of a `<textarea>` and manipulate programmatically, allowing you to integrate seamlessly with the rest of your application and lose the bloat of having two UI toolkits loaded.
 
 Squire supports all reasonably recent browsers. It no longer supports any version of IE.
 
@@ -84,10 +84,10 @@ Attach an event listener to the editor. The handler can be either a function or 
 -   **input**: The user inserted, deleted or changed the style of some text; in other words, the result for `editor.getHTML()` will have changed.
 -   **pathChange**: The path (see getPath documentation) to the cursor has changed. The new path is available as the `path` property on the event's `detail` property object.
 -   **select**: The user selected some text.
--   **cursor**: The user cleared their selection or moved the cursor to a
-    different position.
+-   **cursor**: The user cleared their selection or moved the cursor to a different position.
 -   **undoStateChange**: The availability of undo and/or redo has changed. The event object has a `detail` property, which is an object with two boolean properties, `canUndo` and `canRedo` to let you know the new state.
 -   **willPaste**: The user is pasting content into the document. The content that will be inserted is available as either the `fragment` property, or the `text` property for plain text, on the `detail` property of the event. You can modify this text/fragment in your event handler to change what will be pasted. You can also call the `preventDefault` on the event object to cancel the paste operation.
+-   **pasteImage**: The user is pasting image content into the document.
 
 The method takes two arguments:
 
