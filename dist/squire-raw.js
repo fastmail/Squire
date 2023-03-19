@@ -338,15 +338,15 @@
       if (!child || isLeaf(child)) {
         if (startOffset) {
           child = startContainer.childNodes[startOffset - 1];
-          let prev = child.previousSibling;
-          while (child instanceof Text && !child.length && prev && prev instanceof Text) {
-            child.remove();
-            child = prev;
-            continue;
-          }
           if (child instanceof Text) {
-            startContainer = child;
-            startOffset = child.data.length;
+            let textChild = child;
+            let prev;
+            while (!textChild.length && (prev = textChild.previousSibling) && prev instanceof Text) {
+              textChild.remove();
+              textChild = prev;
+            }
+            startContainer = textChild;
+            startOffset = textChild.data.length;
           }
         }
         break;
@@ -466,18 +466,14 @@
     return node;
   };
   var fixContainer = (container, root) => {
-    const children = container.childNodes;
     let wrapper = null;
-    for (let i = 0, l = children.length; i < l; i += 1) {
-      const child = children[i];
+    Array.from(container.childNodes).forEach((child) => {
       const isBR = child.nodeName === "BR";
       if (!isBR && isInline(child)) {
         if (!wrapper) {
           wrapper = createElement("DIV");
         }
         wrapper.appendChild(child);
-        i -= 1;
-        l -= 1;
       } else if (isBR || wrapper) {
         if (!wrapper) {
           wrapper = createElement("DIV");
@@ -487,15 +483,13 @@
           container.replaceChild(wrapper, child);
         } else {
           container.insertBefore(wrapper, child);
-          i += 1;
-          l += 1;
         }
         wrapper = null;
       }
       if (isContainer(child)) {
         fixContainer(child, root);
       }
-    }
+    });
     if (wrapper) {
       container.appendChild(fixCursor(wrapper));
     }
@@ -1721,6 +1715,7 @@
         text.deleteData(offset - 1, 1);
         self.setSelection(range);
         self.removeLink();
+        event.preventDefault();
       } else {
         self.setSelection(range);
         setTimeout(() => {
@@ -1928,8 +1923,27 @@
     "ArrowLeft"(self) {
       self._removeZWS();
     },
-    "ArrowRight"(self) {
+    "ArrowRight"(self, event, range) {
       self._removeZWS();
+      const root = self.getRoot();
+      if (rangeDoesEndAtBlockBoundary(range, root)) {
+        moveRangeBoundariesDownTree(range);
+        let node = range.endContainer;
+        do {
+          if (node.nodeName === "CODE") {
+            let next = node.nextSibling;
+            if (!(next instanceof Text)) {
+              const textNode = document.createTextNode("\xA0");
+              node.parentNode.insertBefore(textNode, next);
+              next = textNode;
+            }
+            range.setStart(next, 1);
+            self.setSelection(range);
+            event.preventDefault();
+            break;
+          }
+        } while (!node.nextSibling && (node = node.parentNode) && node !== root);
+      }
     }
   };
   if (!supportsInputEvents) {
@@ -4032,7 +4046,7 @@
         range = this.getSelection();
       }
       if (range.collapsed) {
-        return this;
+        return this.focus();
       }
       const root = this._root;
       let stopNode = range.commonAncestorContainer;
@@ -4044,7 +4058,7 @@
         stopNode = root;
       }
       if (stopNode instanceof Text) {
-        return this;
+        return this.focus();
       }
       this.saveUndoState(range);
       moveRangeBoundariesUpTree(range, stopNode, stopNode, root);
