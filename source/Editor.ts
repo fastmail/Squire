@@ -257,6 +257,10 @@ class Squire {
         return this;
     }
 
+    setConfig(config: object): void {
+        this._config = this._makeConfig(config);
+    }
+
     _beforeInput(event: InputEvent): void {
         switch (event.inputType) {
             case 'insertText':
