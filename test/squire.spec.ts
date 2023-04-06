@@ -521,6 +521,22 @@ describe('Squire RTE', () => {
             expect(link).toBe(null);
             editor.setHTML('');
         });
+        it('should truncate trailing whitespace', () => {
+            editor.insertHTML(
+            '<div>This is a line with a spurious space from <br></div><div>Arnout Engelen</div></div>'
+                );
+            const firstLine = document.querySelector('#squire div').textContent;
+            expect(firstLine).toBe('This is a line with a spurious space from');
+            editor.setHTML('');
+        });
+        it('should not mangle the signature delimiter', () => {
+            editor.insertHTML(
+            '<div>-- <br></div><div>Arnout Engelen</div></div>'
+                );
+            const firstLine = document.querySelector('#squire div').textContent;
+            expect(firstLine).toBe('-- ');
+            editor.setHTML('');
+        });
     });
 
     afterEach(() => {

@@ -283,7 +283,7 @@ const cleanTree = (
                     }
                     data = data.replace(/^[ \t\r\n]+/g, sibling ? ' ' : '');
                 }
-                if (endsWithWS) {
+                if (endsWithWS && data !== '-- ') {
                     walker.currentNode = child;
                     let sibling;
                     while ((sibling = walker.nextNode())) {
