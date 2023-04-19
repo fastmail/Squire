@@ -1654,12 +1654,10 @@ var linkifyText = (self, textNode, offset) => {
     );
     link.textContent = data.slice(index, endIndex);
     textNode.parentNode.insertBefore(link, textNode);
-    const startOffset = selection.startOffset;
     textNode.data = data.slice(endIndex);
-    if (selection.startContainer === textNode) {
-      const newOffset = startOffset - endIndex;
-      selection.setStart(textNode, newOffset);
-      selection.setEnd(textNode, newOffset);
+    if (selection.startContainer === textNode && textNode.data.length > 0) {
+      selection.setStart(textNode, 1);
+      selection.setEnd(textNode, 1);
     }
     self.setSelection(selection);
   }
