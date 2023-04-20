@@ -1637,6 +1637,8 @@
       self._getRangeAndRemoveBookmark(selection);
       const index = searchFrom + match.index;
       const endIndex = index + match[0].length;
+      const needsSelectionUpdate = selection.startContainer === textNode;
+      const newSelectionOffset = selection.startOffset - endIndex;
       if (index) {
         textNode = textNode.splitText(index);
       }
@@ -1652,12 +1654,10 @@
       );
       link.textContent = data.slice(index, endIndex);
       textNode.parentNode.insertBefore(link, textNode);
-      const startOffset = selection.startOffset;
       textNode.data = data.slice(endIndex);
-      if (selection.startContainer === textNode) {
-        const newOffset = startOffset - endIndex;
-        selection.setStart(textNode, newOffset);
-        selection.setEnd(textNode, newOffset);
+      if (needsSelectionUpdate) {
+        selection.setStart(textNode, newSelectionOffset);
+        selection.setEnd(textNode, newSelectionOffset);
       }
       self.setSelection(selection);
     }
