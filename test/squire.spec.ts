@@ -5,11 +5,20 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { Squire } from '../source/Editor';
 
-document.body.innerHTML = `<div id="squire">`;
-
-let editor: Squire;
+function selectAll(editor: Squire) {
+    document.getSelection()!.removeAllRanges();
+    const range = document.createRange();
+    range.setStart(editor._root.childNodes.item(0), 0);
+    range.setEnd(
+        editor._root.childNodes.item(0),
+        editor._root.childNodes.item(0).childNodes.length,
+    );
+    editor.setSelection(range);
+}
 
 describe('Squire RTE', () => {
+    document.body.innerHTML = `<div id="squire">`;
+    let editor: Squire;
     beforeEach(() => {
         const squireContainer = document.getElementById('squire')!;
         editor = new Squire(squireContainer, {
@@ -24,17 +33,6 @@ describe('Squire RTE', () => {
             },
         });
     });
-
-    function selectAll(editor: Squire) {
-        document.getSelection()!.removeAllRanges();
-        const range = document.createRange();
-        range.setStart(editor._root.childNodes.item(0), 0);
-        range.setEnd(
-            editor._root.childNodes.item(0),
-            editor._root.childNodes.item(0).childNodes.length,
-        );
-        editor.setSelection(range);
-    }
 
     describe('hasFormat', () => {
         let startHTML;
