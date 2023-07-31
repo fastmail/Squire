@@ -120,7 +120,7 @@ class Squire {
 
     _mutation: MutationObserver;
 
-    constructor(root: HTMLElement, config?: object) {
+    constructor(root: HTMLElement, config?: Partial<SquireConfig>) {
         this._root = root;
 
         this._config = this._makeConfig(config);
