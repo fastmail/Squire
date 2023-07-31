@@ -1038,7 +1038,7 @@ class Squire {
      * insertTreeFragmentIntoRange will delete the selection so that it is
      * replaced by the html being inserted.
      */
-    insertHTML(html: string, isPaste: boolean): Squire {
+    insertHTML(html: string, isPaste?: boolean): Squire {
         // Parse
         const config = this._config;
         let frag = config.sanitizeToDOMFragment(html, this);
