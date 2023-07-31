@@ -7,7 +7,7 @@ import { Squire } from '../source/Editor';
 
 document.body.innerHTML = `<div id="squire">`;
 
-let editor;
+let editor: Squire;
 
 describe('Squire RTE', () => {
     beforeEach(() => {
@@ -25,7 +25,7 @@ describe('Squire RTE', () => {
         });
     });
 
-    function selectAll(editor) {
+    function selectAll(editor: Squire) {
         document.getSelection()!.removeAllRanges();
         const range = document.createRange();
         range.setStart(editor._root.childNodes.item(0), 0);
@@ -524,7 +524,7 @@ describe('Squire RTE', () => {
     });
 
     afterEach(() => {
-        editor = null;
+        editor = null as any;
         document.body.innerHTML = `<div id="squire">`;
     });
 });
