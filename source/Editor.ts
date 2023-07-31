@@ -2818,4 +2818,5 @@ class Squire {
 
 // ---
 
-export { Squire, SquireConfig };
+export { Squire };
+export type { SquireConfig };
