@@ -26,7 +26,7 @@ describe('Squire RTE', () => {
     });
 
     function selectAll(editor) {
-        document.getSelection().removeAllRanges();
+        document.getSelection()!.removeAllRanges();
         const range = document.createRange();
         range.setStart(editor._root.childNodes.item(0), 0);
         range.setEnd(
@@ -53,57 +53,57 @@ describe('Squire RTE', () => {
 
         it('returns false when range inside other format', () => {
             const range = document.createRange();
-            range.setStart(document.querySelector('i').childNodes[0], 1);
-            range.setEnd(document.querySelector('i').childNodes[0], 2);
+            range.setStart(document.querySelector('i')!.childNodes[0], 1);
+            range.setEnd(document.querySelector('i')!.childNodes[0], 2);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(false);
         });
 
         it('returns false when range covers anything outside format', () => {
             const range = document.createRange();
-            range.setStart(document.querySelector('b').previousSibling, 2);
-            range.setEnd(document.querySelector('b').childNodes[0], 8);
+            range.setStart(document.querySelector('b')!.previousSibling!, 2);
+            range.setEnd(document.querySelector('b')!.childNodes[0], 8);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(false);
         });
 
         it('returns true when range inside format', () => {
             const range = document.createRange();
-            range.setStart(document.querySelector('b').childNodes[0], 2);
-            range.setEnd(document.querySelector('b').childNodes[0], 8);
+            range.setStart(document.querySelector('b')!.childNodes[0], 2);
+            range.setEnd(document.querySelector('b')!.childNodes[0], 8);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(true);
         });
 
         it('returns true when range covers start of format', () => {
             const range = document.createRange();
-            range.setStartBefore(document.querySelector('b'));
-            range.setEnd(document.querySelector('b').childNodes[0], 8);
+            range.setStartBefore(document.querySelector('b')!);
+            range.setEnd(document.querySelector('b')!.childNodes[0], 8);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(true);
         });
 
         it('returns true when range covers start of format, even in weird cases', () => {
             const range = document.createRange();
-            const prev = document.querySelector('b').previousSibling as Text;
+            const prev = document.querySelector('b')!.previousSibling as Text;
             range.setStart(prev, prev.length);
-            range.setEnd(document.querySelector('b').childNodes[0], 8);
+            range.setEnd(document.querySelector('b')!.childNodes[0], 8);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(true);
         });
 
         it('returns true when range covers end of format', () => {
             const range = document.createRange();
-            range.setStart(document.querySelector('b').childNodes[0], 2);
-            range.setEndAfter(document.querySelector('b'));
+            range.setStart(document.querySelector('b')!.childNodes[0], 2);
+            range.setEndAfter(document.querySelector('b')!);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(true);
         });
 
         it('returns true when range covers end of format, even in weird cases', () => {
             const range = document.createRange();
-            range.setStart(document.querySelector('b').childNodes[0], 2);
-            const next = document.querySelector('b').nextSibling;
+            range.setStart(document.querySelector('b')!.childNodes[0], 2);
+            const next = document.querySelector('b')!.nextSibling!;
             range.setEnd(next, 0);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(true);
@@ -111,8 +111,8 @@ describe('Squire RTE', () => {
 
         it('returns true when range covers all of format', () => {
             const range = document.createRange();
-            range.setStartBefore(document.querySelector('b'));
-            range.setEndAfter(document.querySelector('b'));
+            range.setStartBefore(document.querySelector('b')!);
+            range.setEndAfter(document.querySelector('b')!);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(true);
         });
@@ -153,14 +153,14 @@ describe('Squire RTE', () => {
             range.setStart(
                 editor._root
                     .getElementsByTagName('i')
-                    .item(0)
+                    .item(0)!
                     .childNodes.item(0),
                 3,
             );
             range.setEnd(
                 editor._root
                     .getElementsByTagName('i')
-                    .item(0)
+                    .item(0)!
                     .childNodes.item(0),
                 8,
             );
@@ -176,7 +176,7 @@ describe('Squire RTE', () => {
             expect(editor._root.innerHTML).toBe(startHTML);
             const range = document.createRange();
             range.setStart(
-                document.getElementsByTagName('i').item(0).childNodes.item(0),
+                document.getElementsByTagName('i').item(0)!.childNodes.item(0),
                 13,
             );
             range.setEnd(
@@ -211,11 +211,11 @@ describe('Squire RTE', () => {
             expect(editor._root.innerHTML).toBe(startHTML);
             const range = document.createRange();
             range.setStart(
-                document.getElementsByTagName('i').item(0).childNodes.item(0),
+                document.getElementsByTagName('i').item(0)!.childNodes.item(0),
                 4,
             );
             range.setEnd(
-                document.getElementsByTagName('i').item(0).childNodes.item(0),
+                document.getElementsByTagName('i').item(0)!.childNodes.item(0),
                 18,
             );
             editor.removeAllFormatting(range);
@@ -230,10 +230,10 @@ describe('Squire RTE', () => {
             editor.setHTML(startHTML);
             expect(editor._root.innerHTML).toBe(startHTML);
             const range = document.createRange();
-            range.setStart(document.getElementsByTagName('td').item(1), 0);
+            range.setStart(document.getElementsByTagName('td').item(1)!, 0);
             range.setEnd(
-                document.getElementsByTagName('td').item(2),
-                document.getElementsByTagName('td').item(2).childNodes.length,
+                document.getElementsByTagName('td').item(2)!,
+                document.getElementsByTagName('td').item(2)!.childNodes.length,
             );
             editor.removeAllFormatting(range);
             expect(editor._root.innerHTML).toBe(
@@ -347,7 +347,7 @@ describe('Squire RTE', () => {
             expect(editor._root.innerHTML).toBe(startHTML);
 
             const range = document.createRange();
-            const textNode = document.getElementsByTagName('li').item(1)
+            const textNode = document.getElementsByTagName('li').item(1)!
                 .childNodes[0].childNodes[0];
             range.setStart(textNode, 0);
             range.setEnd(textNode, 0);
@@ -366,7 +366,7 @@ describe('Squire RTE', () => {
             expect(editor._root.innerHTML).toBe(startHTML);
 
             const range = document.createRange();
-            const textNode = document.getElementsByTagName('li').item(1)
+            const textNode = document.getElementsByTagName('li').item(1)!
                 .childNodes[0].childNodes[0];
             range.setStart(textNode, 0);
             range.setEnd(textNode, 0);
@@ -386,7 +386,7 @@ describe('Squire RTE', () => {
             expect(editor._root.innerHTML).toBe(startHTML);
 
             const range = document.createRange();
-            const textNode = document.getElementsByTagName('li').item(1)
+            const textNode = document.getElementsByTagName('li').item(1)!
                 .childNodes[0].childNodes[0];
             range.setStart(textNode, 0);
             range.setEnd(textNode, 0);
@@ -405,7 +405,7 @@ describe('Squire RTE', () => {
             expect(editor._root.innerHTML).toBe(startHTML);
 
             const range = document.createRange();
-            const textNode = document.getElementsByTagName('li').item(1)
+            const textNode = document.getElementsByTagName('li').item(1)!
                 .childNodes[0].childNodes[0];
             range.setStart(textNode, 0);
             range.setEnd(textNode, 0);
@@ -426,7 +426,7 @@ describe('Squire RTE', () => {
             expect(editor._root.innerHTML).toBe(startHTML);
 
             const range = document.createRange();
-            const textNode = document.getElementsByTagName('li').item(1)
+            const textNode = document.getElementsByTagName('li').item(1)!
                 .childNodes[0].childNodes[0];
             range.setStart(textNode, 0);
             range.setEnd(textNode, 0);
@@ -493,7 +493,7 @@ describe('Squire RTE', () => {
         Object.keys(LINK_MAP).forEach((input) => {
             it('should auto convert links to anchor: ' + input, () => {
                 editor.insertHTML(input);
-                const link = document.querySelector('a');
+                const link = document.querySelector('a')!;
                 expect(link.href).toBe(LINK_MAP[input]);
                 editor.setHTML('');
             });
@@ -503,7 +503,7 @@ describe('Squire RTE', () => {
             editor.insertHTML(`
                 dew@fre.fr dewdwe @dew
             `);
-            const link = document.querySelector('a');
+            const link = document.querySelector('a')!;
             expect(link.textContent).toBe('dew@fre.fr');
             expect(link.href).toBe('mailto:dew@fre.fr');
             editor.setHTML('');
