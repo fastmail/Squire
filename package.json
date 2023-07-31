@@ -3,10 +3,11 @@
     "version": "2.0.3",
     "description": "Squire is an HTML5 rich text editor, which provides powerful cross-browser normalisation, whilst being supremely lightweight and flexible.",
     "main": "dist/squire.mjs",
+    "types": "dist/types/Squire.d.ts",
     "type": "module",
     "scripts": {
         "test": "jest",
-        "build": "./build.js",
+        "build": "./build.js && tsc",
         "lint": "eslint source",
         "fix": "eslint --fix source && prettier --write source"
     },

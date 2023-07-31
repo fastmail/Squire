@@ -5,7 +5,6 @@
         "strict": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
-        "outDir": "./dist",
         "allowUnreachableCode": false,
         "allowUnusedLabels": false,
         "noImplicitAny": true,
@@ -15,7 +14,15 @@
         // "noUncheckedIndexedAccess": true
         "noUnusedLocals": true,
         "noUnusedParameters": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "declaration": true,
+        "declarationMap": true,
+        "emitDeclarationOnly": true,
+        "baseUrl": ".",
+        "outDir": "dist/types",
+        "paths": {
+            "squire-rte": ["source"]
+        }
     },
     "include": ["./source"]
 }
