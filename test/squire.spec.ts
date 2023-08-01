@@ -5,13 +5,13 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { Squire } from '../source/Editor';
 
-function selectAll(editor: Squire) {
+function selectAll(editor: Squire, root: HTMLElement) {
     document.getSelection()!.removeAllRanges();
     const range = document.createRange();
-    range.setStart(editor._root.childNodes.item(0), 0);
+    range.setStart(root.childNodes.item(0), 0);
     range.setEnd(
-        editor._root.childNodes.item(0),
-        editor._root.childNodes.item(0).childNodes.length,
+        root.childNodes.item(0),
+        root.childNodes.item(0).childNodes.length,
     );
     editor.setSelection(range);
 }
@@ -19,8 +19,9 @@ function selectAll(editor: Squire) {
 describe('Squire RTE', () => {
     document.body.innerHTML = `<div id="squire">`;
     let editor: Squire;
+    let squireContainer: HTMLElement;
     beforeEach(() => {
-        const squireContainer = document.getElementById('squire')!;
+        squireContainer = document.getElementById('squire')!;
         editor = new Squire(squireContainer, {
             sanitizeToDOMFragment(html) {
                 const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -43,8 +44,8 @@ describe('Squire RTE', () => {
 
         it('returns false when range not touching format', () => {
             const range = document.createRange();
-            range.setStart(editor._root.childNodes.item(0), 0);
-            range.setEnd(editor._root.childNodes.item(0), 1);
+            range.setStart(squireContainer.childNodes.item(0), 0);
+            range.setEnd(squireContainer.childNodes.item(0), 1);
             editor.setSelection(range);
             expect(editor.hasFormat('b')).toBe(false);
         });
@@ -122,10 +123,10 @@ describe('Squire RTE', () => {
             const startHTML =
                 '<div><i>one</i> <b>two</b> <u>three</u> <sub>four</sub> <sup>five</sup><br></div>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
-            selectAll(editor);
+            expect(editor.getHTML()).toBe(startHTML);
+            selectAll(editor, squireContainer);
             editor.removeAllFormatting();
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<div>one two three four five<br></div>',
             );
         });
@@ -133,12 +134,12 @@ describe('Squire RTE', () => {
             const startHTML =
                 '<div><blockquote>one<br></blockquote><ul><li>two<br></li></ul><ol><li>three<br></li></ol><table><tbody><tr><th>four<br></th><td>five<br></td></tr></tbody></table></div>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
-            selectAll(editor);
+            expect(editor.getHTML()).toBe(startHTML);
+            selectAll(editor, squireContainer);
             editor.removeAllFormatting();
             const expectedHTML =
                 '<div>one<br></div><div>two<br></div><div>three<br></div><div>four<br></div><div>five<br></div>';
-            expect(editor._root.innerHTML).toBe(expectedHTML);
+            expect(editor.getHTML()).toBe(expectedHTML);
         });
 
         // Potential bugs
@@ -146,24 +147,24 @@ describe('Squire RTE', () => {
         it('removes styles that begin inside the range', () => {
             const startHTML = '<div><i>one two three four</i> five<br></div>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
             range.setStart(
-                editor._root
+                squireContainer
                     .getElementsByTagName('i')
                     .item(0)!
                     .childNodes.item(0),
                 3,
             );
             range.setEnd(
-                editor._root
+                squireContainer
                     .getElementsByTagName('i')
                     .item(0)!
                     .childNodes.item(0),
                 8,
             );
             editor.removeAllFormatting(range);
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<div><i>one</i> two <i>three four</i> five<br></div>',
             );
         });
@@ -171,18 +172,18 @@ describe('Squire RTE', () => {
         it('removes styles that end inside the range', () => {
             const startHTML = '<div><i>one two three four</i> five<br></div>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
             range.setStart(
                 document.getElementsByTagName('i').item(0)!.childNodes.item(0),
                 13,
             );
             range.setEnd(
-                editor._root.childNodes.item(0),
-                editor._root.childNodes.item(0).childNodes.length,
+                squireContainer.childNodes.item(0),
+                squireContainer.childNodes.item(0).childNodes.length,
             );
             editor.removeAllFormatting(range);
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<div><i>one two three</i> four five<br></div>',
             );
         });
@@ -190,15 +191,15 @@ describe('Squire RTE', () => {
         it('removes styles enclosed by the range', () => {
             const startHTML = '<div>one <i>two three four</i> five<br></div>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
-            range.setStart(editor._root.childNodes.item(0), 0);
+            range.setStart(squireContainer.childNodes.item(0), 0);
             range.setEnd(
-                editor._root.childNodes.item(0),
-                editor._root.childNodes.item(0).childNodes.length,
+                squireContainer.childNodes.item(0),
+                squireContainer.childNodes.item(0).childNodes.length,
             );
             editor.removeAllFormatting(range);
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<div>one two three four five<br></div>',
             );
         });
@@ -206,7 +207,7 @@ describe('Squire RTE', () => {
         it('removes styles enclosing the range', () => {
             const startHTML = '<div><i>one two three four five</i><br></div>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
             range.setStart(
                 document.getElementsByTagName('i').item(0)!.childNodes.item(0),
@@ -217,7 +218,7 @@ describe('Squire RTE', () => {
                 18,
             );
             editor.removeAllFormatting(range);
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<div><i>one </i>two three four<i> five</i><br></div>',
             );
         });
@@ -226,7 +227,7 @@ describe('Squire RTE', () => {
             const startHTML =
                 '<table><tbody><tr><td>one<br></td></tr><tr><td>two<br></td><td>three<br></td></tr><tr><td>four<br></td><td>five<br></td></tr></tbody></table>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
             range.setStart(document.getElementsByTagName('td').item(1)!, 0);
             range.setEnd(
@@ -234,7 +235,7 @@ describe('Squire RTE', () => {
                 document.getElementsByTagName('td').item(2)!.childNodes.length,
             );
             editor.removeAllFormatting(range);
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<table><tbody><tr><td>one<br></td></tr></tbody></table><div>two<br></div><div>three<br></div><table><tbody><tr><td>four<br></td><td>five<br></td></tr></tbody></table>',
             );
         });
@@ -247,22 +248,22 @@ describe('Squire RTE', () => {
             editor.setHTML(startHTML);
 
             const range = document.createRange();
-            range.setStart(editor._root.childNodes.item(0), 0);
-            range.setEnd(editor._root.childNodes.item(0), 1);
+            range.setStart(squireContainer.childNodes.item(0), 0);
+            range.setEnd(squireContainer.childNodes.item(0), 1);
             editor.setSelection(range);
         });
 
         it('returns the path to the selection', () => {
+            editor.focus();
             const range = document.createRange();
             range.setStart(
-                editor._root.childNodes.item(0).childNodes.item(1),
+                squireContainer.childNodes.item(0).childNodes.item(1),
                 0,
             );
-            range.setEnd(editor._root.childNodes.item(0).childNodes.item(1), 0);
+            range.setEnd(squireContainer.childNodes.item(0).childNodes.item(1), 0);
             editor.setSelection(range);
+            editor.fireEvent('selectionchange');
 
-            //Manually tell it to update the path
-            editor._updatePath(range);
             expect(editor.getPath()).toBe('DIV>B');
         });
 
@@ -319,19 +320,18 @@ describe('Squire RTE', () => {
         });
 
         it('is (selection) when the selection is a range', () => {
+            editor.focus();
             const range = document.createRange();
             range.setStart(
-                editor._root.childNodes.item(0).childNodes.item(0) as Node,
+                squireContainer.childNodes.item(0).childNodes.item(0) as Node,
                 0,
             );
             range.setEnd(
-                editor._root.childNodes.item(0).childNodes.item(3) as Node,
+                squireContainer.childNodes.item(0).childNodes.item(3) as Node,
                 0,
             );
             editor.setSelection(range);
-
-            //Manually tell it to update the path
-            editor._updatePath(range);
+            editor.fireEvent('selectionchange')
 
             expect(editor.getPath()).toBe('(selection)');
         });
@@ -342,7 +342,7 @@ describe('Squire RTE', () => {
             const startHTML =
                 '<ul><li><div>a<br></div></li><li><div>b<br></div></li><li><div>c<br></div></li></ul>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
 
             const range = document.createRange();
             const textNode = document.getElementsByTagName('li').item(1)!
@@ -352,7 +352,7 @@ describe('Squire RTE', () => {
             editor.setSelection(range);
 
             editor.increaseListLevel();
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<ul><li><div>a<br></div></li><ul><li><div>b<br></div></li></ul><li><div>c<br></div></li></ul>',
             );
         });
@@ -361,7 +361,7 @@ describe('Squire RTE', () => {
             const startHTML =
                 '<ul><li><div>a<br></div></li><li><div>b<br></div></li><li><div>c<br></div></li></ul>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
 
             const range = document.createRange();
             const textNode = document.getElementsByTagName('li').item(1)!
@@ -372,7 +372,7 @@ describe('Squire RTE', () => {
 
             editor.increaseListLevel();
             editor.increaseListLevel();
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<ul><li><div>a<br></div></li><ul><li><div>b<br></div></li></ul><li><div>c<br></div></li></ul>',
             );
         });
@@ -381,7 +381,7 @@ describe('Squire RTE', () => {
             const startHTML =
                 '<ul><li><div>a<br></div></li><ul><li><div>b<br></div></li></ul><li><div>c<br></div></li></ul>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
 
             const range = document.createRange();
             const textNode = document.getElementsByTagName('li').item(1)!
@@ -391,7 +391,7 @@ describe('Squire RTE', () => {
             editor.setSelection(range);
 
             editor.decreaseListLevel();
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<ul><li><div>a<br></div></li><li><div>b<br></div></li><li><div>c<br></div></li></ul>',
             );
         });
@@ -400,7 +400,7 @@ describe('Squire RTE', () => {
             const startHTML =
                 '<ul><li><div>a<br></div></li><ul><ul><li><div>b<br></div></li></ul></ul><li><div>c<br></div></li></ul>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
 
             const range = document.createRange();
             const textNode = document.getElementsByTagName('li').item(1)!
@@ -412,7 +412,7 @@ describe('Squire RTE', () => {
             editor.decreaseListLevel();
             editor.decreaseListLevel();
 
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<ul><li><div>a<br></div></li><li><div>b<br></div></li><li><div>c<br></div></li></ul>',
             );
         });
@@ -421,7 +421,7 @@ describe('Squire RTE', () => {
             const startHTML =
                 '<ul><li><div>foo<br></div></li><ul><li><div>bar<br></div></li></ul></ul>';
             editor.setHTML(startHTML);
-            expect(editor._root.innerHTML).toBe(startHTML);
+            expect(editor.getHTML()).toBe(startHTML);
 
             const range = document.createRange();
             const textNode = document.getElementsByTagName('li').item(1)!
@@ -431,7 +431,7 @@ describe('Squire RTE', () => {
             editor.setSelection(range);
 
             editor.removeList();
-            expect(editor._root.innerHTML).toBe(
+            expect(editor.getHTML()).toBe(
                 '<ul><li><div>foo<br></div></li></ul><div>bar<br></div>',
             );
         });
