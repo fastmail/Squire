@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2023-09-19
+
+### Added
+
+-   If you start a new line with "\*" then a space, Squire will now automatically
+    set the format to an unordered list.
+-   If you start a new line with "1." then a space, Squire will now automatically
+    set the format to an ordered list.
+
 ## [2.0.3] - 2023-04-20
 
 ### Fixed

@@ -4,10 +4,6 @@ var SHOW_TEXT = 4;
 var SHOW_ELEMENT_OR_TEXT = 5;
 var always = () => true;
 var TreeIterator = class {
-  root;
-  currentNode;
-  nodeType;
-  filter;
   constructor(root, nodeType, filter) {
     this.root = root;
     this.currentNode = root;
@@ -1818,16 +1814,36 @@ var ShiftTab = (self, event, range) => {
 };
 
 // source/keyboard/Space.ts
-var Space = (self, _, range) => {
+var Space = (self, event, range) => {
   let node;
   const root = self._root;
   self._recordUndoState(range);
   self._getRangeAndRemoveBookmark(range);
+  self._removeZWS();
   if (!range.collapsed) {
     deleteContentsOfRange(range, root);
     self._ensureBottomLine();
     self.setSelection(range);
     self._updatePath(range, true);
+  } else if (rangeDoesEndAtBlockBoundary(range, root)) {
+    const block = getStartBlockOfRange(range, root);
+    if (block && block.nodeName !== "PRE") {
+      const text = block.textContent?.trimEnd();
+      if (text === "*" || text === "1.") {
+        event.preventDefault();
+        const walker = new TreeIterator(block, SHOW_TEXT);
+        let textNode;
+        while (textNode = walker.nextNode()) {
+          textNode.data = cantFocusEmptyTextNodes ? ZWS : "";
+        }
+        if (text === "*") {
+          self.makeUnorderedList();
+        } else {
+          self.makeOrderedList();
+        }
+        return;
+      }
+    }
   }
   node = range.endContainer;
   if (range.endOffset === getLength(node)) {
@@ -2029,26 +2045,80 @@ keyHandlers[ctrlKey + "y"] = keyHandlers[ctrlKey + "Shift-z"] = (self, event) =>
 
 // source/Editor.ts
 var Squire = class {
-  _root;
-  _config;
-  _isFocused;
-  _lastSelection;
-  _willRestoreSelection;
-  _mayHaveZWS;
-  _lastAnchorNode;
-  _lastFocusNode;
-  _path;
-  _events;
-  _undoIndex;
-  _undoStack;
-  _undoStackLength;
-  _isInUndoState;
-  _ignoreChange;
-  _ignoreAllChanges;
-  _isShiftDown;
-  _keyHandlers;
-  _mutation;
   constructor(root, config) {
+    /**
+     * Subscribing to these events won't automatically add a listener to the
+     * document node, since these events are fired in a custom manner by the
+     * editor code.
+     */
+    this.customEvents = /* @__PURE__ */ new Set([
+      "pathChange",
+      "select",
+      "input",
+      "pasteImage",
+      "undoStateChange"
+    ]);
+    // ---
+    this.startSelectionId = "squire-selection-start";
+    this.endSelectionId = "squire-selection-end";
+    /*
+    linkRegExp = new RegExp(
+        // Only look on boundaries
+        '\\b(?:' +
+        // Capture group 1: URLs
+        '(' +
+            // Add links to URLS
+            // Starts with:
+            '(?:' +
+                // http(s):// or ftp://
+                '(?:ht|f)tps?:\\/\\/' +
+                // or
+                '|' +
+                // www.
+                'www\\d{0,3}[.]' +
+                // or
+                '|' +
+                // foo90.com/
+                '[a-z0-9][a-z0-9.\\-]*[.][a-z]{2,}\\/' +
+            ')' +
+            // Then we get one or more:
+            '(?:' +
+                // Run of non-spaces, non ()<>
+                '[^\\s()<>]+' +
+                // or
+                '|' +
+                // balanced parentheses (one level deep only)
+                '\\([^\\s()<>]+\\)' +
+            ')+' +
+            // And we finish with
+            '(?:' +
+                // Not a space or punctuation character
+                '[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]' +
+                // or
+                '|' +
+                // Balanced parentheses.
+                '\\([^\\s()<>]+\\)' +
+            ')' +
+        // Capture group 2: Emails
+        ')|(' +
+            // Add links to emails
+            '[\\w\\-.%+]+@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
+            // Allow query parameters in the mailto: style
+            '(?:' +
+                '[?][^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+' +
+                '(?:&[^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+)*' +
+            ')?' +
+        '))',
+        'i'
+    );
+    */
+    this.linkRegExp = /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
+    this.tagAfterSplit = {
+      DT: "DD",
+      DD: "DT",
+      LI: "LI",
+      PRE: "PRE"
+    };
     this._root = root;
     this._config = this._makeConfig(config);
     this._isFocused = false;
@@ -2285,18 +2355,6 @@ var Squire = class {
     }
     return this;
   }
-  /**
-   * Subscribing to these events won't automatically add a listener to the
-   * document node, since these events are fired in a custom manner by the
-   * editor code.
-   */
-  customEvents = /* @__PURE__ */ new Set([
-    "pathChange",
-    "select",
-    "input",
-    "pasteImage",
-    "undoStateChange"
-  ]);
   addEventListener(type, fn) {
     let handlers = this._events.get(type);
     let target = this._root;
@@ -2368,9 +2426,6 @@ var Squire = class {
     removeZWS(this._root);
     this._mayHaveZWS = false;
   }
-  // ---
-  startSelectionId = "squire-selection-start";
-  endSelectionId = "squire-selection-end";
   _saveRangeToBookmark(range) {
     let startNode = createElement("INPUT", {
       id: this.startSelectionId,
@@ -3311,58 +3366,6 @@ var Squire = class {
       true
     );
   }
-  /*
-  linkRegExp = new RegExp(
-      // Only look on boundaries
-      '\\b(?:' +
-      // Capture group 1: URLs
-      '(' +
-          // Add links to URLS
-          // Starts with:
-          '(?:' +
-              // http(s):// or ftp://
-              '(?:ht|f)tps?:\\/\\/' +
-              // or
-              '|' +
-              // www.
-              'www\\d{0,3}[.]' +
-              // or
-              '|' +
-              // foo90.com/
-              '[a-z0-9][a-z0-9.\\-]*[.][a-z]{2,}\\/' +
-          ')' +
-          // Then we get one or more:
-          '(?:' +
-              // Run of non-spaces, non ()<>
-              '[^\\s()<>]+' +
-              // or
-              '|' +
-              // balanced parentheses (one level deep only)
-              '\\([^\\s()<>]+\\)' +
-          ')+' +
-          // And we finish with
-          '(?:' +
-              // Not a space or punctuation character
-              '[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]' +
-              // or
-              '|' +
-              // Balanced parentheses.
-              '\\([^\\s()<>]+\\)' +
-          ')' +
-      // Capture group 2: Emails
-      ')|(' +
-          // Add links to emails
-          '[\\w\\-.%+]+@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
-          // Allow query parameters in the mailto: style
-          '(?:' +
-              '[?][^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+' +
-              '(?:&[^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+)*' +
-          ')?' +
-      '))',
-      'i'
-  );
-  */
-  linkRegExp = /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
   addDetectedLinks(searchInNode, root) {
     const walker = new TreeIterator(
       searchInNode,
@@ -3480,12 +3483,6 @@ var Squire = class {
       createElement(config.blockTag, config.blockAttributes, children)
     );
   }
-  tagAfterSplit = {
-    DT: "DD",
-    DD: "DT",
-    LI: "LI",
-    PRE: "PRE"
-  };
   splitBlock(lineBreakOnly, range) {
     if (!range) {
       range = this.getSelection();

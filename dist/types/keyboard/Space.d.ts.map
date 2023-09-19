@@ -1,1 +1,1 @@
-{"version":3,"file":"Space.d.ts","sourceRoot":"","sources":["../../../source/keyboard/Space.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,WAAW,CAAC;AAKxC,QAAA,MAAM,KAAK,SAAU,MAAM,KAAK,aAAa,SAAS,KAAK,KAAG,IA2C7D,CAAC;AAIF,OAAO,EAAE,KAAK,EAAE,CAAC"}
+{"version":3,"file":"Space.d.ts","sourceRoot":"","sources":["../../../source/keyboard/Space.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,WAAW,CAAC;AAWxC,QAAA,MAAM,KAAK,SAAU,MAAM,SAAS,aAAa,SAAS,KAAK,KAAG,IA+DjE,CAAC;AAIF,OAAO,EAAE,KAAK,EAAE,CAAC"}

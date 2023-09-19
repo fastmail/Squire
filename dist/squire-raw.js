@@ -1816,16 +1816,37 @@
   };
 
   // source/keyboard/Space.ts
-  var Space = (self, _, range) => {
+  var Space = (self, event, range) => {
+    var _a;
     let node;
     const root = self._root;
     self._recordUndoState(range);
     self._getRangeAndRemoveBookmark(range);
+    self._removeZWS();
     if (!range.collapsed) {
       deleteContentsOfRange(range, root);
       self._ensureBottomLine();
       self.setSelection(range);
       self._updatePath(range, true);
+    } else if (rangeDoesEndAtBlockBoundary(range, root)) {
+      const block = getStartBlockOfRange(range, root);
+      if (block && block.nodeName !== "PRE") {
+        const text = (_a = block.textContent) == null ? void 0 : _a.trimEnd();
+        if (text === "*" || text === "1.") {
+          event.preventDefault();
+          const walker = new TreeIterator(block, SHOW_TEXT);
+          let textNode;
+          while (textNode = walker.nextNode()) {
+            textNode.data = cantFocusEmptyTextNodes ? ZWS : "";
+          }
+          if (text === "*") {
+            self.makeUnorderedList();
+          } else {
+            self.makeOrderedList();
+          }
+          return;
+        }
+      }
     }
     node = range.endContainer;
     if (range.endOffset === getLength(node)) {
