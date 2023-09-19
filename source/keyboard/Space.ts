@@ -4,14 +4,21 @@ import { deleteContentsOfRange } from '../range/InsertDelete';
 
 import type { Squire } from '../Editor';
 import { linkifyText } from './KeyHelpers';
+import {
+    getStartBlockOfRange,
+    rangeDoesEndAtBlockBoundary,
+} from '../range/Block';
+import { SHOW_TEXT, TreeIterator } from '../node/TreeIterator';
+import { ZWS, cantFocusEmptyTextNodes } from '../Constants';
 
 // ---
 
-const Space = (self: Squire, _: KeyboardEvent, range: Range): void => {
+const Space = (self: Squire, event: KeyboardEvent, range: Range): void => {
     let node: Node | null;
     const root = self._root;
     self._recordUndoState(range);
     self._getRangeAndRemoveBookmark(range);
+    self._removeZWS();
 
     // Delete the selection if not collapsed
     if (!range.collapsed) {
@@ -19,6 +26,25 @@ const Space = (self: Squire, _: KeyboardEvent, range: Range): void => {
         self._ensureBottomLine();
         self.setSelection(range);
         self._updatePath(range, true);
+    } else if (rangeDoesEndAtBlockBoundary(range, root)) {
+        const block = getStartBlockOfRange(range, root);
+        if (block && block.nodeName !== 'PRE') {
+            const text = block.textContent?.trimEnd();
+            if (text === '*' || text === '1.') {
+                event.preventDefault();
+                const walker = new TreeIterator<Text>(block, SHOW_TEXT);
+                let textNode: Text | null;
+                while ((textNode = walker.nextNode())) {
+                    textNode.data = cantFocusEmptyTextNodes ? ZWS : '';
+                }
+                if (text === '*') {
+                    self.makeUnorderedList();
+                } else {
+                    self.makeOrderedList();
+                }
+                return;
+            }
+        }
     }
 
     // If the cursor is at the end of a link (<a>foo|</a>) then move it
