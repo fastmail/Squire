@@ -18,7 +18,6 @@ const Space = (self: Squire, event: KeyboardEvent, range: Range): void => {
     const root = self._root;
     self._recordUndoState(range);
     self._getRangeAndRemoveBookmark(range);
-    self._removeZWS();
 
     // Delete the selection if not collapsed
     if (!range.collapsed) {
@@ -29,7 +28,7 @@ const Space = (self: Squire, event: KeyboardEvent, range: Range): void => {
     } else if (rangeDoesEndAtBlockBoundary(range, root)) {
         const block = getStartBlockOfRange(range, root);
         if (block && block.nodeName !== 'PRE') {
-            const text = block.textContent?.trimEnd();
+            const text = block.textContent?.trimEnd().replace(ZWS, '');
             if (text === '*' || text === '1.') {
                 event.preventDefault();
                 const walker = new TreeIterator<Text>(block, SHOW_TEXT);
