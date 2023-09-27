@@ -980,8 +980,11 @@ var rangeDoesStartAtBlockBoundary = (range, root) => {
   const startOffset = range.startOffset;
   let nodeAfterCursor;
   if (startContainer instanceof Text) {
-    if (startOffset) {
-      return false;
+    const text = startContainer.data;
+    for (let i = startOffset; i > 0; i -= 1) {
+      if (text.charAt(i - 1) !== ZWS) {
+        return false;
+      }
     }
     nodeAfterCursor = startContainer;
   } else {
@@ -1013,9 +1016,12 @@ var rangeDoesEndAtBlockBoundary = (range, root) => {
   const endOffset = range.endOffset;
   let currentNode;
   if (endContainer instanceof Text) {
-    const length = endContainer.data.length;
-    if (length && endOffset < length) {
-      return false;
+    const text = endContainer.data;
+    const length = text.length;
+    for (let i = endOffset; i < length; i += 1) {
+      if (text.charAt(i) !== ZWS) {
+        return false;
+      }
     }
     currentNode = endContainer;
   } else {
@@ -1819,7 +1825,6 @@ var Space = (self, event, range) => {
   const root = self._root;
   self._recordUndoState(range);
   self._getRangeAndRemoveBookmark(range);
-  self._removeZWS();
   if (!range.collapsed) {
     deleteContentsOfRange(range, root);
     self._ensureBottomLine();
@@ -1828,7 +1833,7 @@ var Space = (self, event, range) => {
   } else if (rangeDoesEndAtBlockBoundary(range, root)) {
     const block = getStartBlockOfRange(range, root);
     if (block && block.nodeName !== "PRE") {
-      const text = block.textContent?.trimEnd();
+      const text = block.textContent?.trimEnd().replace(ZWS, "");
       if (text === "*" || text === "1.") {
         event.preventDefault();
         const walker = new TreeIterator(block, SHOW_TEXT);
