@@ -1,7 +1,7 @@
 import { isInline, isBlock } from '../node/Category';
 import { getPreviousBlock, getNextBlock } from '../node/Block';
 import { getNodeBeforeOffset, getNodeAfterOffset } from '../node/Node';
-import { notWS } from '../Constants';
+import { ZWS, notWS } from '../Constants';
 import { isNodeContainedInRange } from './Boundaries';
 import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
 
@@ -82,8 +82,11 @@ const rangeDoesStartAtBlockBoundary = (
 
     // If in the middle or end of a text node, we're not at the boundary.
     if (startContainer instanceof Text) {
-        if (startOffset) {
-            return false;
+        const text = startContainer.data;
+        for (let i = startOffset; i > 0; i -= 1) {
+            if (text.charAt(i - 1) !== ZWS) {
+                return false;
+            }
         }
         nodeAfterCursor = startContainer;
     } else {
@@ -121,11 +124,14 @@ const rangeDoesEndAtBlockBoundary = (range: Range, root: Element): boolean => {
     let currentNode: Node;
 
     // If in a text node with content, and not at the end, we're not
-    // at the boundary
+    // at the boundary. Ignore ZWS.
     if (endContainer instanceof Text) {
-        const length = endContainer.data.length;
-        if (length && endOffset < length) {
-            return false;
+        const text = endContainer.data;
+        const length = text.length;
+        for (let i = endOffset; i < length; i += 1) {
+            if (text.charAt(i) !== ZWS) {
+                return false;
+            }
         }
         currentNode = endContainer;
     } else {
