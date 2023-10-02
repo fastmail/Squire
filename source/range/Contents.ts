@@ -53,6 +53,9 @@ const getTextContentsOfRange = (range: Range) => {
         }
         node = walker.nextNode();
     }
+    // Replace nbsp with regular space;
+    // eslint-disable-next-line no-irregular-whitespace
+    textContent = textContent.replace(/ /g, ' ');
 
     return textContent;
 };
