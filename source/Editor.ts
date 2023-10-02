@@ -87,6 +87,7 @@ interface SquireConfig {
     };
     addLinks: boolean;
     willCutCopy: null | ((html: string) => string);
+    toPlainText: null | ((html: string) => string);
     sanitizeToDOMFragment: (html: string, editor: Squire) => DocumentFragment;
     didError: (x: any) => void;
 }
@@ -221,6 +222,7 @@ class Squire {
             },
             addLinks: true,
             willCutCopy: null,
+            toPlainText: null,
             sanitizeToDOMFragment: (
                 html: string,
                 /* editor: Squire, */

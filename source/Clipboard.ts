@@ -163,7 +163,7 @@ const _onCut = function (this: Squire, event: ClipboardEvent): void {
         root,
         true,
         this._config.willCutCopy,
-        null,
+        this._config.toPlainText,
         false,
     );
     if (!handled) {
@@ -187,7 +187,7 @@ const _onCopy = function (this: Squire, event: ClipboardEvent): void {
         this._root,
         false,
         this._config.willCutCopy,
-        null,
+        this._config.toPlainText,
         false,
     );
 };
