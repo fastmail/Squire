@@ -23,6 +23,7 @@ interface SquireConfig {
     };
     addLinks: boolean;
     willCutCopy: null | ((html: string) => string);
+    toPlainText: null | ((html: string) => string);
     sanitizeToDOMFragment: (html: string, editor: Squire) => DocumentFragment;
     didError: (x: any) => void;
 }
@@ -104,7 +105,7 @@ declare class Squire {
     insertElement(el: Element, range?: Range): Squire;
     insertImage(src: string, attributes: Record<string, string>): HTMLImageElement;
     insertPlainText(plainText: string, isPaste: boolean): Squire;
-    getSelectedText(): string;
+    getSelectedText(range?: Range): string;
     /**
      * Extracts the font-family and font-size (if any) of the element
      * holding the cursor. If there's a selection, returns an empty object.

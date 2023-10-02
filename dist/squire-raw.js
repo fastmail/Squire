@@ -1316,37 +1316,99 @@
     moveRangeBoundariesDownTree(range);
   };
 
+  // source/range/Contents.ts
+  var getTextContentsOfRange = (range) => {
+    if (range.collapsed) {
+      return "";
+    }
+    const startContainer = range.startContainer;
+    const endContainer = range.endContainer;
+    const walker = new TreeIterator(
+      range.commonAncestorContainer,
+      SHOW_ELEMENT_OR_TEXT,
+      (node2) => {
+        return isNodeContainedInRange(range, node2, true);
+      }
+    );
+    walker.currentNode = startContainer;
+    let node = startContainer;
+    let textContent = "";
+    let addedTextInBlock = false;
+    let value;
+    if (!(node instanceof Element) && !(node instanceof Text) || !walker.filter(node)) {
+      node = walker.nextNode();
+    }
+    while (node) {
+      if (node instanceof Text) {
+        value = node.data;
+        if (value && /\S/.test(value)) {
+          if (node === endContainer) {
+            value = value.slice(0, range.endOffset);
+          }
+          if (node === startContainer) {
+            value = value.slice(range.startOffset);
+          }
+          textContent += value;
+          addedTextInBlock = true;
+        }
+      } else if (node.nodeName === "BR" || addedTextInBlock && !isInline(node)) {
+        textContent += "\n";
+        addedTextInBlock = false;
+      }
+      node = walker.nextNode();
+    }
+    textContent = textContent.replace(/ /g, " ");
+    return textContent;
+  };
+
   // source/Clipboard.ts
   var indexOf = Array.prototype.indexOf;
-  var setClipboardData = (event, contents, root, toCleanHTML, toPlainText, plainTextOnly) => {
+  var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCleanHTML, toPlainText, plainTextOnly) => {
     const clipboardData = event.clipboardData;
-    const body = document.body;
-    const node = createElement("DIV");
+    if (isLegacyEdge || !clipboardData) {
+      return false;
+    }
+    let text = toPlainText ? "" : getTextContentsOfRange(range);
+    const startBlock = getStartBlockOfRange(range, root);
+    const endBlock = getEndBlockOfRange(range, root);
+    let copyRoot = root;
+    if (startBlock === endBlock && (startBlock == null ? void 0 : startBlock.contains(range.commonAncestorContainer))) {
+      copyRoot = startBlock;
+    }
+    let contents;
+    if (removeRangeFromDocument) {
+      contents = deleteContentsOfRange(range, root);
+    } else {
+      range = range.cloneRange();
+      moveRangeBoundariesDownTree(range);
+      moveRangeBoundariesUpTree(range, copyRoot, copyRoot, root);
+      contents = range.cloneContents();
+    }
+    let parent = range.commonAncestorContainer;
+    if (parent instanceof Text) {
+      parent = parent.parentNode;
+    }
+    while (parent && parent !== copyRoot) {
+      const newContents = parent.cloneNode(false);
+      newContents.appendChild(contents);
+      contents = newContents;
+      parent = parent.parentNode;
+    }
     let html;
-    let text;
     if (contents.childNodes.length === 1 && contents.childNodes[0] instanceof Text) {
       text = contents.childNodes[0].data.replace(/ /g, " ");
       plainTextOnly = true;
     } else {
+      const node = createElement("DIV");
       node.appendChild(contents);
       html = node.innerHTML;
       if (toCleanHTML) {
         html = toCleanHTML(html);
       }
     }
-    if (text !== void 0) {
+    if (plainTextOnly) {
     } else if (toPlainText && html !== void 0) {
       text = toPlainText(html);
-    } else {
-      cleanupBRs(node, root, true);
-      node.setAttribute(
-        "style",
-        "position:fixed;overflow:hidden;bottom:100%;right:100%;"
-      );
-      body.appendChild(node);
-      text = node.innerText || node.textContent;
-      text = text.replace(/ /g, " ");
-      body.removeChild(node);
     }
     if (isWin) {
       text = text.replace(/\r?\n/g, "\r\n");
@@ -1356,45 +1418,7 @@
     }
     clipboardData.setData("text/plain", text);
     event.preventDefault();
-  };
-  var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCleanHTML, toPlainText, plainTextOnly) => {
-    if (!isLegacyEdge && event.clipboardData) {
-      const startBlock = getStartBlockOfRange(range, root);
-      const endBlock = getEndBlockOfRange(range, root);
-      let copyRoot = root;
-      if (startBlock === endBlock && (startBlock == null ? void 0 : startBlock.contains(range.commonAncestorContainer))) {
-        copyRoot = startBlock;
-      }
-      let contents;
-      if (removeRangeFromDocument) {
-        contents = deleteContentsOfRange(range, root);
-      } else {
-        range = range.cloneRange();
-        moveRangeBoundariesDownTree(range);
-        moveRangeBoundariesUpTree(range, copyRoot, copyRoot, root);
-        contents = range.cloneContents();
-      }
-      let parent = range.commonAncestorContainer;
-      if (parent instanceof Text) {
-        parent = parent.parentNode;
-      }
-      while (parent && parent !== copyRoot) {
-        const newContents = parent.cloneNode(false);
-        newContents.appendChild(contents);
-        contents = newContents;
-        parent = parent.parentNode;
-      }
-      setClipboardData(
-        event,
-        contents,
-        root,
-        toCleanHTML,
-        toPlainText,
-        plainTextOnly
-      );
-      return true;
-    }
-    return false;
+    return true;
   };
   var _onCut = function(event) {
     const range = this.getSelection();
@@ -1410,7 +1434,7 @@
       root,
       true,
       this._config.willCutCopy,
-      null,
+      this._config.toPlainText,
       false
     );
     if (!handled) {
@@ -1431,7 +1455,7 @@
       this._root,
       false,
       this._config.willCutCopy,
-      null,
+      this._config.toPlainText,
       false
     );
   };
@@ -2169,11 +2193,6 @@
       });
       this._mutation = mutation;
       root.setAttribute("contenteditable", "true");
-      try {
-        document.execCommand("enableObjectResizing", false, "false");
-        document.execCommand("enableInlineTableEditing", false, "false");
-      } catch (_) {
-      }
       this.addEventListener(
         "beforeinput",
         this._beforeInput
@@ -2208,6 +2227,7 @@
         },
         addLinks: true,
         willCutCopy: null,
+        toPlainText: null,
         sanitizeToDOMFragment: (html) => {
           const frag = DOMPurify.sanitize(html, {
             ALLOW_UNKNOWN_PROTOCOLS: true,
@@ -3002,48 +3022,8 @@
       }
       return this.insertHTML(lines.join(""), isPaste);
     }
-    getSelectedText() {
-      const range = this.getSelection();
-      if (range.collapsed) {
-        return "";
-      }
-      const startContainer = range.startContainer;
-      const endContainer = range.endContainer;
-      const walker = new TreeIterator(
-        range.commonAncestorContainer,
-        SHOW_ELEMENT_OR_TEXT,
-        (node2) => {
-          return isNodeContainedInRange(range, node2, true);
-        }
-      );
-      walker.currentNode = startContainer;
-      let node = startContainer;
-      let textContent = "";
-      let addedTextInBlock = false;
-      let value;
-      if (!(node instanceof Element) && !(node instanceof Text) || !walker.filter(node)) {
-        node = walker.nextNode();
-      }
-      while (node) {
-        if (node instanceof Text) {
-          value = node.data;
-          if (value && /\S/.test(value)) {
-            if (node === endContainer) {
-              value = value.slice(0, range.endOffset);
-            }
-            if (node === startContainer) {
-              value = value.slice(range.startOffset);
-            }
-            textContent += value;
-            addedTextInBlock = true;
-          }
-        } else if (node.nodeName === "BR" || addedTextInBlock && !isInline(node)) {
-          textContent += "\n";
-          addedTextInBlock = false;
-        }
-        node = walker.nextNode();
-      }
-      return textContent;
+    getSelectedText(range) {
+      return getTextContentsOfRange(range || this.getSelection());
     }
     // --- Inline formatting
     /**

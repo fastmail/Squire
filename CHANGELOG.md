@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2023-10-02
+
+### Added
+
+-   The Squire config now has support for a toPlainText function, that takes an
+    HTML string and should return the plain text version of that content to be
+    added to the clipboard when cutting/copying.
+
+### Changed
+
+-   The default conversion of the HTML to plain text when cutting/copying now
+    uses the same algorithm as the getSelectedText method.
+
 ## [2.1.1] - 2023-09-27
 
 ### Fixed
