@@ -1,4 +1,3 @@
-import { cleanupBRs } from './Clean';
 import { isWin, isGecko, isLegacyEdge, notWS } from './Constants';
 import { createElement, detach } from './node/Node';
 import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
@@ -9,77 +8,11 @@ import {
 } from './range/Boundaries';
 
 import type { Squire } from './Editor';
+import { getTextContentsOfRange } from './range/Contents';
 
 // ---
 
 const indexOf = Array.prototype.indexOf;
-
-// The (non-standard but supported enough) innerText property is based on the
-// render tree in Firefox and possibly other browsers, so we must insert the
-// DOM node into the document to ensure the text part is correct.
-const setClipboardData = (
-    event: ClipboardEvent,
-    contents: Node,
-    root: HTMLElement,
-    toCleanHTML: null | ((html: string) => string),
-    toPlainText: null | ((html: string) => string),
-    plainTextOnly: boolean,
-): void => {
-    const clipboardData = event.clipboardData!;
-    const body = document.body;
-    const node = createElement('DIV') as HTMLDivElement;
-    let html: string | undefined;
-    let text: string | undefined;
-
-    if (
-        contents.childNodes.length === 1 &&
-        contents.childNodes[0] instanceof Text
-    ) {
-        // Replace nbsp with regular space;
-        // eslint-disable-next-line no-irregular-whitespace
-        text = contents.childNodes[0].data.replace(/ /g, ' ');
-        plainTextOnly = true;
-    } else {
-        node.appendChild(contents);
-        html = node.innerHTML;
-        if (toCleanHTML) {
-            html = toCleanHTML(html);
-        }
-    }
-
-    if (text !== undefined) {
-        // Do nothing; we were copying plain text to start
-    } else if (toPlainText && html !== undefined) {
-        text = toPlainText(html);
-    } else {
-        // Firefox will add an extra new line for BRs at the end of block when
-        // calculating innerText, even though they don't actually affect
-        // display, so we need to remove them first.
-        cleanupBRs(node, root, true);
-        node.setAttribute(
-            'style',
-            'position:fixed;overflow:hidden;bottom:100%;right:100%;',
-        );
-        body.appendChild(node);
-        text = node.innerText || node.textContent!;
-        // Replace nbsp with regular space
-        // eslint-disable-next-line no-irregular-whitespace
-        text = text.replace(/ /g, ' ');
-        body.removeChild(node);
-    }
-    // Firefox (and others?) returns unix line endings (\n) even on Windows.
-    // If on Windows, normalise to \r\n, since Notepad and some other crappy
-    // apps do not understand just \n.
-    if (isWin) {
-        text = text.replace(/\r?\n/g, '\r\n');
-    }
-
-    if (!plainTextOnly && html && text !== html) {
-        clipboardData.setData('text/html', html);
-    }
-    clipboardData.setData('text/plain', text);
-    event.preventDefault();
-};
 
 const extractRangeToClipboard = (
     event: ClipboardEvent,
@@ -91,55 +24,95 @@ const extractRangeToClipboard = (
     plainTextOnly: boolean,
 ): boolean => {
     // Edge only seems to support setting plain text as of 2016-03-11.
-    if (!isLegacyEdge && event.clipboardData) {
-        // Clipboard content should include all parents within block, or all
-        // parents up to root if selection across blocks
-        const startBlock = getStartBlockOfRange(range, root);
-        const endBlock = getEndBlockOfRange(range, root);
-        let copyRoot = root;
-        // If the content is not in well-formed blocks, the start and end block
-        // may be the same, but actually the range goes outside it. Must check!
-        if (
-            startBlock === endBlock &&
-            startBlock?.contains(range.commonAncestorContainer)
-        ) {
-            copyRoot = startBlock;
-        }
-        // Extract the contents
-        let contents: Node;
-        if (removeRangeFromDocument) {
-            contents = deleteContentsOfRange(range, root);
-        } else {
-            // Clone range to mutate, then move up as high as possible without
-            // passing the copy root node.
-            range = range.cloneRange();
-            moveRangeBoundariesDownTree(range);
-            moveRangeBoundariesUpTree(range, copyRoot, copyRoot, root);
-            contents = range.cloneContents();
-        }
-        // Add any other parents not in extracted content, up to copy root
-        let parent = range.commonAncestorContainer;
-        if (parent instanceof Text) {
-            parent = parent.parentNode!;
-        }
-        while (parent && parent !== copyRoot) {
-            const newContents = parent.cloneNode(false);
-            newContents.appendChild(contents);
-            contents = newContents;
-            parent = parent.parentNode!;
-        }
-        // Set clipboard data
-        setClipboardData(
-            event,
-            contents,
-            root,
-            toCleanHTML,
-            toPlainText,
-            plainTextOnly,
-        );
-        return true;
+    const clipboardData = event.clipboardData;
+    if (isLegacyEdge || !clipboardData) {
+        return false;
     }
-    return false;
+    // First get the plain text version from the range (unless we have a custom
+    // HTML -> Text conversion fn)
+    let text = toPlainText ? '' : getTextContentsOfRange(range);
+
+    // Clipboard content should include all parents within block, or all
+    // parents up to root if selection across blocks
+    const startBlock = getStartBlockOfRange(range, root);
+    const endBlock = getEndBlockOfRange(range, root);
+    let copyRoot = root;
+
+    // If the content is not in well-formed blocks, the start and end block
+    // may be the same, but actually the range goes outside it. Must check!
+    if (
+        startBlock === endBlock &&
+        startBlock?.contains(range.commonAncestorContainer)
+    ) {
+        copyRoot = startBlock;
+    }
+
+    // Extract the contents
+    let contents: Node;
+    if (removeRangeFromDocument) {
+        contents = deleteContentsOfRange(range, root);
+    } else {
+        // Clone range to mutate, then move up as high as possible without
+        // passing the copy root node.
+        range = range.cloneRange();
+        moveRangeBoundariesDownTree(range);
+        moveRangeBoundariesUpTree(range, copyRoot, copyRoot, root);
+        contents = range.cloneContents();
+    }
+
+    // Add any other parents not in extracted content, up to copy root
+    let parent = range.commonAncestorContainer;
+    if (parent instanceof Text) {
+        parent = parent.parentNode!;
+    }
+    while (parent && parent !== copyRoot) {
+        const newContents = parent.cloneNode(false);
+        newContents.appendChild(contents);
+        contents = newContents;
+        parent = parent.parentNode!;
+    }
+
+    // Get HTML version of data
+    let html: string | undefined;
+    if (
+        contents.childNodes.length === 1 &&
+        contents.childNodes[0] instanceof Text
+    ) {
+        // Replace nbsp with regular space;
+        // eslint-disable-next-line no-irregular-whitespace
+        text = contents.childNodes[0].data.replace(/ /g, ' ');
+        plainTextOnly = true;
+    } else {
+        const node = createElement('DIV') as HTMLDivElement;
+        node.appendChild(contents);
+        html = node.innerHTML;
+        if (toCleanHTML) {
+            html = toCleanHTML(html);
+        }
+    }
+
+    // Get Text version of data
+    if (plainTextOnly) {
+        // Do nothing; we were copying plain text to start
+    } else if (toPlainText && html !== undefined) {
+        text = toPlainText(html);
+    }
+
+    // Firefox (and others?) returns unix line endings (\n) even on Windows.
+    // If on Windows, normalise to \r\n, since Notepad and some other crappy
+    // apps do not understand just \n.
+    if (isWin) {
+        text = text.replace(/\r?\n/g, '\r\n');
+    }
+
+    // Set clipboard data
+    if (!plainTextOnly && html && text !== html) {
+        clipboardData.setData('text/html', html);
+    }
+    clipboardData.setData('text/plain', text);
+    event.preventDefault();
+
+    return true;
 };
 
 // ---
