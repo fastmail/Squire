@@ -182,12 +182,6 @@ class Squire {
         // Make it editable
         root.setAttribute('contenteditable', 'true');
 
-        // Remove Firefox's built-in controls
-        try {
-            document.execCommand('enableObjectResizing', false, 'false');
-            document.execCommand('enableInlineTableEditing', false, 'false');
-        } catch (_) {}
-
         // Modern browsers let you override their default content editable
         // handling!
         this.addEventListener(
