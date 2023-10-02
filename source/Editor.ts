@@ -58,6 +58,7 @@ import {
 } from './Clipboard';
 import { keyHandlers, _onKey } from './keyboard/KeyHandlers';
 import { linkifyText } from './keyboard/KeyHelpers';
+import { getTextContentsOfRange } from './range/Contents';
 
 declare const DOMPurify: any;
 
@@ -1235,58 +1236,8 @@ class Squire {
         return this.insertHTML(lines.join(''), isPaste);
     }
 
-    getSelectedText(): string {
-        const range = this.getSelection();
-        if (range.collapsed) {
-            return '';
-        }
-        const startContainer = range.startContainer;
-        const endContainer = range.endContainer;
-        const walker = new TreeIterator<Element | Text>(
-            range.commonAncestorContainer,
-            SHOW_ELEMENT_OR_TEXT,
-            (node) => {
-                return isNodeContainedInRange(range, node, true);
-            },
-        );
-        walker.currentNode = startContainer;
-
-        let node: Node | null = startContainer;
-        let textContent = '';
-        let addedTextInBlock = false;
-        let value: string;
-
-        if (
-            (!(node instanceof Element) && !(node instanceof Text)) ||
-            !walker.filter(node)
-        ) {
-            node = walker.nextNode();
-        }
-
-        while (node) {
-            if (node instanceof Text) {
-                value = node.data;
-                if (value && /\S/.test(value)) {
-                    if (node === endContainer) {
-                        value = value.slice(0, range.endOffset);
-                    }
-                    if (node === startContainer) {
-                        value = value.slice(range.startOffset);
-                    }
-                    textContent += value;
-                    addedTextInBlock = true;
-                }
-            } else if (
-                node.nodeName === 'BR' ||
-                (addedTextInBlock && !isInline(node))
-            ) {
-                textContent += '\n';
-                addedTextInBlock = false;
-            }
-            node = walker.nextNode();
-        }
-
-        return textContent;
+    getSelectedText(range?: Range): string {
+        return getTextContentsOfRange(range || this.getSelection());
     }
 
     // --- Inline formatting
