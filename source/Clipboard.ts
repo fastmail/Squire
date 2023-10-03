@@ -91,10 +91,8 @@ const extractRangeToClipboard = (
         }
     }
 
-    // Get Text version of data
-    if (plainTextOnly) {
-        // Do nothing; we were copying plain text to start
-    } else if (toPlainText && html !== undefined) {
+    // Get Text version of data if converting from HTML
+    if (toPlainText && html !== undefined) {
         text = toPlainText(html);
     }
 
