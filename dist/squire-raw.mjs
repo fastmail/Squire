@@ -1404,8 +1404,7 @@ var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCl
       html = toCleanHTML(html);
     }
   }
-  if (plainTextOnly) {
-  } else if (toPlainText && html !== void 0) {
+  if (toPlainText && html !== void 0) {
     text = toPlainText(html);
   }
   if (isWin) {
