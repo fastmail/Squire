@@ -3268,6 +3268,14 @@ var Squire = class {
       range.collapse(false);
     }
     mergeInlines(root, range);
+    if (cantFocusEmptyTextNodes && fixer) {
+      fixer = fixer.parentNode;
+      let block = fixer;
+      while (isInline(block)) {
+        block = block.parentNode;
+      }
+      removeZWS(block, fixer);
+    }
     return range;
   }
   // ---

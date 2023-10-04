@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2023-10-04
+
+### Fixed
+
+-   Added a workaround for a bug in Chrome that resulted in text in the editor
+    not being rendered in certain circumstances.
+
 ## [2.2.1] - 2023-10-03
 
 ### Fixed
