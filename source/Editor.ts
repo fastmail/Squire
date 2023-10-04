@@ -1622,6 +1622,18 @@ class Squire {
         }
         mergeInlines(root, range);
 
+        if (cantFocusEmptyTextNodes && fixer) {
+            // Clean up any previous ZWS in this block. They are not needed,
+            // and this works around a Chrome bug where it doesn't render the
+            // text in some situations with multiple ZWS(!)
+            fixer = fixer.parentNode!;
+            let block = fixer;
+            while (isInline(block)) {
+                block = block.parentNode!;
+            }
+            removeZWS(block, fixer);
+        }
+
         return range;
     }
 
