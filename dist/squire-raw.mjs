@@ -2380,6 +2380,9 @@ var Squire = class {
     return this;
   }
   addEventListener(type, fn) {
+    if (this._root.dataset[type + "Added"] === "true") {
+      return this;
+    }
     let handlers = this._events.get(type);
     let target = this._root;
     if (!handlers) {
@@ -2390,6 +2393,7 @@ var Squire = class {
           target = document;
         }
         target.addEventListener(type, this, true);
+        this._root.dataset[type + "Added"] = "true";
       }
     }
     handlers.push(fn);

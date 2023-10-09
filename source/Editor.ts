@@ -249,7 +249,7 @@ class Squire {
         return config;
     }
 
-    setKeyHandler(key: number, fn: KeyHandlerFunction) {
+    setKeyHandler(key: string, fn: KeyHandlerFunction) {
         this._keyHandlers[key] = fn;
         return this;
     }
@@ -423,6 +423,10 @@ class Squire {
     ]);
 
     addEventListener(type: string, fn: EventHandler): Squire {
+        // Check if the event listener is already attached to the element
+        if (this._root.dataset[type + 'Added'] === 'true') {
+            return this;
+        }
         let handlers = this._events.get(type);
         let target: Document | HTMLElement = this._root;
         if (!handlers) {
@@ -433,6 +437,8 @@ class Squire {
                     target = document;
                 }
                 target.addEventListener(type, this, true);
+                // Mark this type of event listener as added to the element
+                this._root.dataset[type + 'Added'] = 'true';
             }
         }
         handlers.push(fn);
