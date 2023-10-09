@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.3] - 2023-10-09
+
+### Fixed
+
+-   Fixed a null-deref crash that could occur when removing inline formatting.
+
 ## [2.2.2] - 2023-10-04
 
 ### Fixed

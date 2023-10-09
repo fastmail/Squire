@@ -3266,19 +3266,21 @@
       formatTags.forEach((el) => {
         replaceWith(el, empty(el));
       });
+      if (cantFocusEmptyTextNodes && fixer) {
+        fixer = fixer.parentNode;
+        let block = fixer;
+        while (block && isInline(block)) {
+          block = block.parentNode;
+        }
+        if (block) {
+          removeZWS(block, fixer);
+        }
+      }
       this._getRangeAndRemoveBookmark(range);
       if (fixer) {
         range.collapse(false);
       }
       mergeInlines(root, range);
-      if (cantFocusEmptyTextNodes && fixer) {
-        fixer = fixer.parentNode;
-        let block = fixer;
-        while (isInline(block)) {
-          block = block.parentNode;
-        }
-        removeZWS(block, fixer);
-      }
       return range;
     }
     // ---
