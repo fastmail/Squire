@@ -34,7 +34,7 @@ const isLineBreak = (br: Element, isLBIfEmptyBlock: boolean): boolean => {
 // contained ZWS space then remove it too. We may want to keep one ZWS node at
 // the bottom of the tree so the block can be selected. Define that node as the
 // keepNode.
-const removeZWS = (root: Node, keepNode?: Node): void => {
+const removeZWS = (root: Node, keepNode?: Node | null): void => {
     const walker = new TreeIterator<Text>(root, SHOW_TEXT);
     let textNode: Text | null;
     let index: number;

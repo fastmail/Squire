@@ -1524,7 +1524,7 @@ class Squire {
 
         // We need a node in the selection to break the surrounding
         // formatted text.
-        let fixer: Node | Text | undefined;
+        let fixer: Node | Text | null | undefined;
         if (range.collapsed) {
             if (cantFocusEmptyTextNodes) {
                 fixer = document.createTextNode(ZWS);
@@ -1615,24 +1615,26 @@ class Squire {
             replaceWith(el, empty(el));
         });
 
+        if (cantFocusEmptyTextNodes && fixer) {
+            // Clean up any previous ZWS in this block. They are not needed,
+            // and this works around a Chrome bug where it doesn't render the
+            // text in some situations with multiple ZWS(!)
+            fixer = fixer.parentNode;
+            let block = fixer;
+            while (block && isInline(block)) {
+                block = block.parentNode;
+            }
+            if (block) {
+                removeZWS(block, fixer);
+            }
+        }
+
         // Merge adjacent inlines:
         this._getRangeAndRemoveBookmark(range);
         if (fixer) {
             range.collapse(false);
         }
         mergeInlines(root, range);
-
-        if (cantFocusEmptyTextNodes && fixer) {
-            // Clean up any previous ZWS in this block. They are not needed,
-            // and this works around a Chrome bug where it doesn't render the
-            // text in some situations with multiple ZWS(!)
-            fixer = fixer.parentNode!;
-            let block = fixer;
-            while (isInline(block)) {
-                block = block.parentNode!;
-            }
-            removeZWS(block, fixer);
-        }
 
         return range;
     }
