@@ -249,7 +249,7 @@ class Squire {
         return config;
     }
 
-    setKeyHandler(key: number, fn: KeyHandlerFunction) {
+    setKeyHandler(key: string, fn: KeyHandlerFunction) {
         this._keyHandlers[key] = fn;
         return this;
     }
