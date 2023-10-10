@@ -50,7 +50,7 @@ declare class Squire {
     constructor(root: HTMLElement, config?: Partial<SquireConfig>);
     destroy(): void;
     _makeConfig(userConfig?: object): SquireConfig;
-    setKeyHandler(key: number, fn: KeyHandlerFunction): this;
+    setKeyHandler(key: string, fn: KeyHandlerFunction): this;
     _beforeInput(event: InputEvent): void;
     handleEvent(event: Event): void;
     fireEvent(type: string, detail?: Event | object): Squire;
