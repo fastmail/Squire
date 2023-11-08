@@ -905,7 +905,7 @@ class Squire {
             });
             this.fireEvent('input');
         }
-        return this;
+        return this.focus();
     }
 
     redo(): Squire {
@@ -926,7 +926,7 @@ class Squire {
             });
             this.fireEvent('input');
         }
-        return this;
+        return this.focus();
     }
 
     // --- Get and set data
