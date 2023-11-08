@@ -2765,7 +2765,7 @@
         });
         this.fireEvent("input");
       }
-      return this;
+      return this.focus();
     }
     redo() {
       const undoIndex = this._undoIndex;
@@ -2783,7 +2783,7 @@
         });
         this.fireEvent("input");
       }
-      return this;
+      return this.focus();
     }
     // --- Get and set data
     getRoot() {

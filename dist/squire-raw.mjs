@@ -2762,7 +2762,7 @@ var Squire = class {
       });
       this.fireEvent("input");
     }
-    return this;
+    return this.focus();
   }
   redo() {
     const undoIndex = this._undoIndex;
@@ -2780,7 +2780,7 @@ var Squire = class {
       });
       this.fireEvent("input");
     }
-    return this;
+    return this.focus();
   }
   // --- Get and set data
   getRoot() {
