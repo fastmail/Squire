@@ -44,6 +44,7 @@ const fixCursor = (node: Node): Node => {
         while ((child = parent.lastElementChild) && !isInline(child)) {
             parent = child;
         }
+        node = parent;
     }
     if (fixer) {
         try {
