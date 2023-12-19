@@ -17,51 +17,15 @@ import { moveRangeBoundariesDownTree } from '../range/Boundaries';
 
 // ---
 
-const keys: Record<string, string> = {
-    8: 'Backspace',
-    9: 'Tab',
-    13: 'Enter',
-    27: 'Escape',
-    32: 'Space',
-    33: 'PageUp',
-    34: 'PageDown',
-    37: 'ArrowLeft',
-    38: 'ArrowUp',
-    39: 'ArrowRight',
-    40: 'ArrowDown',
-    46: 'Delete',
-    191: '/',
-    219: '[',
-    220: '\\',
-    221: ']',
-};
-
-// Ref: http://unixpapa.com/js/key.html
 const _onKey = function (this: Squire, event: KeyboardEvent): void {
-    const code = event.keyCode;
-    let key = keys[code];
-    let modifiers = '';
-    const range: Range = this.getSelection();
-
     if (event.defaultPrevented) {
         return;
     }
 
-    if (!key) {
-        key = String.fromCharCode(code).toLowerCase();
-        // Only reliable for letters and numbers
-        if (!/^[A-Za-z0-9]$/.test(key)) {
-            key = '';
-        }
-    }
-
-    // Function keys
-    if (111 < code && code < 124) {
-        key = 'F' + (code - 111);
-    }
-
     // We need to apply the Backspace/delete handlers regardless of
     // control key modifiers.
+    let key = event.key;
+    let modifiers = '';
     if (key !== 'Backspace' && key !== 'Delete') {
         if (event.altKey) {
             modifiers += 'Alt-';
@@ -81,9 +45,9 @@ const _onKey = function (this: Squire, event: KeyboardEvent): void {
     if (isWin && event.shiftKey && key === 'Delete') {
         modifiers += 'Shift-';
     }
-
     key = modifiers + key;
 
+    const range: Range = this.getSelection();
     if (this._keyHandlers[key]) {
         this._keyHandlers[key](this, event, range);
     } else if (
@@ -93,7 +57,7 @@ const _onKey = function (this: Squire, event: KeyboardEvent): void {
         !event.isComposing &&
         !event.ctrlKey &&
         !event.metaKey &&
-        (event.key || key).length === 1
+        key.length === 1
     ) {
         // Record undo checkpoint.
         this.saveUndoState(range);
@@ -114,7 +78,7 @@ const keyHandlers: Record<string, KeyHandler> = {
     'Delete': Delete,
     'Tab': Tab,
     'Shift-Tab': ShiftTab,
-    'Space': Space,
+    ' ': Space,
     'ArrowLeft'(self: Squire): void {
         self._removeZWS();
     },
