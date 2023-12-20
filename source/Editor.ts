@@ -267,8 +267,8 @@ class Squire {
                 // stop it by preventing default.
                 // 30-11-2023 Update: The fix for Grammarly bug prevents pasting
                 // text directly from the keyboard on Android if the text to be
-                // inserted contains \n, as pasting from the keyboard does not 
-                // fire a true paste event. The Grammarly bug seems to have been 
+                // inserted contains \n, as pasting from the keyboard does not
+                // fire a true paste event. The Grammarly bug seems to have been
                 // fixed in Samsung keyboard as of v5.6.10.4, but leaving the
                 // fix in place for now, as the bug is particularly destructive.
                 if (isAndroid && event.data && event.data.includes('\n')) {
@@ -839,33 +839,39 @@ class Squire {
      * Leaves bookmark.
      */
     _recordUndoState(range: Range, replace?: boolean): Squire {
-        // Don't record if we're already in an undo state
-        if (!this._isInUndoState || replace) {
+        const isInUndoState = this._isInUndoState;
+        if (!isInUndoState || replace) {
             // Advance pointer to new position
-            let undoIndex = this._undoIndex;
+            let undoIndex = this._undoIndex + 1;
             const undoStack = this._undoStack;
             const undoConfig = this._config.undo;
             const undoThreshold = undoConfig.documentSizeThreshold;
             const undoLimit = undoConfig.undoLimit;
-
-            if (!replace) {
-                undoIndex += 1;
-            }
 
             // Truncate stack if longer (i.e. if has been previously undone)
             if (undoIndex < this._undoStackLength) {
                 undoStack.length = this._undoStackLength = undoIndex;
             }
 
-            // Get data
+            // Add bookmark
             if (range) {
                 this._saveRangeToBookmark(range);
             }
+
+            // Don't record if we're already in an undo state
+            if (isInUndoState) {
+                return this;
+            }
+
+            // Get data
             const html = this._getRawHTML();
 
             // If this document is above the configured size threshold,
             // limit the number of saved undo states.
             // Threshold is in bytes, JS uses 2 bytes per character
+            if (replace) {
+                undoIndex -= 1;
+            }
             if (undoThreshold > -1 && html.length * 2 > undoThreshold) {
                 if (undoLimit > -1 && undoIndex > undoLimit) {
                     undoStack.splice(0, undoIndex - undoLimit);

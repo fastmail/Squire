@@ -1,4 +1,4 @@
-import { getLength } from '../node/Node';
+import { detach, getLength } from '../node/Node';
 import { moveRangeBoundariesDownTree } from '../range/Boundaries';
 import { deleteContentsOfRange } from '../range/InsertDelete';
 
@@ -9,7 +9,7 @@ import {
     rangeDoesEndAtBlockBoundary,
 } from '../range/Block';
 import { SHOW_TEXT, TreeIterator } from '../node/TreeIterator';
-import { ZWS, cantFocusEmptyTextNodes } from '../Constants';
+import { ZWS } from '../Constants';
 
 // ---
 
@@ -31,10 +31,13 @@ const Space = (self: Squire, event: KeyboardEvent, range: Range): void => {
             const text = block.textContent?.trimEnd().replace(ZWS, '');
             if (text === '*' || text === '1.') {
                 event.preventDefault();
+                self.insertPlainText(' ', false);
+                self._docWasChanged();
+                self.saveUndoState(range);
                 const walker = new TreeIterator<Text>(block, SHOW_TEXT);
                 let textNode: Text | null;
                 while ((textNode = walker.nextNode())) {
-                    textNode.data = cantFocusEmptyTextNodes ? ZWS : '';
+                    detach(textNode);
                 }
                 if (text === '*') {
                     self.makeUnorderedList();
