@@ -425,6 +425,7 @@ const insertTreeFragmentIntoRange = (
     // Insert inline content saved from before.
     if (blockContentsAfterSplit && block) {
         const tempRange = range.cloneRange();
+        fixCursor(blockContentsAfterSplit);
         mergeWithBlock(block, blockContentsAfterSplit, tempRange, root);
         range.setEnd(tempRange.endContainer, tempRange.endOffset);
     }
