@@ -475,4 +475,4 @@ This is useful when the document needs to be changed programmatically, but those
 
 ### linkRegExp
 
-This is the regular expression used to automatically mark up links when inserting HTML or after pressing space. You can change it if you want to use a custom regular expression for detecting links, or set to `/[]/` to turn off link detection.
+This is the regular expression used to automatically mark up links when inserting HTML or after pressing space. You can change it if you want to use a custom regular expression for detecting links, or set to `/[]/` to turn off link detection. To append to the existing regex, set it to `linkRegExp.source + '|' + newLinkRegExp`.
