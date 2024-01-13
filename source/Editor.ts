@@ -1789,7 +1789,11 @@ class Squire {
     */
     linkRegExp =
         /\b(?:(?<url>(?:(?:[a-z+]+:)?\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|(?<email>[\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
-    linkRegExpHandlers = {}
+    linkRegExpHandlers = {
+        'url': (m) => {return /^(?:[a-z+]+:)?\/\//i.test(m)
+                                ? m : 'https://' + m},
+        'email': (m) => {return 'mailto:' + m},
+        'default': (m) => {return m}};
     addDetectedLinks(
         searchInNode: DocumentFragment | Node,
         root?: DocumentFragment | HTMLElement,
@@ -1815,17 +1819,14 @@ class Squire {
                         node,
                     );
                 }
+                let handler = Object.keys(this.linkRegExpHandlers).filter(
+                    key => Object.keys(match.groups).includes(key) && match.groups[key])[0]
+                    || 'default';
                 const child = createElement(
                     'A',
                     Object.assign(
                         {
-                            href: match.groups['url']
-                                ? /^(?:[a-z+]+:)?\/\//i.test(match[0])
-                                    ? match[0]
-                                    : 'https://' + match[0]
-                                : match.groups['email']
-                                ? 'mailto:' + match[0]
-                                : match[0],
+                            href: this.linkRegExpHandlers[handler](match[0])
                         },
                         defaultAttributes,
                     ),

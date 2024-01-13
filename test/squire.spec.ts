@@ -487,10 +487,14 @@ describe('Squire RTE', () => {
             'https://google.com?a=b&c=d&e=': 'https://google.com/?a=b&c=d&e=',
             'https://google.com?a=b&c=d&e=f': 'https://google.com/?a=b&c=d&e=f',
             'www.google.com': 'https://www.google.com/', // Test prepending protocol
+            'foobar': 'http://localhost/foobar', // Test default handler
+            'search': 'http://localhost/replace', // Test custom handler
         };
 
         Object.keys(LINK_MAP).forEach((input) => {
             it('should auto convert links to anchor: ' + input, () => {
+                editor.linkRegExp = new RegExp(editor.linkRegExp.source + "|(foobar)|(?<extra>search)", editor.linkRegExp.flags);
+                editor.linkRegExpHandlers['extra'] = (m) => {return 'replace'};
                 editor.insertHTML(input);
                 const link = document.querySelector('a')!;
                 expect(link.href).toBe(LINK_MAP[input]);
