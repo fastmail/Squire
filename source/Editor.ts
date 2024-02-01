@@ -41,7 +41,7 @@ import {
 } from './node/MergeSplit';
 import { getBlockWalker, getNextBlock, isEmptyBlock } from './node/Block';
 import { cleanTree, cleanupBRs, escapeHTML, removeEmptyInlines } from './Clean';
-import { cantFocusEmptyTextNodes, isAndroid, ZWS } from './Constants';
+import { cantFocusEmptyTextNodes, ZWS } from './Constants';
 import {
     expandRangeToBlockBoundaries,
     getEndBlockOfRange,
@@ -256,25 +256,6 @@ class Squire {
 
     _beforeInput(event: InputEvent): void {
         switch (event.inputType) {
-            case 'insertText':
-                // Generally we let the browser handle text insertion, as it
-                // does so fine. However, the Samsung keyboard on Android with
-                // the Grammarly extension goes batshit crazy for some reason
-                // and will try to disastrously rewrite the whole data, without
-                // the user even doing anything (it can happen on first load
-                // before the user types anything). Fortunately we can detect
-                // this by looking for a new line in the data and if we see it,
-                // stop it by preventing default.
-                // 30-11-2023 Update: The fix for Grammarly bug prevents pasting
-                // text directly from the keyboard on Android if the text to be
-                // inserted contains \n, as pasting from the keyboard does not
-                // fire a true paste event. The Grammarly bug seems to have been
-                // fixed in Samsung keyboard as of v5.6.10.4, but leaving the
-                // fix in place for now, as the bug is particularly destructive.
-                if (isAndroid && event.data && event.data.includes('\n')) {
-                    event.preventDefault();
-                }
-                break;
             case 'insertLineBreak':
                 event.preventDefault();
                 this.splitBlock(true);
