@@ -18,7 +18,9 @@ import { moveRangeBoundariesDownTree } from '../range/Boundaries';
 // ---
 
 const _onKey = function (this: Squire, event: KeyboardEvent): void {
-    if (event.defaultPrevented) {
+    // Ignore key events where event.isComposing, to stop us from blatting
+    // Kana-Kanji conversion
+    if (event.defaultPrevented || event.isComposing) {
         return;
     }
 
@@ -52,9 +54,6 @@ const _onKey = function (this: Squire, event: KeyboardEvent): void {
         this._keyHandlers[key](this, event, range);
     } else if (
         !range.collapsed &&
-        // !event.isComposing stops us from blatting Kana-Kanji conversion in
-        // Safari
-        !event.isComposing &&
         !event.ctrlKey &&
         !event.metaKey &&
         key.length === 1
