@@ -449,13 +449,14 @@
           fixer = document.createTextNode("");
         }
       }
-    } else if (node instanceof Element && !node.querySelector("BR")) {
+    } else if ((node instanceof Element || node instanceof DocumentFragment) && !node.querySelector("BR")) {
       fixer = createElement("BR");
       let parent = node;
       let child;
       while ((child = parent.lastElementChild) && !isInline(child)) {
         parent = child;
       }
+      node = parent;
     }
     if (fixer) {
       try {
@@ -1310,6 +1311,7 @@
     }
     if (blockContentsAfterSplit && block) {
       const tempRange = range.cloneRange();
+      fixCursor(blockContentsAfterSplit);
       mergeWithBlock(block, blockContentsAfterSplit, tempRange, root);
       range.setEnd(tempRange.endContainer, tempRange.endOffset);
     }
@@ -1862,10 +1864,13 @@
         const text = (_a = block.textContent) == null ? void 0 : _a.trimEnd().replace(ZWS, "");
         if (text === "*" || text === "1.") {
           event.preventDefault();
+          self.insertPlainText(" ", false);
+          self._docWasChanged();
+          self.saveUndoState(range);
           const walker = new TreeIterator(block, SHOW_TEXT);
           let textNode;
           while (textNode = walker.nextNode()) {
-            textNode.data = cantFocusEmptyTextNodes ? ZWS : "";
+            detach(textNode);
           }
           if (text === "*") {
             self.makeUnorderedList();
@@ -1898,41 +1903,12 @@
   };
 
   // source/keyboard/KeyHandlers.ts
-  var keys = {
-    8: "Backspace",
-    9: "Tab",
-    13: "Enter",
-    27: "Escape",
-    32: "Space",
-    33: "PageUp",
-    34: "PageDown",
-    37: "ArrowLeft",
-    38: "ArrowUp",
-    39: "ArrowRight",
-    40: "ArrowDown",
-    46: "Delete",
-    191: "/",
-    219: "[",
-    220: "\\",
-    221: "]"
-  };
   var _onKey = function(event) {
-    const code = event.keyCode;
-    let key = keys[code];
-    let modifiers = "";
-    const range = this.getSelection();
     if (event.defaultPrevented) {
       return;
     }
-    if (!key) {
-      key = String.fromCharCode(code).toLowerCase();
-      if (!/^[A-Za-z0-9]$/.test(key)) {
-        key = "";
-      }
-    }
-    if (111 < code && code < 124) {
-      key = "F" + (code - 111);
-    }
+    let key = event.key;
+    let modifiers = "";
     if (key !== "Backspace" && key !== "Delete") {
       if (event.altKey) {
         modifiers += "Alt-";
@@ -1951,11 +1927,12 @@
       modifiers += "Shift-";
     }
     key = modifiers + key;
+    const range = this.getSelection();
     if (this._keyHandlers[key]) {
       this._keyHandlers[key](this, event, range);
     } else if (!range.collapsed && // !event.isComposing stops us from blatting Kana-Kanji conversion in
     // Safari
-    !event.isComposing && !event.ctrlKey && !event.metaKey && (event.key || key).length === 1) {
+    !event.isComposing && !event.ctrlKey && !event.metaKey && key.length === 1) {
       this.saveUndoState(range);
       deleteContentsOfRange(range, this._root);
       this._ensureBottomLine();
@@ -1968,7 +1945,7 @@
     "Delete": Delete,
     "Tab": Tab,
     "Shift-Tab": ShiftTab,
-    "Space": Space,
+    " ": Space,
     "ArrowLeft"(self) {
       self._removeZWS();
     },
@@ -2711,22 +2688,26 @@
      * Leaves bookmark.
      */
     _recordUndoState(range, replace) {
-      if (!this._isInUndoState || replace) {
-        let undoIndex = this._undoIndex;
+      const isInUndoState = this._isInUndoState;
+      if (!isInUndoState || replace) {
+        let undoIndex = this._undoIndex + 1;
         const undoStack = this._undoStack;
         const undoConfig = this._config.undo;
         const undoThreshold = undoConfig.documentSizeThreshold;
         const undoLimit = undoConfig.undoLimit;
-        if (!replace) {
-          undoIndex += 1;
-        }
         if (undoIndex < this._undoStackLength) {
           undoStack.length = this._undoStackLength = undoIndex;
         }
         if (range) {
           this._saveRangeToBookmark(range);
         }
+        if (isInUndoState) {
+          return this;
+        }
         const html = this._getRawHTML();
+        if (replace) {
+          undoIndex -= 1;
+        }
         if (undoThreshold > -1 && html.length * 2 > undoThreshold) {
           if (undoLimit > -1 && undoIndex > undoLimit) {
             undoStack.splice(0, undoIndex - undoLimit);

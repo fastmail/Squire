@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] - 2024-02-01
+
+### Fixed
+
+-   Fix Firefox cursor position after paste.
+-   Fix keyboard handling on some Android browsers
+
+### Added
+
+-   Add undo point for automatic list creation.
+
 ## [2.2.5] - 2023-11-08
 
 ### Fixed
