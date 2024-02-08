@@ -1075,6 +1075,7 @@ class Squire {
             let doInsert = true;
             if (isPaste) {
                 const event = new CustomEvent('willPaste', {
+                    cancelable: true,
                     detail: {
                         fragment: frag,
                     },
@@ -1205,6 +1206,7 @@ class Squire {
             let doInsert = true;
             if (isPaste) {
                 const event = new CustomEvent('willPaste', {
+                    cancelable: true,
                     detail: {
                         text: plainText,
                     },
