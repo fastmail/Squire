@@ -1904,7 +1904,7 @@
 
   // source/keyboard/KeyHandlers.ts
   var _onKey = function(event) {
-    if (event.defaultPrevented) {
+    if (event.defaultPrevented || event.isComposing) {
       return;
     }
     let key = event.key;
@@ -1930,9 +1930,7 @@
     const range = this.getSelection();
     if (this._keyHandlers[key]) {
       this._keyHandlers[key](this, event, range);
-    } else if (!range.collapsed && // !event.isComposing stops us from blatting Kana-Kanji conversion in
-    // Safari
-    !event.isComposing && !event.ctrlKey && !event.metaKey && key.length === 1) {
+    } else if (!range.collapsed && !event.ctrlKey && !event.metaKey && key.length === 1) {
       this.saveUndoState(range);
       deleteContentsOfRange(range, this._root);
       this._ensureBottomLine();
@@ -2866,6 +2864,7 @@
         let doInsert = true;
         if (isPaste) {
           const event = new CustomEvent("willPaste", {
+            cancelable: true,
             detail: {
               fragment: frag
             }
@@ -2966,6 +2965,7 @@
         let doInsert = true;
         if (isPaste) {
           const event = new CustomEvent("willPaste", {
+            cancelable: true,
             detail: {
               text: plainText
             }
