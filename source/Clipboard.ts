@@ -290,7 +290,7 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     // No interface. Includes all versions of IE :(
     // --------------------------------------------
 
-    const body = document.body;
+    const body = this._document.body;
     const range = this.getSelection();
     const startContainer = range.startContainer;
     const startOffset = range.startOffset;

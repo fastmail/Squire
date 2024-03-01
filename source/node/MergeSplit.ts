@@ -31,11 +31,7 @@ const fixCursor = (node: Node): Node => {
             }
         }
         if (!child) {
-            if (cantFocusEmptyTextNodes) {
-                fixer = document.createTextNode(ZWS);
-            } else {
-                fixer = document.createTextNode('');
-            }
+            fixer = document.createTextNode(cantFocusEmptyTextNodes ? ZWS : '');
         }
     } else if (
         (node instanceof Element || node instanceof DocumentFragment) &&

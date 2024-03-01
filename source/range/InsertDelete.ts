@@ -36,7 +36,7 @@ function createRange(
     endContainer?: Node,
     endOffset?: number,
 ): Range {
-    const range = document.createRange();
+    const range = (startContainer.ownerDocument || document).createRange();
     range.setStart(startContainer, startOffset);
     if (endContainer && typeof endOffset === 'number') {
         range.setEnd(endContainer, endOffset);
@@ -108,7 +108,7 @@ const extractContentsOfRange = (
     common: Node | null,
     root: Element,
 ): DocumentFragment => {
-    const frag = document.createDocumentFragment();
+    const frag = (root.ownerDocument || document).createDocumentFragment();
     if (range.collapsed) {
         return frag;
     }
@@ -363,7 +363,7 @@ const insertTreeFragmentIntoRange = (
         }
         if (/*isBlock( container ) && */ offset !== getLength(container)) {
             // Collect any inline contents of the block after the range point
-            blockContentsAfterSplit = document.createDocumentFragment();
+            blockContentsAfterSplit = (root.ownerDocument || document).createDocumentFragment();
             while ((node = container.childNodes[offset])) {
                 blockContentsAfterSplit.appendChild(node);
             }
