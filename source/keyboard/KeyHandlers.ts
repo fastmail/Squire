@@ -28,6 +28,12 @@ const _onKey = function (this: Squire, event: KeyboardEvent): void {
     // control key modifiers.
     let key = event.key;
     let modifiers = '';
+    const code = event.code;
+    // If pressing a number key + Shift, make sure we handle it as the number
+    // key and not whatever different character the shift might turn it into.
+    if (/^Digit\d$/.test(code)) {
+        key = code.slice(-1);
+    }
     if (key !== 'Backspace' && key !== 'Delete') {
         if (event.altKey) {
             modifiers += 'Alt-';
