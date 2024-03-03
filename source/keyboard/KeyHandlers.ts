@@ -211,12 +211,15 @@ keyHandlers[ctrlKey + 'z'] = (self: Squire, event: KeyboardEvent): void => {
     event.preventDefault();
     self.undo();
 };
-keyHandlers[ctrlKey + 'y'] = keyHandlers[ctrlKey + 'Shift-z'] = (
-    self: Squire,
-    event: KeyboardEvent,
-): void => {
-    event.preventDefault();
-    self.redo();
-};
+keyHandlers[ctrlKey + 'y'] =
+    // Depending on platform, the Shift may cause the key to come through as
+    // upper case, but sometimes not. Just add both as shortcuts — the browser
+    // will only ever fire one or the other.
+    keyHandlers[ctrlKey + 'Shift-z'] =
+    keyHandlers[ctrlKey + 'Shift-Z'] =
+        (self: Squire, event: KeyboardEvent): void => {
+            event.preventDefault();
+            self.redo();
+        };
 
 export { _onKey, keyHandlers };
