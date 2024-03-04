@@ -1909,6 +1909,10 @@
     }
     let key = event.key;
     let modifiers = "";
+    const code = event.code;
+    if (/^Digit\d$/.test(code)) {
+      key = code.slice(-1);
+    }
     if (key !== "Backspace" && key !== "Delete") {
       if (event.altKey) {
         modifiers += "Alt-";
@@ -2044,7 +2048,10 @@
     event.preventDefault();
     self.undo();
   };
-  keyHandlers[ctrlKey + "y"] = keyHandlers[ctrlKey + "Shift-z"] = (self, event) => {
+  keyHandlers[ctrlKey + "y"] = // Depending on platform, the Shift may cause the key to come through as
+  // upper case, but sometimes not. Just add both as shortcuts — the browser
+  // will only ever fire one or the other.
+  keyHandlers[ctrlKey + "Shift-z"] = keyHandlers[ctrlKey + "Shift-Z"] = (self, event) => {
     event.preventDefault();
     self.redo();
   };
@@ -2226,11 +2233,6 @@
     }
     _beforeInput(event) {
       switch (event.inputType) {
-        case "insertText":
-          if (isAndroid && event.data && event.data.includes("\n")) {
-            event.preventDefault();
-          }
-          break;
         case "insertLineBreak":
           event.preventDefault();
           this.splitBlock(true);

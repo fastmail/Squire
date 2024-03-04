@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.8] - 2024-02-21
+
+### Fixed
+
+-   Fix some keyboard shortcuts not working on some platforms.
+-   Fix unable to paste text with new line on Android.
+
 ## [2.2.7] - 2024-02-21
 
 ### Fixed
