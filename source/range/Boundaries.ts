@@ -15,7 +15,7 @@ const isNodeContainedInRange = (
     node: Node,
     partial: boolean,
 ): boolean => {
-    const nodeRange = document.createRange();
+    const nodeRange = (node.ownerDocument || document).createRange();
     nodeRange.selectNode(node);
     if (partial) {
         // Node must not finish before range starts or start after range

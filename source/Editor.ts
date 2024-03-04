@@ -97,6 +97,8 @@ interface SquireConfig {
 
 class Squire {
     _root: HTMLElement;
+    _document: Document;
+    _window: Window;
     _config: SquireConfig;
 
     _isFocused: boolean;
@@ -124,6 +126,8 @@ class Squire {
 
     constructor(root: HTMLElement, config?: Partial<SquireConfig>) {
         this._root = root;
+        this._document = root.ownerDocument || document;
+        this._window = this._document.defaultView || window;
 
         this._config = this._makeConfig(config);
 
@@ -235,9 +239,10 @@ class Squire {
                     RETURN_DOM_FRAGMENT: true,
                     FORCE_BODY: false,
                 });
+                const doc = this._document;
                 return frag
-                    ? document.importNode(frag, true)
-                    : document.createDocumentFragment();
+                    ? doc.importNode(frag, true)
+                    : doc.createDocumentFragment();
             },
             didError: (error: any): void => console.log(error),
         };
@@ -358,7 +363,8 @@ class Squire {
         // an infinite loop. So we detect whether we're actually
         // focused/blurred before firing.
         if (/^(?:focus|blur)/.test(type)) {
-            const isFocused = this._root === document.activeElement;
+            const shadow = this._root.getRootNode(); // either Document, ShadowRoot or orphan node itself
+            const isFocused = 'activeElement' in shadow && this._root === shadow.activeElement;
             if (type === 'focus') {
                 if (!isFocused || this._isFocused) {
                     return this;
@@ -417,7 +423,7 @@ class Squire {
             this._events.set(type, handlers);
             if (!this.customEvents.has(type)) {
                 if (type === 'selectionchange') {
-                    target = document;
+                    target = this._document;
                 }
                 target.addEventListener(type, this, true);
             }
@@ -444,7 +450,7 @@ class Squire {
                 this._events.delete(type);
                 if (!this.customEvents.has(type)) {
                     if (type === 'selectionchange') {
-                        target = document;
+                        target = this._document;
                     }
                     target.removeEventListener(type, this, true);
                 }
@@ -548,7 +554,7 @@ class Squire {
             end.remove();
 
             if (!range) {
-                range = document.createRange();
+                range = this._document.createRange();
             }
             range.setStart(startContainer, startOffset);
             range.setEnd(endContainer, endOffset);
@@ -580,7 +586,7 @@ class Squire {
     }
 
     getSelection(): Range {
-        const selection = window.getSelection();
+        const selection = this._window.getSelection();
         const root = this._root;
         let range: Range | null = null;
         // If not focused, always rely on cached selection; another function may
@@ -603,7 +609,7 @@ class Squire {
             range = this._lastSelection;
             // Check the editor is in the live document; if not, the range has
             // probably been rewritten by the browser and is bogus
-            if (!document.contains(range.commonAncestorContainer)) {
+            if (!root.getRootNode().contains(range.commonAncestorContainer)) {
                 range = null;
             }
         }
@@ -621,7 +627,7 @@ class Squire {
         if (!this._isFocused) {
             this._enableRestoreSelection();
         } else {
-            const selection = window.getSelection();
+            const selection = this._window.getSelection();
             if (selection) {
                 if ('setBaseAndExtent' in Selection.prototype) {
                     selection.setBaseAndExtent(
@@ -1174,7 +1180,7 @@ class Squire {
             let offset = range.startOffset;
             let textNode: Text;
             if (!startContainer || !(startContainer instanceof Text)) {
-                const text = document.createTextNode('');
+                const text = this._document.createTextNode('');
                 startContainer.insertBefore(
                     text,
                     startContainer.childNodes[offset],
@@ -1521,11 +1527,9 @@ class Squire {
         // formatted text.
         let fixer: Node | Text | null | undefined;
         if (range.collapsed) {
-            if (cantFocusEmptyTextNodes) {
-                fixer = document.createTextNode(ZWS);
-            } else {
-                fixer = document.createTextNode('');
-            }
+            fixer = this._document.createTextNode(
+                cantFocusEmptyTextNodes ? ZWS : ''
+            );
             insertNodeInRange(range, fixer!);
         }
 
@@ -1697,7 +1701,7 @@ class Squire {
             }
             insertNodeInRange(
                 range,
-                document.createTextNode(url.slice(protocolEnd)),
+                this._document.createTextNode(url.slice(protocolEnd)),
             );
         }
         attributes = Object.assign(
@@ -1806,7 +1810,7 @@ class Squire {
                 const endIndex = index + match[0].length;
                 if (index) {
                     parent.insertBefore(
-                        document.createTextNode(data.slice(0, index)),
+                        this._document.createTextNode(data.slice(0, index)),
                         node,
                     );
                 }
@@ -1979,7 +1983,7 @@ class Squire {
             node = range.startContainer;
             const offset = range.startOffset;
             if (!(node instanceof Text)) {
-                node = document.createTextNode('');
+                node = this._document.createTextNode('');
                 parent.insertBefore(node, parent.firstChild);
             }
             // If blank line: split and insert default block
@@ -2111,7 +2115,7 @@ class Squire {
                 (!nodeAfterSplit.textContent ||
                     nodeAfterSplit.textContent === ZWS)
             ) {
-                child = document.createTextNode('') as Text;
+                child = this._document.createTextNode('') as Text;
                 replaceWith(nodeAfterSplit, child);
                 nodeAfterSplit = child;
                 break;
@@ -2540,7 +2544,7 @@ class Squire {
         if (range.collapsed || isContainer(range.commonAncestorContainer)) {
             this.modifyBlocks((frag) => {
                 const root = this._root;
-                const output = document.createDocumentFragment();
+                const output = this._document.createDocumentFragment();
                 const blockWalker = getBlockWalker(frag, root);
                 let node: Element | Text | null;
                 // 1. Extract inline content; drop all blocks and contains.
@@ -2563,7 +2567,7 @@ class Squire {
                         if (!brBreaksLine[l]) {
                             detach(br);
                         } else {
-                            replaceWith(br, document.createTextNode('\n'));
+                            replaceWith(br, this._document.createTextNode('\n'));
                         }
                     }
                     // 3. Remove <code>; its format clashes with <pre>
@@ -2573,7 +2577,7 @@ class Squire {
                         replaceWith(nodes[l], empty(nodes[l]));
                     }
                     if (output.childNodes.length) {
-                        output.appendChild(document.createTextNode('\n'));
+                        output.appendChild(this._document.createTextNode('\n'));
                     }
                     output.appendChild(empty(node));
                 }
@@ -2620,11 +2624,11 @@ class Squire {
                     while ((node = walker.nextNode())) {
                         let value = node.data;
                         value = value.replace(/ (?= )/g, ' '); // sp -> nbsp
-                        const contents = document.createDocumentFragment();
+                        const contents = this._document.createDocumentFragment();
                         let index: number;
                         while ((index = value.indexOf('\n')) > -1) {
                             contents.appendChild(
-                                document.createTextNode(value.slice(0, index)),
+                                this._document.createTextNode(value.slice(0, index)),
                             );
                             contents.appendChild(createElement('BR'));
                             value = value.slice(index + 1);
@@ -2679,7 +2683,7 @@ class Squire {
                     this.createDefaultBlock([
                         this._removeFormatting(
                             node as Element,
-                            document.createDocumentFragment(),
+                            this._document.createDocumentFragment(),
                         ),
                     ]),
                 );
@@ -2726,8 +2730,8 @@ class Squire {
 
         // Split end point first to avoid problems when end and start
         // in same container.
-        const formattedNodes = document.createDocumentFragment();
-        const cleanNodes = document.createDocumentFragment();
+        const formattedNodes = this._document.createDocumentFragment();
+        const cleanNodes = this._document.createDocumentFragment();
         const nodeAfterSplit = split(endContainer, endOffset, stopNode, root);
         let nodeInSplit = split(startContainer, startOffset, stopNode, root);
         let nextNode: ChildNode | null;
