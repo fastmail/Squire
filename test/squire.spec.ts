@@ -260,7 +260,10 @@ describe('Squire RTE', () => {
                 squireContainer.childNodes.item(0).childNodes.item(1),
                 0,
             );
-            range.setEnd(squireContainer.childNodes.item(0).childNodes.item(1), 0);
+            range.setEnd(
+                squireContainer.childNodes.item(0).childNodes.item(1),
+                0,
+            );
             editor.setSelection(range);
             editor.fireEvent('selectionchange');
 
@@ -331,7 +334,7 @@ describe('Squire RTE', () => {
                 0,
             );
             editor.setSelection(range);
-            editor.fireEvent('selectionchange')
+            editor.fireEvent('selectionchange');
 
             expect(editor.getPath()).toBe('(selection)');
         });
