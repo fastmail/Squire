@@ -1255,6 +1255,7 @@ class Squire {
         if (!range) {
             range = this.getSelection();
         }
+        moveRangeBoundariesDownTree(range);
 
         let seenAttributes = 0;
         let element: Node | null = range.commonAncestorContainer;
