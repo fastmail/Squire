@@ -156,6 +156,9 @@ class Squire {
         this.addEventListener('touchstart', this._disableRestoreSelection);
         this.addEventListener('focus', this._restoreSelection);
 
+        // On blur, cleanup any ZWS/empty inlines
+        this.addEventListener('blur', this._removeZWS);
+
         // Clipboard support
         this._isShiftDown = false;
         this.addEventListener('cut', _onCut as (e: Event) => void);
