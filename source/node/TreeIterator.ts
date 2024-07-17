@@ -24,8 +24,8 @@ class TreeIterator<T extends Node> {
             nodeType === Node.ELEMENT_NODE
                 ? SHOW_ELEMENT
                 : nodeType === Node.TEXT_NODE
-                ? SHOW_TEXT
-                : 0;
+                  ? SHOW_TEXT
+                  : 0;
         return !!(nodeFilterType & this.nodeType) && this.filter(node as T);
     }
 

@@ -116,8 +116,8 @@ const getLength = (node: Node): number => {
     return node instanceof Element || node instanceof DocumentFragment
         ? node.childNodes.length
         : node instanceof CharacterData
-        ? node.length
-        : 0;
+          ? node.length
+          : 0;
 };
 
 // --- Manipulation
