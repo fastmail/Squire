@@ -118,7 +118,7 @@ white-space: pre-wrap;word-wrap: break-word;overflow-wrap: break-word;border-rad
 <script type="text/javascript" src="dist/squire-raw.js"></script>
 <script type="module" charset="utf-8">
   var div = document.getElementById( 'editor' );
-  var editor = new Squire( div, {
+  var editor = window.editor = new Squire( div, {
       blockTag: 'div',
       blockAttributes: {'class': 'paragraph'},
       tagAttributes: {
