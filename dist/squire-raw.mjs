@@ -2150,6 +2150,7 @@ var Squire = class {
     this.addEventListener("mousedown", this._disableRestoreSelection);
     this.addEventListener("touchstart", this._disableRestoreSelection);
     this.addEventListener("focus", this._restoreSelection);
+    this.addEventListener("blur", this._removeZWS);
     this._isShiftDown = false;
     this.addEventListener("cut", _onCut);
     this.addEventListener("copy", _onCopy);
@@ -3019,6 +3020,7 @@ var Squire = class {
     if (!range) {
       range = this.getSelection();
     }
+    moveRangeBoundariesDownTree(range);
     let seenAttributes = 0;
     let element = range.commonAncestorContainer;
     if (range.collapsed || element instanceof Text) {
