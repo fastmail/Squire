@@ -1061,6 +1061,7 @@ class Squire {
                 const event = new CustomEvent('willPaste', {
                     cancelable: true,
                     detail: {
+                        html,
                         fragment: frag,
                     },
                 });
