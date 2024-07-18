@@ -1129,11 +1129,12 @@
       frag.appendChild(node);
       node = next;
     }
-    if (startContainer instanceof Text && endContainer instanceof Text) {
-      startContainer.appendData(endContainer.data);
+    node = endContainer.previousSibling;
+    if (node && node instanceof Text && endContainer instanceof Text) {
+      endOffset = node.length;
+      node.appendData(endContainer.data);
       detach(endContainer);
-      endContainer = startContainer;
-      endOffset = startOffset;
+      endContainer = node;
     }
     range.setStart(startContainer, startOffset);
     if (endContainer) {
@@ -1415,6 +1416,7 @@
       text = text.replace(/\r?\n/g, "\r\n");
     }
     if (!plainTextOnly && html && text !== html) {
+      html = "<!-- squire -->" + html;
       clipboardData.setData("text/html", html);
     }
     clipboardData.setData("text/plain", text);
@@ -2869,6 +2871,7 @@
           const event = new CustomEvent("willPaste", {
             cancelable: true,
             detail: {
+              html,
               fragment: frag
             }
           });

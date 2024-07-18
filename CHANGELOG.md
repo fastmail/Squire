@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2024-07-18
+
+### Fixed
+
+-   Fix text nodes sometimes incorrectly merged after delete.
+
+### Added
+
+-   HTML copied from the editor now includes a `<!-- squire -->` comment
+-   The willPaste event now includes an `html` property in the details, with the
+    raw HTML that is being pasted.
+
 ## [2.2.9] - 2024-07-17
 
 ### Fixed
