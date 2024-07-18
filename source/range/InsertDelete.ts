@@ -134,11 +134,12 @@ const extractContentsOfRange = (
     }
 
     // Merge text nodes if adjacent
-    if (startContainer instanceof Text && endContainer instanceof Text) {
-        startContainer.appendData(endContainer.data);
+    node = endContainer.previousSibling;
+    if (node && node instanceof Text && endContainer instanceof Text) {
+        endOffset = node.length;
+        node.appendData(endContainer.data);
         detach(endContainer);
-        endContainer = startContainer;
-        endOffset = startOffset;
+        endContainer = node;
     }
 
     range.setStart(startContainer, startOffset);
