@@ -105,6 +105,7 @@ const extractRangeToClipboard = (
 
     // Set clipboard data
     if (!plainTextOnly && html && text !== html) {
+        html = '<!-- squire -->' + html;
         clipboardData.setData('text/html', html);
     }
     clipboardData.setData('text/plain', text);
