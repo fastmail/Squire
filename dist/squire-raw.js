@@ -1129,7 +1129,7 @@
       frag.appendChild(node);
       node = next;
     }
-    node = endContainer.previousSibling;
+    node = endContainer && endContainer.previousSibling;
     if (node && node instanceof Text && endContainer instanceof Text) {
       endOffset = node.length;
       node.appendData(endContainer.data);
