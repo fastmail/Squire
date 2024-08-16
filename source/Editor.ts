@@ -710,7 +710,7 @@ class Squire {
                         ? this._getPath(focus)
                         : '(selection)'
                     : '';
-            if (this._path !== newPath) {
+            if (this._path !== newPath || anchor !== focus) {
                 this._path = newPath;
                 this.fireEvent('pathChange', {
                     path: newPath,
