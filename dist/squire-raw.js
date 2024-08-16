@@ -2594,7 +2594,7 @@
         this._lastAnchorNode = anchor;
         this._lastFocusNode = focus;
         newPath = anchor && focus ? anchor === focus ? this._getPath(focus) : "(selection)" : "";
-        if (this._path !== newPath) {
+        if (this._path !== newPath || anchor !== focus) {
           this._path = newPath;
           this.fireEvent("pathChange", {
             path: newPath
@@ -3549,7 +3549,7 @@
           this.decreaseListLevel(range);
           return this;
         } else if (getNearest(block, root, "BLOCKQUOTE")) {
-          this.removeQuote(range);
+          this.replaceWithBlankLine(range);
           return this;
         }
       }
@@ -3900,6 +3900,17 @@
       return this.focus();
     }
     removeQuote(range) {
+      this.modifyBlocks((frag) => {
+        Array.from(frag.querySelectorAll("blockquote")).forEach(
+          (el) => {
+            replaceWith(el, empty(el));
+          }
+        );
+        return frag;
+      }, range);
+      return this.focus();
+    }
+    replaceWithBlankLine(range) {
       this.modifyBlocks(
         () => this.createDefaultBlock([
           createElement("INPUT", {

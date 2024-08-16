@@ -163,6 +163,7 @@ declare class Squire {
     increaseQuoteLevel(range?: Range): Squire;
     decreaseQuoteLevel(range?: Range): Squire;
     removeQuote(range?: Range): Squire;
+    replaceWithBlankLine(range?: Range): Squire;
     code(): Squire;
     removeCode(): Squire;
     toggleCode(): Squire;
