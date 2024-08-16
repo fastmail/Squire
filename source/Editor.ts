@@ -2060,7 +2060,7 @@ class Squire {
                 return this;
                 // Break blockquote
             } else if (getNearest(block, root, 'BLOCKQUOTE')) {
-                this.removeQuote(range);
+                this.replaceWithBlankLine(range);
                 return this;
             }
         }
@@ -2521,6 +2521,18 @@ class Squire {
     }
 
     removeQuote(range?: Range): Squire {
+        this.modifyBlocks((frag) => {
+            Array.from(frag.querySelectorAll('blockquote')).forEach(
+                (el: Node) => {
+                    replaceWith(el, empty(el));
+                },
+            );
+            return frag;
+        }, range);
+        return this.focus();
+    }
+
+    replaceWithBlankLine(range?: Range): Squire {
         this.modifyBlocks(
             (/* frag */) =>
                 this.createDefaultBlock([
