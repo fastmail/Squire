@@ -2122,6 +2122,11 @@ class Squire {
                 break;
             }
 
+            if (!(child as HTMLElement).isContentEditable) {
+                replaceWith(child, document.createTextNode('') as Text);
+                break;
+            }
+
             while (child && child instanceof Text && !child.data) {
                 next = child.nextSibling;
                 if (!next || next.nodeName === 'BR') {
