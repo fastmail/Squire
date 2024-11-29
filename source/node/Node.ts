@@ -43,7 +43,8 @@ const areAlike = (
             node.nodeName !== 'A' &&
             node.className === node2.className &&
             node.style.cssText === node2.style.cssText &&
-            (node as HTMLElement).isContentEditable && (node2 as HTMLElement).isContentEditable
+            (node as HTMLElement).isContentEditable &&
+            (node2 as HTMLElement).isContentEditable
         );
     }
     return true;

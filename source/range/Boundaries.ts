@@ -158,7 +158,7 @@ const moveRangeBoundariesUpTree = (
 
     range.setStart(startContainer, startOffset);
 
-    if(!(startContainer as HTMLElement).isContentEditable){
+    if (!(startContainer as HTMLElement).isContentEditable) {
         range.setStart(endContainer, endOffset);
     }
 
