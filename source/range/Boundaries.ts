@@ -1,4 +1,4 @@
-import { isLeaf } from '../node/Category';
+import { isInline, isLeaf } from '../node/Category';
 import { getLength, getNearest } from '../node/Node';
 import { isLineBreak } from '../node/Whitespace';
 import { TEXT_NODE } from '../Constants';
