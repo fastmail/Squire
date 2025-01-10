@@ -158,8 +158,13 @@ const moveRangeBoundariesUpTree = (
 
     range.setStart(startContainer, startOffset);
 
-    if (startContainer instanceof HTMLElement && !startContainer.isContentEditable) {
-        range.setStart(endContainer, endOffset);
+    let node = startContainer;
+    while (isInline(node)) {
+        if (node instanceof HTMLElement && !node.isContentEditable) {
+            range.setStart(endContainer, endOffset);
+            break;
+        }
+        node = node.parentNode!;
     }
 
     range.setEnd(endContainer, endOffset);
