@@ -1,5 +1,23 @@
 "use strict";
 (() => {
+  // source/Constants.ts
+  var ELEMENT_NODE = 1;
+  var TEXT_NODE = 3;
+  var DOCUMENT_FRAGMENT_NODE = 11;
+  var ZWS = "\u200B";
+  var ua = navigator.userAgent;
+  var isMac = /Mac OS X/.test(ua);
+  var isWin = /Windows NT/.test(ua);
+  var isIOS = /iP(?:ad|hone|od)/.test(ua) || isMac && !!navigator.maxTouchPoints;
+  var isAndroid = /Android/.test(ua);
+  var isGecko = /Gecko\//.test(ua);
+  var isLegacyEdge = /Edge\//.test(ua);
+  var isWebKit = !isLegacyEdge && /WebKit\//.test(ua);
+  var ctrlKey = isMac || isIOS ? "Meta-" : "Ctrl-";
+  var cantFocusEmptyTextNodes = isWebKit;
+  var supportsInputEvents = "onbeforeinput" in document && "inputType" in new InputEvent("input");
+  var notWS = /[^ \t\r\n]/;
+
   // source/node/TreeIterator.ts
   var SHOW_ELEMENT = 1;
   var SHOW_TEXT = 4;
@@ -96,24 +114,6 @@
     }
   };
 
-  // source/Constants.ts
-  var ELEMENT_NODE = 1;
-  var TEXT_NODE = 3;
-  var DOCUMENT_FRAGMENT_NODE = 11;
-  var ZWS = "\u200B";
-  var ua = navigator.userAgent;
-  var isMac = /Mac OS X/.test(ua);
-  var isWin = /Windows NT/.test(ua);
-  var isIOS = /iP(?:ad|hone|od)/.test(ua) || isMac && !!navigator.maxTouchPoints;
-  var isAndroid = /Android/.test(ua);
-  var isGecko = /Gecko\//.test(ua);
-  var isLegacyEdge = /Edge\//.test(ua);
-  var isWebKit = !isLegacyEdge && /WebKit\//.test(ua);
-  var ctrlKey = isMac || isIOS ? "Meta-" : "Ctrl-";
-  var cantFocusEmptyTextNodes = isWebKit;
-  var supportsInputEvents = "onbeforeinput" in document && "inputType" in new InputEvent("input");
-  var notWS = /[^ \t\r\n]/;
-
   // source/node/Category.ts
   var inlineNodeNames = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:FRAME|MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|TIME|U|VAR|WBR)$/;
   var leafNodeNames = /* @__PURE__ */ new Set(["BR", "HR", "IFRAME", "IMG", "INPUT"]);
@@ -190,7 +190,7 @@
       return false;
     }
     if (node instanceof HTMLElement && node2 instanceof HTMLElement) {
-      return node.nodeName !== "A" && node.className === node2.className && node.style.cssText === node2.style.cssText;
+      return node.nodeName !== "A" && node.className === node2.className && node.style.cssText === node2.style.cssText && node.isContentEditable && node2.isContentEditable;
     }
     return true;
   };
@@ -264,168 +264,6 @@
     if (parent) {
       parent.replaceChild(node2, node);
     }
-  };
-
-  // source/node/Whitespace.ts
-  var notWSTextNode = (node) => {
-    return node instanceof Element ? node.nodeName === "BR" : (
-      // okay if data is 'undefined' here.
-      notWS.test(node.data)
-    );
-  };
-  var isLineBreak = (br, isLBIfEmptyBlock) => {
-    let block = br.parentNode;
-    while (isInline(block)) {
-      block = block.parentNode;
-    }
-    const walker = new TreeIterator(
-      block,
-      SHOW_ELEMENT_OR_TEXT,
-      notWSTextNode
-    );
-    walker.currentNode = br;
-    return !!walker.nextNode() || isLBIfEmptyBlock && !walker.previousNode();
-  };
-  var removeZWS = (root, keepNode) => {
-    const walker = new TreeIterator(root, SHOW_TEXT);
-    let textNode;
-    let index;
-    while (textNode = walker.nextNode()) {
-      while ((index = textNode.data.indexOf(ZWS)) > -1 && // eslint-disable-next-line no-unmodified-loop-condition
-      (!keepNode || textNode.parentNode !== keepNode)) {
-        if (textNode.length === 1) {
-          let node = textNode;
-          let parent = node.parentNode;
-          while (parent) {
-            parent.removeChild(node);
-            walker.currentNode = parent;
-            if (!isInline(parent) || getLength(parent)) {
-              break;
-            }
-            node = parent;
-            parent = node.parentNode;
-          }
-          break;
-        } else {
-          textNode.deleteData(index, 1);
-        }
-      }
-    }
-  };
-
-  // source/range/Boundaries.ts
-  var START_TO_START = 0;
-  var START_TO_END = 1;
-  var END_TO_END = 2;
-  var END_TO_START = 3;
-  var isNodeContainedInRange = (range, node, partial) => {
-    const nodeRange = document.createRange();
-    nodeRange.selectNode(node);
-    if (partial) {
-      const nodeEndBeforeStart = range.compareBoundaryPoints(END_TO_START, nodeRange) > -1;
-      const nodeStartAfterEnd = range.compareBoundaryPoints(START_TO_END, nodeRange) < 1;
-      return !nodeEndBeforeStart && !nodeStartAfterEnd;
-    } else {
-      const nodeStartAfterStart = range.compareBoundaryPoints(START_TO_START, nodeRange) < 1;
-      const nodeEndBeforeEnd = range.compareBoundaryPoints(END_TO_END, nodeRange) > -1;
-      return nodeStartAfterStart && nodeEndBeforeEnd;
-    }
-  };
-  var moveRangeBoundariesDownTree = (range) => {
-    let { startContainer, startOffset, endContainer, endOffset } = range;
-    while (!(startContainer instanceof Text)) {
-      let child = startContainer.childNodes[startOffset];
-      if (!child || isLeaf(child)) {
-        if (startOffset) {
-          child = startContainer.childNodes[startOffset - 1];
-          if (child instanceof Text) {
-            let textChild = child;
-            let prev;
-            while (!textChild.length && (prev = textChild.previousSibling) && prev instanceof Text) {
-              textChild.remove();
-              textChild = prev;
-            }
-            startContainer = textChild;
-            startOffset = textChild.data.length;
-          }
-        }
-        break;
-      }
-      startContainer = child;
-      startOffset = 0;
-    }
-    if (endOffset) {
-      while (!(endContainer instanceof Text)) {
-        const child = endContainer.childNodes[endOffset - 1];
-        if (!child || isLeaf(child)) {
-          if (child && child.nodeName === "BR" && !isLineBreak(child, false)) {
-            endOffset -= 1;
-            continue;
-          }
-          break;
-        }
-        endContainer = child;
-        endOffset = getLength(endContainer);
-      }
-    } else {
-      while (!(endContainer instanceof Text)) {
-        const child = endContainer.firstChild;
-        if (!child || isLeaf(child)) {
-          break;
-        }
-        endContainer = child;
-      }
-    }
-    range.setStart(startContainer, startOffset);
-    range.setEnd(endContainer, endOffset);
-  };
-  var moveRangeBoundariesUpTree = (range, startMax, endMax, root) => {
-    let startContainer = range.startContainer;
-    let startOffset = range.startOffset;
-    let endContainer = range.endContainer;
-    let endOffset = range.endOffset;
-    let parent;
-    if (!startMax) {
-      startMax = range.commonAncestorContainer;
-    }
-    if (!endMax) {
-      endMax = startMax;
-    }
-    while (!startOffset && startContainer !== startMax && startContainer !== root) {
-      parent = startContainer.parentNode;
-      startOffset = Array.from(parent.childNodes).indexOf(
-        startContainer
-      );
-      startContainer = parent;
-    }
-    while (true) {
-      if (endContainer === endMax || endContainer === root) {
-        break;
-      }
-      if (endContainer.nodeType !== TEXT_NODE && endContainer.childNodes[endOffset] && endContainer.childNodes[endOffset].nodeName === "BR" && !isLineBreak(endContainer.childNodes[endOffset], false)) {
-        endOffset += 1;
-      }
-      if (endOffset !== getLength(endContainer)) {
-        break;
-      }
-      parent = endContainer.parentNode;
-      endOffset = Array.from(parent.childNodes).indexOf(endContainer) + 1;
-      endContainer = parent;
-    }
-    range.setStart(startContainer, startOffset);
-    range.setEnd(endContainer, endOffset);
-  };
-  var moveRangeBoundaryOutOf = (range, tag, root) => {
-    let parent = getNearest(range.endContainer, root, tag);
-    if (parent && (parent = parent.parentNode)) {
-      const clone = range.cloneRange();
-      moveRangeBoundariesUpTree(clone, parent, parent, root);
-      if (clone.endContainer === parent) {
-        range.setStart(clone.endContainer, clone.endOffset);
-        range.setEnd(clone.endContainer, clone.endOffset);
-      }
-    }
-    return range;
   };
 
   // source/node/MergeSplit.ts
@@ -635,6 +473,54 @@
       const block = createElement("DIV");
       node.insertBefore(block, first);
       fixCursor(block);
+    }
+  };
+
+  // source/node/Whitespace.ts
+  var notWSTextNode = (node) => {
+    return node instanceof Element ? node.nodeName === "BR" : (
+      // okay if data is 'undefined' here.
+      notWS.test(node.data)
+    );
+  };
+  var isLineBreak = (br, isLBIfEmptyBlock) => {
+    let block = br.parentNode;
+    while (isInline(block)) {
+      block = block.parentNode;
+    }
+    const walker = new TreeIterator(
+      block,
+      SHOW_ELEMENT_OR_TEXT,
+      notWSTextNode
+    );
+    walker.currentNode = br;
+    return !!walker.nextNode() || isLBIfEmptyBlock && !walker.previousNode();
+  };
+  var removeZWS = (root, keepNode) => {
+    var _a;
+    const walker = new TreeIterator(root, SHOW_TEXT);
+    let textNode;
+    let index;
+    while (textNode = walker.nextNode()) {
+      while ((index = textNode.data.indexOf(ZWS)) > -1 && !((_a = textNode.parentElement) == null ? void 0 : _a.hasAttribute("keep")) && // eslint-disable-next-line no-unmodified-loop-condition
+      (!keepNode || textNode.parentNode !== keepNode)) {
+        if (textNode.length === 1) {
+          let node = textNode;
+          let parent = node.parentNode;
+          while (parent) {
+            parent.removeChild(node);
+            walker.currentNode = parent;
+            if (!isInline(parent) || getLength(parent)) {
+              break;
+            }
+            node = parent;
+            parent = node.parentNode;
+          }
+          break;
+        } else {
+          textNode.deleteData(index, 1);
+        }
+      }
     }
   };
 
@@ -939,6 +825,129 @@
   };
   var isEmptyBlock = (block) => {
     return !block.textContent && !block.querySelector("IMG");
+  };
+
+  // source/range/Boundaries.ts
+  var START_TO_START = 0;
+  var START_TO_END = 1;
+  var END_TO_END = 2;
+  var END_TO_START = 3;
+  var isNodeContainedInRange = (range, node, partial) => {
+    const nodeRange = document.createRange();
+    nodeRange.selectNode(node);
+    if (partial) {
+      const nodeEndBeforeStart = range.compareBoundaryPoints(END_TO_START, nodeRange) > -1;
+      const nodeStartAfterEnd = range.compareBoundaryPoints(START_TO_END, nodeRange) < 1;
+      return !nodeEndBeforeStart && !nodeStartAfterEnd;
+    } else {
+      const nodeStartAfterStart = range.compareBoundaryPoints(START_TO_START, nodeRange) < 1;
+      const nodeEndBeforeEnd = range.compareBoundaryPoints(END_TO_END, nodeRange) > -1;
+      return nodeStartAfterStart && nodeEndBeforeEnd;
+    }
+  };
+  var moveRangeBoundariesDownTree = (range) => {
+    let { startContainer, startOffset, endContainer, endOffset } = range;
+    while (!(startContainer instanceof Text)) {
+      let child = startContainer.childNodes[startOffset];
+      if (!child || isLeaf(child)) {
+        if (startOffset) {
+          child = startContainer.childNodes[startOffset - 1];
+          if (child instanceof Text) {
+            let textChild = child;
+            let prev;
+            while (!textChild.length && (prev = textChild.previousSibling) && prev instanceof Text) {
+              textChild.remove();
+              textChild = prev;
+            }
+            startContainer = textChild;
+            startOffset = textChild.data.length;
+          }
+        }
+        break;
+      }
+      startContainer = child;
+      startOffset = 0;
+    }
+    if (endOffset) {
+      while (!(endContainer instanceof Text)) {
+        const child = endContainer.childNodes[endOffset - 1];
+        if (!child || isLeaf(child)) {
+          if (child && child.nodeName === "BR" && !isLineBreak(child, false)) {
+            endOffset -= 1;
+            continue;
+          }
+          break;
+        }
+        endContainer = child;
+        endOffset = getLength(endContainer);
+      }
+    } else {
+      while (!(endContainer instanceof Text)) {
+        const child = endContainer.firstChild;
+        if (!child || isLeaf(child)) {
+          break;
+        }
+        endContainer = child;
+      }
+    }
+    range.setStart(startContainer, startOffset);
+    range.setEnd(endContainer, endOffset);
+  };
+  var moveRangeBoundariesUpTree = (range, startMax, endMax, root) => {
+    let startContainer = range.startContainer;
+    let startOffset = range.startOffset;
+    let endContainer = range.endContainer;
+    let endOffset = range.endOffset;
+    let parent;
+    if (!startMax) {
+      startMax = range.commonAncestorContainer;
+    }
+    if (!endMax) {
+      endMax = startMax;
+    }
+    while (!startOffset && startContainer !== startMax && startContainer !== root) {
+      parent = startContainer.parentNode;
+      startOffset = Array.from(parent.childNodes).indexOf(
+        startContainer
+      );
+      startContainer = parent;
+    }
+    while (true) {
+      if (endContainer === endMax || endContainer === root) {
+        break;
+      }
+      if (endContainer.nodeType !== TEXT_NODE && endContainer.childNodes[endOffset] && endContainer.childNodes[endOffset].nodeName === "BR" && !isLineBreak(endContainer.childNodes[endOffset], false)) {
+        endOffset += 1;
+      }
+      if (endOffset !== getLength(endContainer)) {
+        break;
+      }
+      parent = endContainer.parentNode;
+      endOffset = Array.from(parent.childNodes).indexOf(endContainer) + 1;
+      endContainer = parent;
+    }
+    range.setStart(startContainer, startOffset);
+    let node = startContainer;
+    while (isInline(node)) {
+      if (node instanceof HTMLElement && !node.isContentEditable) {
+        range.setStart(endContainer, endOffset);
+        break;
+      }
+      node = node.parentNode;
+    }
+    range.setEnd(endContainer, endOffset);
+  };
+  var moveRangeBoundaryOutOf = (range, tag, root) => {
+    let parent = getNearest(range.endContainer, root, tag);
+    if (parent && (parent = parent.parentNode)) {
+      const clone = range.cloneRange();
+      moveRangeBoundariesUpTree(clone, parent, parent, root);
+      if (clone.endContainer === parent) {
+        range.setStart(clone.endContainer, clone.endOffset);
+        range.setEnd(clone.endContainer, clone.endOffset);
+      }
+    }
+    return range;
   };
 
   // source/range/Block.ts
@@ -1749,6 +1758,8 @@
         self.setSelection(range);
         self.removeLink();
         event.preventDefault();
+      } else if (a instanceof HTMLElement && !a.isContentEditable) {
+        self.getSelection().selectNode(a);
       } else {
         self.setSelection(range);
         setTimeout(() => {
@@ -2773,8 +2784,8 @@
     getRoot() {
       return this._root;
     }
-    _getRawHTML() {
-      return this._root.innerHTML;
+    _getRawHTML(root) {
+      return root ? root.innerHTML : this._root.innerHTML;
     }
     _setRawHTML(html) {
       const root = this._root;
@@ -2793,6 +2804,7 @@
           fixCursor(node);
         }
       }
+      this.fireEvent("setHtml");
       this._ignoreChange = true;
       return this;
     }
@@ -2802,7 +2814,18 @@
         range = this.getSelection();
         this._saveRangeToBookmark(range);
       }
-      const html = this._getRawHTML().replace(/\u200B/g, "");
+      const clonedRoot = this.getRoot().cloneNode(true);
+      clonedRoot.querySelectorAll("[squire-replace-parent-block]").forEach((element) => {
+        let parent = element.parentElement;
+        if (!parent) {
+          return;
+        }
+        while (parent.parentElement && parent.parentElement !== clonedRoot) {
+          parent = parent.parentElement;
+        }
+        parent.replaceWith(element);
+      });
+      const html = this._getRawHTML(clonedRoot).replace(/\u200B/g, "");
       if (withBookmark) {
         this._getRangeAndRemoveBookmark(range);
       }
@@ -2841,6 +2864,7 @@
       this.saveUndoState(range);
       this.setSelection(range);
       this._updatePath(range, true);
+      this.fireEvent("setHtml");
       return this;
     }
     /**
@@ -3587,6 +3611,10 @@
           child = document.createTextNode("");
           replaceWith(nodeAfterSplit, child);
           nodeAfterSplit = child;
+          break;
+        }
+        if (child && !child.isContentEditable) {
+          replaceWith(child, document.createTextNode(""));
           break;
         }
         while (child && child instanceof Text && !child.data) {

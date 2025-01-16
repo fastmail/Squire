@@ -1,8 +1,29 @@
+import { cleanTree, cleanupBRs, escapeHTML, removeEmptyInlines } from './Clean';
 import {
-    TreeIterator,
-    SHOW_TEXT,
-    SHOW_ELEMENT_OR_TEXT,
-} from './node/TreeIterator';
+    _monitorShiftKey,
+    _onCopy,
+    _onCut,
+    _onDrop,
+    _onPaste,
+} from './Clipboard';
+import { cantFocusEmptyTextNodes, ZWS } from './Constants';
+import { _onKey, keyHandlers } from './keyboard/KeyHandlers';
+import { linkifyText } from './keyboard/KeyHelpers';
+import { getBlockWalker, getNextBlock, isEmptyBlock } from './node/Block';
+import {
+    isBlock,
+    isContainer,
+    isInline,
+    isLeaf,
+    resetNodeCategoryCache,
+} from './node/Category';
+import {
+    fixContainer,
+    fixCursor,
+    mergeContainers,
+    mergeInlines,
+    split,
+} from './node/MergeSplit';
 import {
     createElement,
     detach,
@@ -12,36 +33,11 @@ import {
     replaceWith,
 } from './node/Node';
 import {
-    isLeaf,
-    isInline,
-    resetNodeCategoryCache,
-    isContainer,
-    isBlock,
-} from './node/Category';
+    SHOW_ELEMENT_OR_TEXT,
+    SHOW_TEXT,
+    TreeIterator,
+} from './node/TreeIterator';
 import { isLineBreak, removeZWS } from './node/Whitespace';
-import {
-    moveRangeBoundariesDownTree,
-    isNodeContainedInRange,
-    moveRangeBoundaryOutOf,
-    moveRangeBoundariesUpTree,
-} from './range/Boundaries';
-import {
-    createRange,
-    deleteContentsOfRange,
-    extractContentsOfRange,
-    insertNodeInRange,
-    insertTreeFragmentIntoRange,
-} from './range/InsertDelete';
-import {
-    fixContainer,
-    fixCursor,
-    mergeContainers,
-    mergeInlines,
-    split,
-} from './node/MergeSplit';
-import { getBlockWalker, getNextBlock, isEmptyBlock } from './node/Block';
-import { cleanTree, cleanupBRs, escapeHTML, removeEmptyInlines } from './Clean';
-import { cantFocusEmptyTextNodes, ZWS } from './Constants';
 import {
     expandRangeToBlockBoundaries,
     getEndBlockOfRange,
@@ -50,15 +46,19 @@ import {
     rangeDoesStartAtBlockBoundary,
 } from './range/Block';
 import {
-    _monitorShiftKey,
-    _onCopy,
-    _onCut,
-    _onDrop,
-    _onPaste,
-} from './Clipboard';
-import { keyHandlers, _onKey } from './keyboard/KeyHandlers';
-import { linkifyText } from './keyboard/KeyHelpers';
+    isNodeContainedInRange,
+    moveRangeBoundariesDownTree,
+    moveRangeBoundariesUpTree,
+    moveRangeBoundaryOutOf,
+} from './range/Boundaries';
 import { getTextContentsOfRange } from './range/Contents';
+import {
+    createRange,
+    deleteContentsOfRange,
+    extractContentsOfRange,
+    insertNodeInRange,
+    insertTreeFragmentIntoRange,
+} from './range/InsertDelete';
 
 declare const DOMPurify: any;
 
@@ -931,8 +931,8 @@ class Squire {
         return this._root;
     }
 
-    _getRawHTML(): string {
-        return this._root.innerHTML;
+    _getRawHTML(root?: Element): string {
+        return root ? root.innerHTML : this._root.innerHTML;
     }
 
     _setRawHTML(html: string): Squire {
@@ -954,6 +954,7 @@ class Squire {
             }
         }
 
+        this.fireEvent('setHtml');
         this._ignoreChange = true;
 
         return this;
@@ -965,7 +966,25 @@ class Squire {
             range = this.getSelection();
             this._saveRangeToBookmark(range);
         }
-        const html = this._getRawHTML().replace(/\u200B/g, '');
+        const clonedRoot = this.getRoot().cloneNode(true) as Element;
+
+        clonedRoot
+            .querySelectorAll('[squire-replace-parent-block]')
+            .forEach((element: Element) => {
+                let parent = element.parentElement;
+                if (!parent) {
+                    return;
+                }
+                while (
+                    parent.parentElement &&
+                    parent.parentElement !== clonedRoot
+                ) {
+                    parent = parent.parentElement;
+                }
+                parent.replaceWith(element);
+            });
+
+        const html = this._getRawHTML(clonedRoot).replace(/\u200B/g, '');
         if (withBookmark) {
             this._getRangeAndRemoveBookmark(range);
         }
@@ -1022,7 +1041,7 @@ class Squire {
         // Set inital selection
         this.setSelection(range);
         this._updatePath(range, true);
-
+        this.fireEvent('setHtml');
         return this;
     }
 

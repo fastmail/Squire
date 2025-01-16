@@ -92,7 +92,7 @@ declare class Squire {
     undo(): Squire;
     redo(): Squire;
     getRoot(): HTMLElement;
-    _getRawHTML(): string;
+    _getRawHTML(root?: Element): string;
     _setRawHTML(html: string): Squire;
     getHTML(withBookmark?: boolean): string;
     setHTML(html: string): Squire;
