@@ -497,12 +497,11 @@
     return !!walker.nextNode() || isLBIfEmptyBlock && !walker.previousNode();
   };
   var removeZWS = (root, keepNode) => {
-    var _a;
     const walker = new TreeIterator(root, SHOW_TEXT);
     let textNode;
     let index;
     while (textNode = walker.nextNode()) {
-      while ((index = textNode.data.indexOf(ZWS)) > -1 && !((_a = textNode.parentElement) == null ? void 0 : _a.hasAttribute("keep")) && // eslint-disable-next-line no-unmodified-loop-condition
+      while ((index = textNode.data.indexOf(ZWS)) > -1 && // eslint-disable-next-line no-unmodified-loop-condition
       (!keepNode || textNode.parentNode !== keepNode)) {
         if (textNode.length === 1) {
           let node = textNode;
@@ -3613,7 +3612,7 @@
           nodeAfterSplit = child;
           break;
         }
-        if (child && !child.isContentEditable) {
+        if (child instanceof HTMLElement && !child.isContentEditable) {
           replaceWith(child, document.createTextNode(""));
           break;
         }

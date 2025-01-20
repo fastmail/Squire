@@ -2141,7 +2141,7 @@ class Squire {
                 break;
             }
 
-            if (child && !(child as HTMLElement).isContentEditable) {
+            if (child instanceof HTMLElement && !child.isContentEditable) {
                 replaceWith(child, document.createTextNode('') as Text);
                 break;
             }
