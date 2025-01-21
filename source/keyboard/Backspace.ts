@@ -97,6 +97,8 @@ const Backspace = (self: Squire, event: KeyboardEvent, range: Range): void => {
             event.preventDefault();
         } else if (a instanceof HTMLElement && !a.isContentEditable) {
             self.getSelection().selectNode(a);
+            a.remove();
+            event.preventDefault();
         } else {
             // Otherwise, leave to browser but check afterwards whether it has
             // left behind an empty inline tag.

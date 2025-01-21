@@ -1,14 +1,13 @@
-import { isWin, isGecko, isLegacyEdge, notWS } from './Constants';
-import { createElement, detach } from './node/Node';
-import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
-import { createRange, deleteContentsOfRange } from './range/InsertDelete';
-import {
-    moveRangeBoundariesDownTree,
-    moveRangeBoundariesUpTree,
-} from './range/Boundaries';
+import { isGecko, isLegacyEdge, isWin, notWS } from './Constants';
 
 import type { Squire } from './Editor';
+import { getNextBlock } from './node/Block';
+import { fixCursor } from './node/MergeSplit';
+import { createElement, detach } from './node/Node';
+import { getEndBlockOfRange, getStartBlockOfRange } from './range/Block';
+import { moveRangeBoundariesDownTree, moveRangeBoundariesUpTree } from './range/Boundaries';
 import { getTextContentsOfRange } from './range/Contents';
+import { createRange, deleteContentsOfRange } from './range/InsertDelete';
 
 // ---
 
@@ -21,7 +20,7 @@ const extractRangeToClipboard = (
     removeRangeFromDocument: boolean,
     toCleanHTML: null | ((html: string) => string),
     toPlainText: null | ((html: string) => string),
-    plainTextOnly: boolean,
+    plainTextOnly: boolean
 ): boolean => {
     // Edge only seems to support setting plain text as of 2016-03-11.
     const clipboardData = event.clipboardData;
@@ -136,7 +135,7 @@ const _onCut = function (this: Squire, event: ClipboardEvent): void {
         true,
         this._config.willCutCopy,
         this._config.toPlainText,
-        false,
+        false
     );
     if (!handled) {
         setTimeout(() => {
@@ -160,7 +159,7 @@ const _onCopy = function (this: Squire, event: ClipboardEvent): void {
         false,
         this._config.willCutCopy,
         this._config.toPlainText,
-        false,
+        false
     );
 };
 
@@ -213,7 +212,7 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
         if (hasImage && !(hasRTF && htmlItem)) {
             event.preventDefault();
             this.fireEvent('pasteImage', {
-                clipboardData,
+                clipboardData
             });
             return;
         }
@@ -302,7 +301,7 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     // to stop the browser auto-scrolling.
     let pasteArea: Element = createElement('DIV', {
         contenteditable: 'true',
-        style: 'position:fixed; overflow:hidden; top:0; right:100%; width:1px; height:1px;',
+        style: 'position:fixed; overflow:hidden; top:0; right:100%; width:1px; height:1px;'
     });
     body.appendChild(pasteArea);
     range.selectNodeContents(pasteArea);
@@ -340,8 +339,8 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
                     startContainer,
                     startOffset,
                     endContainer,
-                    endOffset,
-                ),
+                    endOffset
+                )
             );
 
             if (html) {
@@ -380,6 +379,12 @@ const _onDrop = function (this: Squire, event: DragEvent): void {
     if (hasHTML || (hasPlain && this.saveUndoState)) {
         this.saveUndoState();
     }
+    setTimeout(() => {
+        let node: Element | null = this._root;
+        while ((node = getNextBlock(node, this._root))) {
+            fixCursor(node);
+        }
+    }, 0);
 };
 
 // ---
@@ -390,5 +395,5 @@ export {
     _onCopy,
     _monitorShiftKey,
     _onPaste,
-    _onDrop,
+    _onDrop
 };
