@@ -2015,7 +2015,9 @@ class Squire {
                 range.setStart(node, 0);
             } else {
                 (node as Text).insertData(offset, '\n');
-                fixCursor(parent);
+                if (!node.nextSibling) {
+                    parent.appendChild(createElement('BR'));
+                }
                 // Firefox bug: if you set the selection in the text node after
                 // the new line, it draws the cursor before the line break still
                 // but if you set the selection to the equivalent position
