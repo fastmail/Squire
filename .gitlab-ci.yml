@@ -1,5 +1,20 @@
+before_script:
+  - npm ci --ignore-scripts --force
+
+build:
+  stage: build
+  script: npm run build
+  only:
+    - merge_requests
+
+lint:
+  stage: test
+  script: npm run lint
+  only:
+    - merge_requests
+
 test:
   stage: test
-  script: npm ci --ignore-scripts --force && npm run test
+  script: npm run test
   only:
     - merge_requests
