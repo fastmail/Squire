@@ -40,7 +40,7 @@ const fixCursor = (node: Node): Node => {
     } else if (
         (node instanceof Element || node instanceof DocumentFragment) &&
         !node.querySelector('BR') &&
-        !notWS.test(node.textContent)
+        !notWS.test(node.textContent || '')
     ) {
         fixer = createElement('BR');
         let parent: Element | DocumentFragment = node;
