@@ -449,7 +449,7 @@
           fixer = document.createTextNode("");
         }
       }
-    } else if ((node instanceof Element || node instanceof DocumentFragment) && !node.querySelector("BR")) {
+    } else if ((node instanceof Element || node instanceof DocumentFragment) && !node.querySelector("BR") && !notWS.test(node.textContent || "")) {
       fixer = createElement("BR");
       let parent = node;
       let child;
@@ -3520,7 +3520,9 @@
           range.setStart(node, 0);
         } else {
           node.insertData(offset2, "\n");
-          fixCursor(parent);
+          if (!node.nextSibling) {
+            parent.appendChild(createElement("BR"));
+          }
           if (node.length === offset2 + 1) {
             range.setStartAfter(node);
           } else {
