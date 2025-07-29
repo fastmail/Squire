@@ -112,7 +112,7 @@
   var ctrlKey = isMac || isIOS ? "Meta-" : "Ctrl-";
   var cantFocusEmptyTextNodes = isWebKit;
   var supportsInputEvents = "onbeforeinput" in document && "inputType" in new InputEvent("input");
-  var notWS = /[^ \t\r\n]/;
+  var notWS = /[^ \t\r\n\u200B]/;
 
   // source/node/Category.ts
   var inlineNodeNames = /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:FRAME|MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|TIME|U|VAR|WBR)$/;
