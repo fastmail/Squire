@@ -26,7 +26,9 @@ const supportsInputEvents =
     'onbeforeinput' in document && 'inputType' in new InputEvent('input');
 
 // Use [^ \t\r\n] instead of \S so that nbsp does not count as white-space
-const notWS = /[^ \t\r\n]/;
+// Include ZWS - \u200B - because we use that as a placeholder for focusing
+// text nodes, but will strip it out after.
+const notWS = /[^ \t\r\n\u200B]/;
 
 // ---
 
