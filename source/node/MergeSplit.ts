@@ -65,6 +65,13 @@ const fixContainer = (
     root: Element | DocumentFragment,
 ): Node => {
     let wrapper: HTMLElement | null = null;
+    // We can't wrap stuff inside some tags with <div>, because of the HTML
+    // parsing rules — when you read it out as HTML then write it back, you'll
+    // end up with a different DOM tree (e.g. when inside a <p>, encountering
+    // a <div> will auto-close it). So ignore these and hope for the best.
+    if (/^(?:TABLE|TBODY|TR|TH|TD|P)/.test(container.nodeName)) {
+        return container;
+    }
     Array.from(container.childNodes).forEach((child) => {
         const isBR = child.nodeName === 'BR';
         if (!isBR && isInline(child)) {
