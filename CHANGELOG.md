@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5] - 2025-08-15
+
+### Fixed
+
+-   Don't insert replace `<br>` with `<div>` in contexts where it will create
+    broken HTML that then renders differently when written back.
+
 ## [2.3.4] - 2025-07-29
 
 ### Fixed

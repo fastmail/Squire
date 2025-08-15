@@ -468,6 +468,9 @@
   };
   var fixContainer = (container, root) => {
     let wrapper = null;
+    if (/^(?:TABLE|TBODY|TR|TH|TD|P)/.test(container.nodeName)) {
+      return container;
+    }
     Array.from(container.childNodes).forEach((child) => {
       const isBR = child.nodeName === "BR";
       if (!isBR && isInline(child)) {
