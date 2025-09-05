@@ -59,6 +59,7 @@ import {
 import { keyHandlers, _onKey } from './keyboard/KeyHandlers';
 import { linkifyText } from './keyboard/KeyHelpers';
 import { getTextContentsOfRange } from './range/Contents';
+import { ImageResizer } from './ImageResize';
 
 declare const DOMPurify: any;
 
@@ -121,6 +122,7 @@ class Squire {
     _keyHandlers: Record<string, KeyHandlerFunction>;
 
     _mutation: MutationObserver;
+    _imageResizer: ImageResizer;
 
     constructor(root: HTMLElement, config?: Partial<SquireConfig>) {
         this._root = root;
@@ -194,6 +196,9 @@ class Squire {
             this._beforeInput as (e: Event) => void,
         );
 
+        // Initialize image resizer
+        this._imageResizer = new ImageResizer(root, this);
+
         this.setHTML('');
     }
 
@@ -203,6 +208,9 @@ class Squire {
         });
 
         this._mutation.disconnect();
+
+        // Cleanup image resizer
+        this._imageResizer.destroy();
 
         this._undoIndex = -1;
         this._undoStack = [];
@@ -965,7 +973,17 @@ class Squire {
             range = this.getSelection();
             this._saveRangeToBookmark(range);
         }
+        const resizeContainer = this._root.querySelector(
+            '.squire-image-resize-container',
+        );
+        if (resizeContainer) {
+            resizeContainer.remove();
+        }
         const html = this._getRawHTML().replace(/\u200B/g, '');
+        if (resizeContainer) {
+            this._root.appendChild(resizeContainer);
+        }
+
         if (withBookmark) {
             this._getRangeAndRemoveBookmark(range);
         }
