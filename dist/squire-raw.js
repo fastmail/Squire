@@ -2729,11 +2729,16 @@
       return this;
     }
     saveUndoState(range) {
+      var isFromSelection = false;
       if (!range) {
         range = this.getSelection();
+        isFromSelection = true;
       }
       this._recordUndoState(range, this._isInUndoState);
-      this._getRangeAndRemoveBookmark(range);
+      let adjustedRange = this._getRangeAndRemoveBookmark(range);
+      if (isFromSelection) {
+        this.setSelection(adjustedRange);
+      }
       return this;
     }
     undo() {
