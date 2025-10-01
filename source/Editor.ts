@@ -969,24 +969,28 @@ class Squire {
 
     getHTML(withBookmark?: boolean): string {
         let range: Range | undefined;
-        if (withBookmark) {
-            range = this.getSelection();
-            this._saveRangeToBookmark(range);
-        }
-        const resizeContainer = this._root.querySelector(
-            '.squire-image-resize-container',
-        );
-        if (resizeContainer) {
-            resizeContainer.remove();
-        }
-        const html = this._getRawHTML().replace(/\u200B/g, '');
-        if (resizeContainer) {
-            this._root.appendChild(resizeContainer);
-        }
-
-        if (withBookmark) {
-            this._getRangeAndRemoveBookmark(range);
-        }
+        let html;
+        // Avoid triggering an "input" event from the DOM modifications when
+        // we get the HTML
+        this.modifyDocument(() => {
+            if (withBookmark) {
+                range = this.getSelection();
+                this._saveRangeToBookmark(range);
+            }
+            const resizeContainer = this._root.querySelector(
+                '.squire-image-resize-container',
+            );
+            if (resizeContainer) {
+                resizeContainer.remove();
+            }
+            html = this._getRawHTML().replace(/\u200B/g, '');
+            if (resizeContainer) {
+                this._root.appendChild(resizeContainer);
+            }
+            if (withBookmark) {
+                this._getRangeAndRemoveBookmark(range);
+            }
+        });
         return html;
     }
 
