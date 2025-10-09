@@ -119,7 +119,7 @@ class Squire {
     _ignoreAllChanges: boolean;
 
     _isShiftDown: boolean;
-    _keyHandlers: Record<string, KeyHandlerFunction>;
+    _keyHandlers: Record<string, KeyHandlerFunction | null>;
 
     _mutation: MutationObserver;
     _imageResizer: ImageResizer;
@@ -260,7 +260,7 @@ class Squire {
         return config;
     }
 
-    setKeyHandler(key: string, fn: KeyHandlerFunction) {
+    setKeyHandler(key: string, fn: KeyHandlerFunction | null) {
         this._keyHandlers[key] = fn;
         return this;
     }
