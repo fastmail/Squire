@@ -882,12 +882,16 @@ class Squire {
     }
 
     saveUndoState(range?: Range): Squire {
+        let rangeIsFromSelection = false;
         if (!range) {
             range = this.getSelection();
+            rangeIsFromSelection = true;
         }
         this._recordUndoState(range, this._isInUndoState);
         this._getRangeAndRemoveBookmark(range);
-
+        if (rangeIsFromSelection) {
+            this.setSelection(range);
+        }
         return this;
     }
 
