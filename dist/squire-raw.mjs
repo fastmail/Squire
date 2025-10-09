@@ -1934,8 +1934,9 @@ var _onKey = function(event) {
   }
   key = modifiers + key;
   const range = this.getSelection();
-  if (this._keyHandlers[key]) {
-    this._keyHandlers[key](this, event, range);
+  const handler = this._keyHandlers[key];
+  if (handler) {
+    handler(this, event, range);
   } else if (!range.collapsed && !event.ctrlKey && !event.metaKey && key.length === 1) {
     this.saveUndoState(range);
     deleteContentsOfRange(range, this._root);
@@ -2056,6 +2057,328 @@ keyHandlers[ctrlKey + "y"] = // Depending on platform, the Shift may cause the k
 keyHandlers[ctrlKey + "Shift-z"] = keyHandlers[ctrlKey + "Shift-Z"] = (self, event) => {
   event.preventDefault();
   self.redo();
+};
+
+// source/ImageResize.ts
+var RESIZE_HANDLE_SIZE = 8;
+var MIN_IMAGE_SIZE = 40;
+var MAX_IMAGE_SIZE = 1200;
+var handlePositions = [
+  { pos: "nw", cursor: "nwse-resize" },
+  { pos: "n", cursor: "ns-resize" },
+  { pos: "ne", cursor: "nesw-resize" },
+  { pos: "e", cursor: "ew-resize" },
+  { pos: "se", cursor: "nwse-resize" },
+  { pos: "s", cursor: "ns-resize" },
+  { pos: "sw", cursor: "nesw-resize" },
+  { pos: "w", cursor: "ew-resize" }
+];
+var keyHandlers2 = {
+  ArrowUp: (editor, range, root) => {
+    const block = getStartBlockOfRange(range, root);
+    if (block) {
+      const prev = getPreviousBlock(block, root);
+      if (prev) {
+        range.selectNodeContents(prev);
+        range.collapse(false);
+        editor.setSelection(range).focus();
+      }
+    }
+  },
+  ArrowDown: (editor, range, root) => {
+    const block = getStartBlockOfRange(range, root);
+    if (block) {
+      const next = getNextBlock(block, root);
+      if (next) {
+        range.selectNodeContents(next);
+        range.collapse(true);
+        editor.setSelection(range).focus();
+      }
+    }
+  },
+  Delete: (editor, range) => {
+    editor.replaceWithBlankLine(range);
+  },
+  Backspace: (editor, range) => {
+    editor.replaceWithBlankLine(range);
+  }
+};
+var ImageResizer = class {
+  constructor(root, editor) {
+    this._currentImage = null;
+    this._resizeContainer = null;
+    this._handles = null;
+    this._currentHandle = null;
+    this._startX = 0;
+    this._startY = 0;
+    this._startWidth = 0;
+    this._startHeight = 0;
+    this._maxWidth = MAX_IMAGE_SIZE;
+    this._originalRatio = 1;
+    this._editor = editor;
+    this._root = root;
+    document.addEventListener("click", this);
+    editor.addEventListener("drop", this);
+  }
+  destroy() {
+    this._deselectImage();
+    this._editor.removeEventListener("drop", this);
+    document.removeEventListener("click", this);
+  }
+  // EventListener interface implementation
+  handleEvent(event) {
+    switch (event.type) {
+      case "click":
+        this._onClick(event);
+        break;
+      case "pointerdown":
+        this._onPointerDown(event);
+        break;
+      case "pointermove":
+        this._onPointerMove(event);
+        break;
+      case "pointercancel":
+      case "pointerup":
+        this._onPointerUp(event);
+        break;
+      case "keydown":
+        this._onKeyDown(event);
+        break;
+      case "drop":
+        this._deselectImage();
+        break;
+    }
+  }
+  // ---
+  _onClick(event) {
+    const target = event.target;
+    if (target.nodeName === "IMG" && this._root.contains(target)) {
+      event.stopPropagation();
+      this._selectImage(target);
+    } else if (this._currentImage && this._handles && !this._handles.some((handle) => handle.element === target)) {
+      this._deselectImage();
+    }
+  }
+  _deselectImage() {
+    if (!this._currentImage) {
+      return;
+    }
+    document.removeEventListener("keydown", this);
+    if (this._currentHandle) {
+      this._onPointerUp({
+        preventDefault() {
+        },
+        target: this._currentHandle.element
+      });
+    }
+    if (this._handles) {
+      this._handles.forEach(
+        ({ element }) => element.removeEventListener("pointerdown", this)
+      );
+    }
+    if (this._resizeContainer) {
+      this._resizeContainer.remove();
+    }
+    this._handles = null;
+    this._resizeContainer = null;
+    this._currentImage = null;
+  }
+  _selectImage(image) {
+    if (this._currentImage === image) {
+      return;
+    }
+    this._deselectImage();
+    this._root.blur();
+    const handles = handlePositions.map(({ pos, cursor }) => {
+      const offset = RESIZE_HANDLE_SIZE / 2;
+      let positionStyle = "";
+      switch (pos) {
+        case "nw":
+          positionStyle = `left: -${offset}px; top: -${offset}px;`;
+          break;
+        case "n":
+          positionStyle = `left: calc(50% - ${offset}px); top: -${offset}px;`;
+          break;
+        case "ne":
+          positionStyle = `right: -${offset}px; top: -${offset}px;`;
+          break;
+        case "e":
+          positionStyle = `right: -${offset}px; top: calc(50% - ${offset}px);`;
+          break;
+        case "se":
+          positionStyle = `right: -${offset}px; bottom: -${offset}px;`;
+          break;
+        case "s":
+          positionStyle = `left: calc(50% - ${offset}px); bottom: -${offset}px;`;
+          break;
+        case "sw":
+          positionStyle = `left: -${offset}px; bottom: -${offset}px;`;
+          break;
+        case "w":
+          positionStyle = `left: -${offset}px; top: calc(50% - ${offset}px);`;
+          break;
+      }
+      const handle = createElement("div", {
+        class: `squire-resize-handle squire-resize-handle-${pos}`,
+        style: `
+                    position: absolute;
+                    width: ${RESIZE_HANDLE_SIZE}px;
+                    height: ${RESIZE_HANDLE_SIZE}px;
+                    background: #0067b9;
+                    border: 1px solid #fff;
+                    cursor: ${cursor};
+                    pointer-events: auto;
+                    touch-action: none;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                    ${positionStyle}
+                `
+      });
+      handle.addEventListener("pointerdown", this);
+      return {
+        element: handle,
+        cursor,
+        position: pos
+      };
+    });
+    const resizeContainer = createElement(
+      "div",
+      {
+        class: "squire-image-resize-container",
+        style: "position: absolute; pointer-events: none; z-index: 1000;"
+      },
+      handles.map((handle) => handle.element)
+    );
+    this._currentImage = image;
+    this._resizeContainer = resizeContainer;
+    this._handles = handles;
+    this._root.appendChild(this._resizeContainer);
+    const naturalWidth = image.naturalWidth;
+    this._originalRatio = naturalWidth / image.naturalHeight;
+    this._maxWidth = Math.min(
+      naturalWidth * 2,
+      image.parentElement ? image.parentElement.offsetWidth : MAX_IMAGE_SIZE,
+      MAX_IMAGE_SIZE
+    );
+    this._positionResizeContainer();
+    document.addEventListener("keydown", this);
+  }
+  _positionResizeContainer() {
+    const resizeContainer = this._resizeContainer;
+    const root = this._root;
+    const currentImage = this._currentImage;
+    if (!resizeContainer || !currentImage) {
+      return;
+    }
+    const rootRect = root.getBoundingClientRect();
+    const imageRect = currentImage.getBoundingClientRect();
+    const top = imageRect.top - rootRect.top + root.scrollTop;
+    const left = imageRect.left - rootRect.left + root.scrollLeft;
+    const width = imageRect.width;
+    const height = imageRect.height;
+    resizeContainer.style.top = top + "px";
+    resizeContainer.style.left = left + "px";
+    resizeContainer.style.width = width + "px";
+    resizeContainer.style.height = height + "px";
+  }
+  _onPointerDown(event) {
+    if (this._currentHandle || !this._handles) {
+      return;
+    }
+    const target = event.target;
+    const currentHandle = this._handles.find((h) => h.element === target) || null;
+    if (!currentHandle) {
+      return;
+    }
+    const currentImage = this._currentImage;
+    if (!currentImage) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    target.addEventListener("pointermove", this);
+    target.addEventListener("pointerup", this);
+    target.addEventListener("pointercancel", this);
+    target.setPointerCapture(event.pointerId);
+    this._currentHandle = currentHandle;
+    this._startX = event.clientX;
+    this._startY = event.clientY;
+    const style = getComputedStyle(currentImage);
+    this._startWidth = parseFloat(style.width);
+    this._startHeight = parseFloat(style.height);
+    document.body.style.cursor = currentHandle.cursor;
+  }
+  _onPointerMove(event) {
+    event.preventDefault();
+    const currentHandle = this._currentHandle;
+    const currentImage = this._currentImage;
+    if (!currentHandle || !currentImage) {
+      return;
+    }
+    const deltaX = event.clientX - this._startX;
+    const deltaY = event.clientY - this._startY;
+    const maxWidth = this._maxWidth;
+    const originalRatio = this._originalRatio;
+    let newWidth = this._startWidth;
+    let newHeight = this._startHeight;
+    switch (currentHandle.position) {
+      case "sw":
+      case "nw":
+      case "w":
+        newWidth -= 2 * deltaX;
+        break;
+      case "se":
+      case "ne":
+      case "e":
+        newWidth += 2 * deltaX;
+        break;
+      case "n":
+        newHeight -= deltaY;
+        newWidth = newHeight * originalRatio;
+        break;
+      case "s":
+        newHeight += deltaY;
+        newWidth = newHeight * originalRatio;
+        break;
+    }
+    if (newWidth < MIN_IMAGE_SIZE) {
+      newWidth = MIN_IMAGE_SIZE;
+    } else if (newWidth > maxWidth) {
+      newWidth = maxWidth;
+    }
+    const currentImageStyle = currentImage.style;
+    currentImageStyle.width = newWidth + "px";
+    currentImageStyle.height = "auto";
+    this._positionResizeContainer();
+  }
+  _onPointerUp(event) {
+    event.preventDefault();
+    const target = event.target;
+    if (target) {
+      target.removeEventListener("pointermove", this);
+      target.removeEventListener("pointerup", this);
+      target.removeEventListener("pointercancel", this);
+    }
+    this._currentHandle = null;
+    document.body.style.cursor = "";
+  }
+  _onKeyDown(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const keyHandler = keyHandlers2[event.key];
+    if (!keyHandler) {
+      return;
+    }
+    const image = this._currentImage;
+    if (!image) {
+      return;
+    }
+    const editor = this._editor;
+    const root = this._root;
+    this._deselectImage();
+    const range = editor.getSelection();
+    range.selectNode(image);
+    keyHandler(editor, range, root);
+  }
 };
 
 // source/Editor.ts
@@ -2181,6 +2504,7 @@ var Squire = class {
       "beforeinput",
       this._beforeInput
     );
+    this._imageResizer = new ImageResizer(root, this);
     this.setHTML("");
   }
   destroy() {
@@ -2188,6 +2512,7 @@ var Squire = class {
       this.removeEventListener(type);
     });
     this._mutation.disconnect();
+    this._imageResizer.destroy();
     this._undoIndex = -1;
     this._undoStack = [];
     this._undoStackLength = 0;
@@ -2726,11 +3051,16 @@ var Squire = class {
     return this;
   }
   saveUndoState(range) {
+    let rangeIsFromSelection = false;
     if (!range) {
       range = this.getSelection();
+      rangeIsFromSelection = true;
     }
     this._recordUndoState(range, this._isInUndoState);
     this._getRangeAndRemoveBookmark(range);
+    if (rangeIsFromSelection) {
+      this.setSelection(range);
+    }
     return this;
   }
   undo() {
@@ -2798,14 +3128,26 @@ var Squire = class {
   }
   getHTML(withBookmark) {
     let range;
-    if (withBookmark) {
-      range = this.getSelection();
-      this._saveRangeToBookmark(range);
-    }
-    const html = this._getRawHTML().replace(/\u200B/g, "");
-    if (withBookmark) {
-      this._getRangeAndRemoveBookmark(range);
-    }
+    let html = "";
+    this.modifyDocument(() => {
+      if (withBookmark) {
+        range = this.getSelection();
+        this._saveRangeToBookmark(range);
+      }
+      const resizeContainer = this._root.querySelector(
+        ".squire-image-resize-container"
+      );
+      if (resizeContainer) {
+        resizeContainer.remove();
+      }
+      html = this._getRawHTML().replace(/\u200B/g, "");
+      if (resizeContainer) {
+        this._root.appendChild(resizeContainer);
+      }
+      if (withBookmark) {
+        this._getRangeAndRemoveBookmark(range);
+      }
+    });
     return html;
   }
   setHTML(html) {

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-10-09
+
+### Added
+
+-   Images can now be resized. Clicking on the image shows handles in the
+    corners that can be dragged to make it larger or smaller.
+
+### Fixed
+
+-   An input event is no longer fired when calling getHTML.
+-   Fix an issue where drag-dropping text could delete other text.
+-   Fix type signature for Editor#setKeyHandler
+
 ## [2.3.5] - 2025-08-15
 
 ### Fixed
