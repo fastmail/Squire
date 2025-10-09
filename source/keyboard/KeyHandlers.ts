@@ -56,8 +56,9 @@ const _onKey = function (this: Squire, event: KeyboardEvent): void {
     key = modifiers + key;
 
     const range: Range = this.getSelection();
-    if (this._keyHandlers[key]) {
-        this._keyHandlers[key](this, event, range);
+    const handler = this._keyHandlers[key];
+    if (handler) {
+        handler(this, event, range);
     } else if (
         !range.collapsed &&
         !event.ctrlKey &&

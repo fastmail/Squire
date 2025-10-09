@@ -973,7 +973,7 @@ class Squire {
 
     getHTML(withBookmark?: boolean): string {
         let range: Range | undefined;
-        let html;
+        let html = '';
         // Avoid triggering an "input" event from the DOM modifications when
         // we get the HTML
         this.modifyDocument(() => {

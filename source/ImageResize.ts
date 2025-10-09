@@ -1,6 +1,7 @@
 import { getNextBlock, getPreviousBlock } from './node/Block';
 import { createElement } from './node/Node';
 import { getStartBlockOfRange } from './range/Block';
+import type { Squire } from './Editor';
 
 // ---
 
@@ -30,30 +31,38 @@ const handlePositions: Array<{
 ];
 
 const keyHandlers = {
-    ArrowUp: (editor, range, root) => {
+    ArrowUp: (editor: Squire, range: Range, root: HTMLElement) => {
         const block = getStartBlockOfRange(range, root);
-        const prev = getPreviousBlock(block, root);
-        range.selectNodeContents(prev);
-        range.collapse(false);
-        editor.setSelection(range).focus();
+        if (block) {
+            const prev = getPreviousBlock(block, root);
+            if (prev) {
+                range.selectNodeContents(prev);
+                range.collapse(false);
+                editor.setSelection(range).focus();
+            }
+        }
     },
-    ArrowDown: (editor, range, root) => {
+    ArrowDown: (editor: Squire, range: Range, root: HTMLElement) => {
         const block = getStartBlockOfRange(range, root);
-        const next = getNextBlock(block, root);
-        range.selectNodeContents(next);
-        range.collapse(true);
-        editor.setSelection(range).focus();
+        if (block) {
+            const next = getNextBlock(block, root);
+            if (next) {
+                range.selectNodeContents(next);
+                range.collapse(true);
+                editor.setSelection(range).focus();
+            }
+        }
     },
-    Delete: (editor, range /* , root */) => {
+    Delete: (editor: Squire, range: Range /* , root */) => {
         editor.replaceWithBlankLine(range);
     },
-    Backspace: (editor, range /* , root */) => {
+    Backspace: (editor: Squire, range: Range /* , root */) => {
         editor.replaceWithBlankLine(range);
     },
 };
 
 class ImageResizer {
-    private _editor: any;
+    private _editor: Squire;
     private _root: HTMLElement;
     private _currentImage: HTMLImageElement | null = null;
     private _resizeContainer: HTMLElement | null = null;
@@ -66,7 +75,7 @@ class ImageResizer {
     private _maxWidth = MAX_IMAGE_SIZE;
     private _originalRatio = 1;
 
-    constructor(root: HTMLElement, editor) {
+    constructor(root: HTMLElement, editor: Squire) {
         this._editor = editor;
         this._root = root;
 
@@ -115,6 +124,7 @@ class ImageResizer {
             this._selectImage(target as HTMLImageElement);
         } else if (
             this._currentImage &&
+            this._handles &&
             !this._handles.some((handle) => handle.element === target)
         ) {
             this._deselectImage();
@@ -134,10 +144,14 @@ class ImageResizer {
                 target: this._currentHandle.element,
             });
         }
-        this._handles.forEach(({ element }) =>
-            element.removeEventListener('pointerdown', this),
-        );
-        this._resizeContainer.remove();
+        if (this._handles) {
+            this._handles.forEach(({ element }) =>
+                element.removeEventListener('pointerdown', this),
+            );
+        }
+        if (this._resizeContainer) {
+            this._resizeContainer.remove();
+        }
 
         this._handles = null;
         this._resizeContainer = null;
@@ -225,7 +239,9 @@ class ImageResizer {
         this._originalRatio = naturalWidth / image.naturalHeight;
         this._maxWidth = Math.min(
             naturalWidth * 2,
-            image.parentElement.offsetWidth,
+            image.parentElement
+                ? image.parentElement.offsetWidth
+                : MAX_IMAGE_SIZE,
             MAX_IMAGE_SIZE,
         );
 
@@ -236,8 +252,12 @@ class ImageResizer {
     private _positionResizeContainer(): void {
         const resizeContainer = this._resizeContainer;
         const root = this._root;
+        const currentImage = this._currentImage;
+        if (!resizeContainer || !currentImage) {
+            return;
+        }
         const rootRect = root.getBoundingClientRect();
-        const imageRect = this._currentImage.getBoundingClientRect();
+        const imageRect = currentImage.getBoundingClientRect();
 
         // Position relative to editor
         const top = imageRect.top - rootRect.top + root.scrollTop;
@@ -252,7 +272,7 @@ class ImageResizer {
     }
 
     private _onPointerDown(event: PointerEvent): void {
-        if (this._currentHandle) {
+        if (this._currentHandle || !this._handles) {
             return;
         }
         const target = event.target as HTMLElement;
@@ -260,6 +280,10 @@ class ImageResizer {
             this._handles.find((h) => h.element === target) || null;
 
         if (!currentHandle) {
+            return;
+        }
+        const currentImage = this._currentImage;
+        if (!currentImage) {
             return;
         }
         event.preventDefault();
@@ -274,7 +298,6 @@ class ImageResizer {
         this._startX = event.clientX;
         this._startY = event.clientY;
 
-        const currentImage = this._currentImage;
         const style = getComputedStyle(currentImage);
         this._startWidth = parseFloat(style.width);
         this._startHeight = parseFloat(style.height);
@@ -285,6 +308,12 @@ class ImageResizer {
     private _onPointerMove(event: PointerEvent): void {
         event.preventDefault();
 
+        const currentHandle = this._currentHandle;
+        const currentImage = this._currentImage;
+        if (!currentHandle || !currentImage) {
+            return;
+        }
+
         const deltaX = event.clientX - this._startX;
         const deltaY = event.clientY - this._startY;
 
@@ -294,7 +323,7 @@ class ImageResizer {
         let newHeight = this._startHeight;
 
         // Calculate new dimensions based on which handle is being dragged
-        switch (this._currentHandle.position) {
+        switch (currentHandle.position) {
             case 'sw':
             case 'nw':
             case 'w':
@@ -323,7 +352,7 @@ class ImageResizer {
         }
 
         // Apply the new size
-        const currentImageStyle = this._currentImage.style;
+        const currentImageStyle = currentImage.style;
         currentImageStyle.width = newWidth + 'px';
         currentImageStyle.height = 'auto';
 
@@ -336,10 +365,12 @@ class ImageResizer {
     ): void {
         event.preventDefault();
 
-        const target = event.target;
-        target.removeEventListener('pointermove', this);
-        target.removeEventListener('pointerup', this);
-        target.removeEventListener('pointercancel', this);
+        const target = event.target as HTMLElement;
+        if (target) {
+            target.removeEventListener('pointermove', this);
+            target.removeEventListener('pointerup', this);
+            target.removeEventListener('pointercancel', this);
+        }
 
         this._currentHandle = null;
 
@@ -349,11 +380,14 @@ class ImageResizer {
     private _onKeyDown(event: KeyboardEvent): void {
         event.preventDefault();
         event.stopPropagation();
-        const keyHandler = keyHandlers[event.key];
+        const keyHandler = keyHandlers[event.key as keyof typeof keyHandlers];
         if (!keyHandler) {
             return;
         }
         const image = this._currentImage;
+        if (!image) {
+            return;
+        }
         const editor = this._editor;
         const root = this._root;
         this._deselectImage();
