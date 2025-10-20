@@ -2,10 +2,6 @@ import { isWin, isGecko, isLegacyEdge, notWS } from './Constants';
 import { createElement, detach } from './node/Node';
 import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
 import { createRange, deleteContentsOfRange } from './range/InsertDelete';
-import {
-    moveRangeBoundariesDownTree,
-    moveRangeBoundariesUpTree,
-} from './range/Boundaries';
 
 import type { Squire } from './Editor';
 import { getTextContentsOfRange } from './range/Contents';
@@ -52,11 +48,6 @@ const extractRangeToClipboard = (
     if (removeRangeFromDocument) {
         contents = deleteContentsOfRange(range, root);
     } else {
-        // Clone range to mutate, then move up as high as possible without
-        // passing the copy root node.
-        range = range.cloneRange();
-        moveRangeBoundariesDownTree(range);
-        moveRangeBoundariesUpTree(range, copyRoot, copyRoot, root);
         contents = range.cloneContents();
     }
 
