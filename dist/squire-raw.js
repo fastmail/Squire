@@ -1385,9 +1385,6 @@
     if (removeRangeFromDocument) {
       contents = deleteContentsOfRange(range, root);
     } else {
-      range = range.cloneRange();
-      moveRangeBoundariesDownTree(range);
-      moveRangeBoundariesUpTree(range, copyRoot, copyRoot, root);
       contents = range.cloneContents();
     }
     let parent = range.commonAncestorContainer;
