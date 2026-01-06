@@ -295,7 +295,7 @@ class Squire {
                 event.preventDefault();
                 this.bold();
                 break;
-            case 'formaItalic':
+            case 'formatItalic':
                 event.preventDefault();
                 this.italic();
                 break;
