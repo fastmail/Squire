@@ -1503,17 +1503,17 @@
           });
         } else if (plainItem) {
           plainItem.getAsString((text) => {
-            let isLink = false;
             const range2 = this.getSelection();
             if (!range2.collapsed && notWS.test(range2.toString())) {
               const match = this.linkRegExp.exec(text);
-              isLink = !!match && match[0].length === text.length;
+              const isLink = !!match && match[0].length === text.length;
+              if (isLink) {
+                const href = match[1] ? /^(?:ht|f)tps?:/i.test(match[1]) ? match[1] : "http://" + match[1] : "mailto:" + match[0];
+                this.makeLink(href);
+                return;
+              }
             }
-            if (isLink) {
-              this.makeLink(text);
-            } else {
-              this.insertPlainText(text, true);
-            }
+            this.insertPlainText(text, true);
           });
         }
         return;
@@ -2589,7 +2589,7 @@
           event.preventDefault();
           this.bold();
           break;
-        case "formaItalic":
+        case "formatItalic":
           event.preventDefault();
           this.italic();
           break;
