@@ -223,17 +223,22 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
                 plainItem.getAsString((text) => {
                     // If we have a selection and text is solely a URL,
                     // just make the text a link.
-                    let isLink = false;
                     const range = this.getSelection();
                     if (!range.collapsed && notWS.test(range.toString())) {
                         const match = this.linkRegExp.exec(text);
-                        isLink = !!match && match[0].length === text.length;
+                        const isLink =
+                            !!match && match[0].length === text.length;
+                        if (isLink) {
+                            const href = match[1]
+                                ? /^(?:ht|f)tps?:/i.test(match[1])
+                                    ? match[1]
+                                    : 'http://' + match[1]
+                                : 'mailto:' + match[0];
+                            this.makeLink(href);
+                            return;
+                        }
                     }
-                    if (isLink) {
-                        this.makeLink(text);
-                    } else {
-                        this.insertPlainText(text, true);
-                    }
+                    this.insertPlainText(text, true);
                 });
             }
             return;
