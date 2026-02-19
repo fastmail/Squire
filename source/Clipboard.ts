@@ -194,14 +194,15 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
 
         // Treat image paste as a drop of an image file. When you copy
         // an image in Chrome/Firefox (at least), it copies the image data
-        // but also an HTML version (referencing the original URL of the image)
-        // and a plain text version.
+        // but also an HTML version (referencing the original URL of the image).
+        // When you copy in One Note you get plain + html + image. When you
+        // copy in Excel, you get html, rtf, text, image.
         //
-        // However, when you copy in Excel, you get html, rtf, text, image;
-        // in this instance you want the html version! So let's try using
-        // the presence of text/rtf as an indicator to choose the html version
-        // over the image.
-        if (hasImage && !(hasRTF && htmlItem)) {
+        // So we want:
+        // image + html -> image
+        // image + plain + html -> html
+        // image + rtf + html -> html
+        if (hasImage && !(hasRTF && htmlItem) && !plainItem) {
             event.preventDefault();
             this.fireEvent('pasteImage', {
                 clipboardData,
