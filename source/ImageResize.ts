@@ -136,7 +136,7 @@ class ImageResizer {
             return;
         }
 
-        document.removeEventListener('keydown', this);
+        document.removeEventListener('keydown', this, true);
 
         if (this._currentHandle) {
             this._onPointerUp({
@@ -152,6 +152,7 @@ class ImageResizer {
         if (this._resizeContainer) {
             this._resizeContainer.remove();
         }
+        this._currentImage.removeAttribute('tabindex');
 
         this._handles = null;
         this._resizeContainer = null;
@@ -246,7 +247,9 @@ class ImageResizer {
         );
 
         this._positionResizeContainer();
-        document.addEventListener('keydown', this);
+        image.tabIndex = -1;
+        image.focus();
+        document.addEventListener('keydown', this, true);
     }
 
     private _positionResizeContainer(): void {
