@@ -2483,6 +2483,21 @@ class Squire {
         return frag;
     }
 
+    changeBlockType(
+        tag: string = this._config.blockTag,
+        attrs: Record<string, string> | null = this._config.blockAttributes
+    ) {
+        return this.modifyBlocks((frag) => {
+            const walker = getBlockWalker(frag, this._root);
+            const output = document.createDocumentFragment();
+            let node;
+            while ((node = walker.nextNode())) {
+                output.appendChild(createElement(tag, attrs, [empty(node)]));
+            }
+            return output;
+        });
+    };
+
     makeUnorderedList(): Squire {
         this.modifyBlocks((frag) => this._makeList(frag, 'UL'));
         return this.focus();
