@@ -457,6 +457,10 @@
         parent = child;
       }
       node = parent;
+      if (node instanceof HTMLElement && node.contentEditable === "true") {
+        node = createElement("DIV");
+        parent.appendChild(node);
+      }
     }
     if (fixer) {
       try {
@@ -1488,7 +1492,7 @@
           hasImage = true;
         }
       }
-      if (hasImage && !(hasRTF && htmlItem)) {
+      if (hasImage && !(hasRTF && htmlItem) && !plainItem) {
         event.preventDefault();
         this.fireEvent("pasteImage", {
           clipboardData
@@ -2163,7 +2167,7 @@
       if (!this._currentImage) {
         return;
       }
-      document.removeEventListener("keydown", this);
+      document.removeEventListener("keydown", this, true);
       if (this._currentHandle) {
         this._onPointerUp({
           preventDefault() {
@@ -2179,6 +2183,7 @@
       if (this._resizeContainer) {
         this._resizeContainer.remove();
       }
+      this._currentImage.removeAttribute("tabindex");
       this._handles = null;
       this._resizeContainer = null;
       this._currentImage = null;
@@ -2260,7 +2265,9 @@
         MAX_IMAGE_SIZE
       );
       this._positionResizeContainer();
-      document.addEventListener("keydown", this);
+      image.tabIndex = -1;
+      image.focus();
+      document.addEventListener("keydown", this, true);
     }
     _positionResizeContainer() {
       const resizeContainer = this._resizeContainer;
