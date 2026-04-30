@@ -49,6 +49,11 @@ const fixCursor = (node: Node): Node => {
             parent = child;
         }
         node = parent;
+        // Check if this is the root node
+        if (node instanceof HTMLElement && node.contentEditable === 'true') {
+            node = createElement('DIV');
+            parent.appendChild(node);
+        }
     }
     if (fixer) {
         try {
