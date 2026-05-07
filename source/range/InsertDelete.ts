@@ -318,7 +318,7 @@ const insertTreeFragmentIntoRange = (
     range.collapse(false); // collapse to end
 
     // Where will we split up to? First blockquote parent, otherwise root.
-    const stopPoint =
+    let stopPoint =
         getNearest(range.endContainer, root, 'BLOCKQUOTE') || root;
 
     // Merge the contents of the first block in the frag with the focused block.
@@ -387,6 +387,13 @@ const insertTreeFragmentIntoRange = (
             range.setEndBefore(block);
             range.collapse(false);
             detach(block);
+        }
+        // The merge/delete steps above may have moved range.endContainer
+        // out from under the original stopPoint (or detached stopPoint
+        // entirely), so recompute it before splitting.
+        if (!stopPoint.contains(range.endContainer)) {
+            stopPoint =
+                getNearest(range.endContainer, root, 'BLOCKQUOTE') || root;
         }
         moveRangeBoundariesUpTree(range, stopPoint, stopPoint, root);
         // Now split after block up to blockquote (if a parent) or root
