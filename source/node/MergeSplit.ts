@@ -112,6 +112,9 @@ const split = (
     stopNode: Node,
     root: Element | DocumentFragment,
 ): Node | null => {
+    if (!stopNode.contains(node)) {
+        throw new Error('split: stopNode does not contain node');
+    }
     if (node instanceof Text && node !== stopNode) {
         if (typeof offset !== 'number') {
             throw new Error('Offset must be a number to split text node!');
