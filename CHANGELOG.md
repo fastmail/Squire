@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.4] - 2026-05-07
+
+### Fixed
+
+- Fix `IndexSizeError` when pressing Enter inside an empty `<pre>` block.
+- Fix `NotFoundError` from `insertBefore` when pasting content where the
+  preceding delete or block-merge step moved the range out from under the
+  captured split boundary.
+
+### Changed
+
+- `split()` now throws an explicit error when called with a `stopNode` that
+  does not contain the input node, instead of recursing past the editor
+  root and failing deep in the call stack.
+
 ## [2.4.3] - 2026-04-30
 
 ### Fixed

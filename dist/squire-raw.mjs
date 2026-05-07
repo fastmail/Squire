@@ -502,6 +502,9 @@ var fixContainer = (container, root) => {
   return container;
 };
 var split = (node, offset, stopNode, root) => {
+  if (!stopNode.contains(node)) {
+    throw new Error("split: stopNode does not contain node");
+  }
   if (node instanceof Text && node !== stopNode) {
     if (typeof offset !== "number") {
       throw new Error("Offset must be a number to split text node!");
@@ -1242,7 +1245,7 @@ var insertTreeFragmentIntoRange = (range, frag, root) => {
   }
   moveRangeBoundariesDownTree(range);
   range.collapse(false);
-  const stopPoint = getNearest(range.endContainer, root, "BLOCKQUOTE") || root;
+  let stopPoint = getNearest(range.endContainer, root, "BLOCKQUOTE") || root;
   let block = getStartBlockOfRange(range, root);
   let blockContentsAfterSplit = null;
   const firstBlockInFrag = getNextBlock(frag, frag);
@@ -1287,6 +1290,9 @@ var insertTreeFragmentIntoRange = (range, frag, root) => {
       range.setEndBefore(block);
       range.collapse(false);
       detach(block);
+    }
+    if (!stopPoint.contains(range.endContainer)) {
+      stopPoint = getNearest(range.endContainer, root, "BLOCKQUOTE") || root;
     }
     moveRangeBoundariesUpTree(range, stopPoint, stopPoint, root);
     let nodeAfterSplit = split(
@@ -3841,10 +3847,11 @@ var Squire = class {
     if (block && (parent = getNearest(block, root, "PRE"))) {
       moveRangeBoundariesDownTree(range);
       node = range.startContainer;
-      const offset2 = range.startOffset;
+      let offset2 = range.startOffset;
       if (!(node instanceof Text)) {
         node = document.createTextNode("");
         parent.insertBefore(node, parent.firstChild);
+        offset2 = 0;
       }
       if (!lineBreakOnly && node instanceof Text && (node.data.charAt(offset2 - 1) === "\n" || rangeDoesStartAtBlockBoundary(range, root)) && (node.data.charAt(offset2) === "\n" || rangeDoesEndAtBlockBoundary(range, root))) {
         node.deleteData(offset2 && offset2 - 1, offset2 ? 2 : 1);
