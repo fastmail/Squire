@@ -2008,10 +2008,11 @@ class Squire {
         if (block && (parent = getNearest(block, root, 'PRE'))) {
             moveRangeBoundariesDownTree(range);
             node = range.startContainer;
-            const offset = range.startOffset;
+            let offset = range.startOffset;
             if (!(node instanceof Text)) {
                 node = document.createTextNode('');
                 parent.insertBefore(node, parent.firstChild);
+                offset = 0;
             }
             // If blank line: split and insert default block
             if (
