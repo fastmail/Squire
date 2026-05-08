@@ -372,13 +372,19 @@ const insertTreeFragmentIntoRange = (
         // And merge the first block in.
         mergeWithBlock(container, firstBlockInFrag, range, root);
 
-        // And where we will insert
-        offset =
-            Array.from(container.parentNode!.childNodes).indexOf(
-                container as ChildNode,
-            ) + 1;
-        container = container.parentNode!;
-        range.setEnd(container, offset);
+        // And where we will insert. Don't walk out of root; if container is
+        // already root, the merge target is at the top and we just point at
+        // the end of root.
+        if (container === root) {
+            range.setEnd(root, getLength(root));
+        } else {
+            offset =
+                Array.from(container.parentNode!.childNodes).indexOf(
+                    container as ChildNode,
+                ) + 1;
+            container = container.parentNode!;
+            range.setEnd(container, offset);
+        }
     }
 
     // Is there still any content in the fragment?
@@ -390,8 +396,14 @@ const insertTreeFragmentIntoRange = (
         }
         // The merge/delete steps above may have moved range.endContainer
         // out from under the original stopPoint (or detached stopPoint
-        // entirely), so recompute it before splitting.
+        // entirely), so recompute it before splitting. If the range has
+        // been pushed outside root altogether, clamp it back inside so
+        // split() has a valid stopNode ancestor.
         if (!stopPoint.contains(range.endContainer)) {
+            if (!root.contains(range.endContainer)) {
+                range.setEnd(root, getLength(root));
+                range.collapse(false);
+            }
             stopPoint =
                 getNearest(range.endContainer, root, 'BLOCKQUOTE') || root;
         }
