@@ -98,7 +98,7 @@ const keyHandlers: Record<string, KeyHandler> = {
             do {
                 if (node.nodeName === 'CODE') {
                     let next = node.nextSibling;
-                    if (!(next instanceof Text)) {
+                    if (!(next instanceof Text) || next.length === 0) {
                         const textNode = document.createTextNode(' '); // nbsp
                         node.parentNode!.insertBefore(textNode, next);
                         next = textNode;
