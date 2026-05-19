@@ -1,0 +1,35 @@
+name: "🧪 Test"
+
+on:
+  pull_request: null
+  push:
+    branches:
+      - "master"
+
+permissions:
+  contents: "read"
+
+env:
+  NODE_VERSION: "24"
+
+jobs:
+  test:
+    runs-on: "ubuntu-24.04"
+    steps:
+      - name: "Checkout the repo"
+        uses: "actions/checkout@v6"
+        with:
+          persist-credentials: "false"
+
+      - name: "Setup node"
+        uses: "actions/setup-node@v6"
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+
+      - name: "Install dependencies"
+        run: |
+          npm ci --ignore-scripts
+
+      - name: "Run tests"
+        run: |
+          npm run test
