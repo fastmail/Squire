@@ -1,8 +1,6 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Squire } from '../source/Editor';
 
 function selectAll(editor: Squire, root: HTMLElement) {
