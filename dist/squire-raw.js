@@ -465,7 +465,7 @@
     if (fixer) {
       try {
         node.appendChild(fixer);
-      } catch (error) {
+      } catch (e) {
       }
     }
     return node;
@@ -1281,11 +1281,15 @@
         }
       }
       mergeWithBlock(container, firstBlockInFrag, range, root);
-      offset = Array.from(container.parentNode.childNodes).indexOf(
-        container
-      ) + 1;
-      container = container.parentNode;
-      range.setEnd(container, offset);
+      if (container === root) {
+        range.setEnd(root, getLength(root));
+      } else {
+        offset = Array.from(container.parentNode.childNodes).indexOf(
+          container
+        ) + 1;
+        container = container.parentNode;
+        range.setEnd(container, offset);
+      }
     }
     if (getLength(frag)) {
       if (replaceBlock && block) {
@@ -1294,6 +1298,10 @@
         detach(block);
       }
       if (!stopPoint.contains(range.endContainer)) {
+        if (!root.contains(range.endContainer)) {
+          range.setEnd(root, getLength(root));
+          range.collapse(false);
+        }
         stopPoint = getNearest(range.endContainer, root, "BLOCKQUOTE") || root;
       }
       moveRangeBoundariesUpTree(range, stopPoint, stopPoint, root);
@@ -1973,7 +1981,7 @@
         do {
           if (node.nodeName === "CODE") {
             let next = node.nextSibling;
-            if (!(next instanceof Text)) {
+            if (!(next instanceof Text) || next.length === 0) {
               const textNode = document.createTextNode("\xA0");
               node.parentNode.insertBefore(textNode, next);
               next = textNode;

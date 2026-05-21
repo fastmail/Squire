@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.5] - 2026-05-21
+
+### Fixed
+
+- Fix `IndexSizeError` when pressing the right arrow at the end of a
+  `<code>` block whose next sibling was an existing empty text node; a
+  fresh text node is now inserted in that case so the cursor has somewhere
+  to land.
+- Fix `split()` throw on paste when the first-block merge walked the range
+  out of the editor root. The merge step is now clamped at the root, and
+  the stop-point recompute pulls the range back inside the root if a prior
+  mutation pushed it out.
+
 ## [2.4.4] - 2026-05-07
 
 ### Fixed
