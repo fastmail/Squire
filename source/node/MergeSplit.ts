@@ -58,7 +58,7 @@ const fixCursor = (node: Node): Node => {
     if (fixer) {
         try {
             node.appendChild(fixer);
-        } catch (error) {}
+        } catch {}
     }
 
     return node;
