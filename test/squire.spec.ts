@@ -119,31 +119,31 @@ describe('Squire RTE', () => {
         // Trivial cases
         it('removes inline styles', () => {
             const startHTML =
-                '<div><i>one</i> <b>two</b> <u>three</u> <sub>four</sub> <sup>five</sup><br></div>';
+                '<div><i>one</i> <b>two</b> <u>three</u> <sub>four</sub> <sup>five</sup></div>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
             selectAll(editor, squireContainer);
             editor.removeAllFormatting();
             expect(editor.getHTML()).toBe(
-                '<div>one two three four five<br></div>',
+                '<div>one two three four five</div>',
             );
         });
         it('removes block styles', () => {
             const startHTML =
-                '<div><blockquote>one<br></blockquote><ul><li>two<br></li></ul><ol><li>three<br></li></ol><table><tbody><tr><th>four<br></th><td>five<br></td></tr></tbody></table></div>';
+                '<div><blockquote>one</blockquote><ul><li>two</li></ul><ol><li>three</li></ol><table><tbody><tr><th>four</th><td>five</td></tr></tbody></table></div>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
             selectAll(editor, squireContainer);
             editor.removeAllFormatting();
             const expectedHTML =
-                '<div>one<br></div><div>two<br></div><div>three<br></div><div>four<br></div><div>five<br></div>';
+                '<div>one</div><div>two</div><div>three</div><div>four</div><div>five</div>';
             expect(editor.getHTML()).toBe(expectedHTML);
         });
 
         // Potential bugs
         // TODO: more analysis of this; this could just be an off-by-one in the test
         it('removes styles that begin inside the range', () => {
-            const startHTML = '<div><i>one two three four</i> five<br></div>';
+            const startHTML = '<div><i>one two three four</i> five</div>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
@@ -163,12 +163,12 @@ describe('Squire RTE', () => {
             );
             editor.removeAllFormatting(range);
             expect(editor.getHTML()).toBe(
-                '<div><i>one</i> two <i>three four</i> five<br></div>',
+                '<div><i>one</i> two <i>three four</i> five</div>',
             );
         });
 
         it('removes styles that end inside the range', () => {
-            const startHTML = '<div><i>one two three four</i> five<br></div>';
+            const startHTML = '<div><i>one two three four</i> five</div>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
@@ -182,12 +182,12 @@ describe('Squire RTE', () => {
             );
             editor.removeAllFormatting(range);
             expect(editor.getHTML()).toBe(
-                '<div><i>one two three</i> four five<br></div>',
+                '<div><i>one two three</i> four five</div>',
             );
         });
 
         it('removes styles enclosed by the range', () => {
-            const startHTML = '<div>one <i>two three four</i> five<br></div>';
+            const startHTML = '<div>one <i>two three four</i> five</div>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
@@ -198,12 +198,12 @@ describe('Squire RTE', () => {
             );
             editor.removeAllFormatting(range);
             expect(editor.getHTML()).toBe(
-                '<div>one two three four five<br></div>',
+                '<div>one two three four five</div>',
             );
         });
 
         it('removes styles enclosing the range', () => {
-            const startHTML = '<div><i>one two three four five</i><br></div>';
+            const startHTML = '<div><i>one two three four five</i></div>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
@@ -217,13 +217,13 @@ describe('Squire RTE', () => {
             );
             editor.removeAllFormatting(range);
             expect(editor.getHTML()).toBe(
-                '<div><i>one </i>two three four<i> five</i><br></div>',
+                '<div><i>one </i>two three four<i> five</i></div>',
             );
         });
 
         it('removes nested styles and closes tags correctly', () => {
             const startHTML =
-                '<table><tbody><tr><td>one<br></td></tr><tr><td>two<br></td><td>three<br></td></tr><tr><td>four<br></td><td>five<br></td></tr></tbody></table>';
+                '<table><tbody><tr><td>one</td></tr><tr><td>two</td><td>three</td></tr><tr><td>four</td><td>five</td></tr></tbody></table>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
             const range = document.createRange();
@@ -234,7 +234,7 @@ describe('Squire RTE', () => {
             );
             editor.removeAllFormatting(range);
             expect(editor.getHTML()).toBe(
-                '<table><tbody><tr><td>one<br></td></tr></tbody></table><div>two<br></div><div>three<br></div><table><tbody><tr><td>four<br></td><td>five<br></td></tr></tbody></table>',
+                '<table><tbody><tr><td>one</td></tr></tbody></table><div>two</div><div>three</div><table><tbody><tr><td>four</td><td>five</td></tr></tbody></table>',
             );
         });
     });
@@ -341,7 +341,7 @@ describe('Squire RTE', () => {
     describe('multi-level lists', () => {
         it('increases list indentation', () => {
             const startHTML =
-                '<ul><li><div>a<br></div></li><li><div>b<br></div></li><li><div>c<br></div></li></ul>';
+                '<ul><li><div>a</div></li><li><div>b</div></li><li><div>c</div></li></ul>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
 
@@ -354,13 +354,13 @@ describe('Squire RTE', () => {
 
             editor.increaseListLevel();
             expect(editor.getHTML()).toBe(
-                '<ul><li><div>a<br></div></li><ul><li><div>b<br></div></li></ul><li><div>c<br></div></li></ul>',
+                '<ul><li><div>a</div></li><ul><li><div>b</div></li></ul><li><div>c</div></li></ul>',
             );
         });
 
         it('increases list indentation 2', () => {
             const startHTML =
-                '<ul><li><div>a<br></div></li><li><div>b<br></div></li><li><div>c<br></div></li></ul>';
+                '<ul><li><div>a</div></li><li><div>b</div></li><li><div>c</div></li></ul>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
 
@@ -374,13 +374,13 @@ describe('Squire RTE', () => {
             editor.increaseListLevel();
             editor.increaseListLevel();
             expect(editor.getHTML()).toBe(
-                '<ul><li><div>a<br></div></li><ul><li><div>b<br></div></li></ul><li><div>c<br></div></li></ul>',
+                '<ul><li><div>a</div></li><ul><li><div>b</div></li></ul><li><div>c</div></li></ul>',
             );
         });
 
         it('decreases list indentation', () => {
             const startHTML =
-                '<ul><li><div>a<br></div></li><ul><li><div>b<br></div></li></ul><li><div>c<br></div></li></ul>';
+                '<ul><li><div>a</div></li><ul><li><div>b</div></li></ul><li><div>c</div></li></ul>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
 
@@ -393,34 +393,38 @@ describe('Squire RTE', () => {
 
             editor.decreaseListLevel();
             expect(editor.getHTML()).toBe(
-                '<ul><li><div>a<br></div></li><li><div>b<br></div></li><li><div>c<br></div></li></ul>',
+                '<ul><li><div>a</div></li><li><div>b</div></li><li><div>c</div></li></ul>',
             );
         });
 
         it('decreases list indentation 2', () => {
             const startHTML =
-                '<ul><li><div>a<br></div></li><ul><ul><li><div>b<br></div></li></ul></ul><li><div>c<br></div></li></ul>';
+                '<ul><li><div>a</div></li><ul><ul><li><div>b</div></li></ul></ul><li><div>c</div></li></ul>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
 
-            const range = document.createRange();
-            const textNode = document.getElementsByTagName('li').item(1)!
-                .childNodes[0].childNodes[0];
-            range.setStart(textNode, 0);
-            range.setEnd(textNode, 0);
-            editor.setSelection(range);
+            const selectB = () => {
+                const range = document.createRange();
+                const textNode = document.getElementsByTagName('li').item(1)!
+                    .childNodes[0].childNodes[0];
+                range.setStart(textNode, 0);
+                range.setEnd(textNode, 0);
+                editor.setSelection(range);
+            };
 
+            selectB();
             editor.decreaseListLevel();
+            selectB();
             editor.decreaseListLevel();
 
             expect(editor.getHTML()).toBe(
-                '<ul><li><div>a<br></div></li><li><div>b<br></div></li><li><div>c<br></div></li></ul>',
+                '<ul><li><div>a</div></li><li><div>b</div></li><li><div>c</div></li></ul>',
             );
         });
 
         it('removes lists', () => {
             const startHTML =
-                '<ul><li><div>foo<br></div></li><ul><li><div>bar<br></div></li></ul></ul>';
+                '<ul><li><div>foo</div></li><ul><li><div>bar</div></li></ul></ul>';
             editor.setHTML(startHTML);
             expect(editor.getHTML()).toBe(startHTML);
 
@@ -433,7 +437,7 @@ describe('Squire RTE', () => {
 
             editor.removeList();
             expect(editor.getHTML()).toBe(
-                '<ul><li><div>foo<br></div></li></ul><div>bar<br></div>',
+                '<ul><li><div>foo</div></li></ul><div>bar</div>',
             );
         });
     });
@@ -445,7 +449,7 @@ describe('Squire RTE', () => {
             );
             expect(editor.getHTML()).toEqual(
                 expect.stringMatching(
-                    '<table><tbody><tr><td>text<br></td></tr></tbody></table>',
+                    '<table><tbody><tr><td>text</td></tr></tbody></table>',
                 ),
             );
 
@@ -456,7 +460,7 @@ describe('Squire RTE', () => {
             );
             expect(editor.getHTML()).toEqual(
                 expect.stringMatching(
-                    '<table><tbody><tr><td>text1<br></td><td>text2<br></td></tr></tbody></table>',
+                    '<table><tbody><tr><td>text1</td><td>text2</td></tr></tbody></table>',
                 ),
             );
         });
