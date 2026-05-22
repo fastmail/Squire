@@ -526,6 +526,65 @@ describe('Squire RTE', () => {
         });
     });
 
+    describe('saveUndoState with stale bookmark markers', () => {
+        it('does not throw when a stale end marker precedes the cursor', () => {
+            // Reproduce the original IndexSizeError: a stale selection-end
+            // marker exists in the editor as the first child of the block
+            // containing the cursor. Without the fix, saveUndoState would
+            // pick up the stale end via querySelector, compute
+            // endOffset = 0 - 1 = -1, and throw IndexSizeError from setEnd.
+            editor.setHTML('<div>hello</div>');
+            const div = squireContainer.querySelector('div')!;
+            const stale = document.createElement('input');
+            stale.id = 'squire-selection-end';
+            stale.type = 'hidden';
+            div.insertBefore(stale, div.firstChild);
+            const text = stale.nextSibling as Text;
+            const range = document.createRange();
+            range.setStart(text, 3);
+            range.collapse(true);
+            editor.setSelection(range);
+
+            expect(() => editor.saveUndoState()).not.toThrow();
+            expect(
+                squireContainer.querySelector('#squire-selection-start'),
+            ).toBeNull();
+            expect(
+                squireContainer.querySelector('#squire-selection-end'),
+            ).toBeNull();
+        });
+
+        it('cleans up leftover marker pairs found in the DOM', () => {
+            editor.setHTML('<div>hello</div><div>cursor here</div>');
+            const firstDiv = squireContainer.querySelectorAll('div')[0];
+            const staleStart = document.createElement('input');
+            staleStart.id = 'squire-selection-start';
+            staleStart.type = 'hidden';
+            const staleEnd = document.createElement('input');
+            staleEnd.id = 'squire-selection-end';
+            staleEnd.type = 'hidden';
+            firstDiv.insertBefore(staleStart, firstDiv.firstChild);
+            firstDiv.insertBefore(staleEnd, firstDiv.firstChild);
+
+            const target = squireContainer.querySelectorAll('div')[1]
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(target, 0);
+            range.collapse(true);
+            editor.setSelection(range);
+
+            expect(() => editor.saveUndoState()).not.toThrow();
+            expect(
+                squireContainer.querySelectorAll('#squire-selection-start')
+                    .length,
+            ).toBe(0);
+            expect(
+                squireContainer.querySelectorAll('#squire-selection-end')
+                    .length,
+            ).toBe(0);
+        });
+    });
+
     afterEach(() => {
         editor = null as any;
         document.body.innerHTML = `<div id="squire">`;

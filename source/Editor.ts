@@ -540,10 +540,28 @@ class Squire {
 
     _getRangeAndRemoveBookmark(range?: Range): Range | null {
         const root = this._root;
-        const start = root.querySelector('#' + this.startSelectionId);
-        const end = root.querySelector('#' + this.endSelectionId);
+        // Use querySelectorAll so we can remove any stale duplicates left
+        // over from earlier sessions (e.g. via setHTML, pasted HTML, or an
+        // undo-state snapshot whose HTML still contained bookmark markers).
+        // If a stale marker were left behind, the next querySelector call
+        // would return it instead of the freshly inserted one.
+        const starts = root.querySelectorAll('#' + this.startSelectionId);
+        const ends = root.querySelectorAll('#' + this.endSelectionId);
+        const start = starts[0];
+        const end = ends[0];
 
-        if (start && end) {
+        // Only restore the range when both markers exist and start precedes
+        // end in document order. Without this check, stale duplicates can
+        // make end appear before start in the same container, which makes
+        // `endOffset -= 1` go negative and throw IndexSizeError on setEnd.
+        if (
+            start &&
+            end &&
+            !!(
+                start.compareDocumentPosition(end) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+            )
+        ) {
             let startContainer: Node = start.parentNode!;
             let endContainer: Node = end.parentNode!;
             const startOffset = Array.from(startContainer.childNodes).indexOf(
@@ -587,6 +605,18 @@ class Squire {
                 }
             }
         }
+
+        // Remove any remaining bookmark elements: stale duplicates, plus the
+        // primary pair if we bailed out above. Element#remove() is a no-op
+        // on already-detached nodes, so re-running it on the pair we just
+        // removed is safe.
+        for (let i = 0; i < starts.length; i += 1) {
+            starts[i].remove();
+        }
+        for (let i = 0; i < ends.length; i += 1) {
+            ends[i].remove();
+        }
+
         return range || null;
     }
 
