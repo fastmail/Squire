@@ -1,7 +1,36 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Squire } from '../source/Editor';
+
+// jsdom does not implement HTMLElement#isContentEditable, so it returns
+// undefined for every element. Squire's key handlers fall back to the
+// "detach uneditable node" path on Backspace/Delete at block boundaries
+// when this is false-y, which masks the real merge behavior. Patch it
+// here to follow the inherited `contenteditable` attribute so tests
+// exercise the same code path as a real browser.
+beforeAll(() => {
+    const resolveContentEditable = (start: Element): boolean => {
+        let node: Element | null = start;
+        while (node) {
+            const ce = node.getAttribute('contenteditable');
+            if (ce === 'true' || ce === '') {
+                return true;
+            }
+            if (ce === 'false') {
+                return false;
+            }
+            node = node.parentElement;
+        }
+        return false;
+    };
+    Object.defineProperty(HTMLElement.prototype, 'isContentEditable', {
+        configurable: true,
+        get(this: Element): boolean {
+            return resolveContentEditable(this);
+        },
+    });
+});
 
 function selectAll(editor: Squire, root: HTMLElement) {
     document.getSelection()!.removeAllRanges();
@@ -582,6 +611,209 @@ describe('Squire RTE', () => {
                 squireContainer.querySelectorAll('#squire-selection-end')
                     .length,
             ).toBe(0);
+        });
+    });
+
+    describe('getHTML / setHTML bookmark roundtrip', () => {
+        it('round-trips a collapsed selection through getHTML(true)', () => {
+            editor.setHTML('<div>hello world</div>');
+            const text = squireContainer.querySelector('div')!
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(text, 6);
+            range.collapse(true);
+            editor.setSelection(range);
+
+            const html = editor.getHTML(true);
+            expect(html).toContain('squire-selection-start');
+            expect(html).toContain('squire-selection-end');
+            // getHTML must not leave bookmark markers behind in the DOM
+            expect(
+                squireContainer.querySelector('#squire-selection-start'),
+            ).toBeNull();
+            expect(
+                squireContainer.querySelector('#squire-selection-end'),
+            ).toBeNull();
+
+            // Loading the marked-up HTML back should restore the selection
+            // exactly where it was, and the markers themselves should be
+            // gone (consumed by setHTML's _getRangeAndRemoveBookmark).
+            editor.setHTML(html);
+            expect(
+                squireContainer.querySelector('#squire-selection-start'),
+            ).toBeNull();
+            expect(
+                squireContainer.querySelector('#squire-selection-end'),
+            ).toBeNull();
+            const restored = editor.getSelection();
+            expect(restored.collapsed).toBe(true);
+            const restoredText = squireContainer.querySelector('div')!
+                .firstChild as Text;
+            expect(restored.startContainer).toBe(restoredText);
+            expect(restored.startOffset).toBe(6);
+        });
+
+        it('round-trips a non-collapsed selection through getHTML(true)', () => {
+            editor.setHTML('<div>hello world</div>');
+            const text = squireContainer.querySelector('div')!
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(text, 0);
+            range.setEnd(text, 5);
+            editor.setSelection(range);
+
+            const html = editor.getHTML(true);
+            editor.setHTML(html);
+
+            const restored = editor.getSelection();
+            expect(restored.collapsed).toBe(false);
+            expect(restored.toString()).toBe('hello');
+        });
+    });
+
+    describe('undo and redo', () => {
+        // MutationObserver callbacks (which Squire uses to detect DOM
+        // changes) are delivered as microtasks. Flush them so
+        // _docWasChanged runs and _isInUndoState is reset before we ask
+        // for an undo.
+        const flushMutations = () =>
+            new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+        it('restores prior content after undo, and the new state after redo', async () => {
+            editor.setHTML('<div>hello</div>');
+            // Flush so _docWasChanged runs and _isInUndoState resets.
+            // Without this, the post-setHTML mutation queue collides with
+            // the next saveUndoState and the second history entry is
+            // never recorded.
+            await flushMutations();
+            const text = squireContainer.querySelector('div')!
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(text, 5);
+            range.collapse(true);
+            editor.setSelection(range);
+
+            editor.insertHTML('world');
+            await flushMutations();
+            expect(squireContainer.textContent).toBe('helloworld');
+
+            editor.undo();
+            await flushMutations();
+            expect(squireContainer.textContent).toBe('hello');
+
+            editor.redo();
+            await flushMutations();
+            expect(squireContainer.textContent).toBe('helloworld');
+        });
+    });
+
+    describe('Delete key handler', () => {
+        function dispatchKey(key: string): void {
+            const event = new KeyboardEvent('keydown', {
+                key,
+                code: key,
+                bubbles: true,
+                cancelable: true,
+            });
+            editor.fireEvent('keydown', event);
+        }
+
+        it('deletes a non-collapsed selection in place', () => {
+            editor.setHTML('<div>hello world</div>');
+            const text = squireContainer.querySelector('div')!
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(text, 5);
+            range.setEnd(text, 11);
+            editor.setSelection(range);
+
+            dispatchKey('Delete');
+            expect(squireContainer.textContent).toBe('hello');
+        });
+
+        it('merges next block when cursor is at end of a block', () => {
+            editor.setHTML('<div>hello</div><div>world</div>');
+            const firstText = squireContainer.querySelectorAll('div')[0]
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(firstText, firstText.data.length);
+            range.collapse(true);
+            editor.setSelection(range);
+
+            dispatchKey('Delete');
+            // Two blocks should now be merged into one with combined text.
+            expect(squireContainer.querySelectorAll('div').length).toBe(1);
+            expect(squireContainer.textContent).toBe('helloworld');
+        });
+    });
+
+    describe('Backspace key handler', () => {
+        function dispatchKey(key: string): void {
+            const event = new KeyboardEvent('keydown', {
+                key,
+                code: key,
+                bubbles: true,
+                cancelable: true,
+            });
+            editor.fireEvent('keydown', event);
+        }
+
+        it('deletes a non-collapsed selection in place', () => {
+            editor.setHTML('<div>hello world</div>');
+            const text = squireContainer.querySelector('div')!
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(text, 0);
+            range.setEnd(text, 6);
+            editor.setSelection(range);
+
+            dispatchKey('Backspace');
+            expect(squireContainer.textContent).toBe('world');
+        });
+
+        it('merges with previous block when cursor is at start of a block', () => {
+            editor.setHTML('<div>hello</div><div>world</div>');
+            const secondText = squireContainer.querySelectorAll('div')[1]
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(secondText, 0);
+            range.collapse(true);
+            editor.setSelection(range);
+
+            dispatchKey('Backspace');
+            expect(squireContainer.querySelectorAll('div').length).toBe(1);
+            expect(squireContainer.textContent).toBe('helloworld');
+        });
+    });
+
+    describe('bold formatting', () => {
+        it('wraps selected text in <b>', () => {
+            editor.setHTML('<div>hello world</div>');
+            const text = squireContainer.querySelector('div')!
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(text, 0);
+            range.setEnd(text, 5);
+            editor.setSelection(range);
+
+            editor.bold();
+            expect(squireContainer.querySelector('b')!.textContent).toBe(
+                'hello',
+            );
+        });
+
+        it('unwraps when the selection is already bold', () => {
+            editor.setHTML('<div><b>hello</b> world</div>');
+            const boldText = squireContainer.querySelector('b')!
+                .firstChild as Text;
+            const range = document.createRange();
+            range.setStart(boldText, 0);
+            range.setEnd(boldText, 5);
+            editor.setSelection(range);
+
+            editor.removeBold();
+            expect(squireContainer.querySelector('b')).toBeNull();
+            expect(squireContainer.textContent).toBe('hello world');
         });
     });
 
