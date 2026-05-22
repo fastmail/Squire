@@ -39,19 +39,21 @@ const styleToSemantic: Record<
             classNames: { fontFamily: string },
             family: string,
         ): HTMLElement {
-            return createElement('SPAN', {
+            const span = createElement('SPAN', {
                 class: classNames.fontFamily,
-                style: 'font-family:' + family,
             });
+            span.style.fontFamily = family;
+            return span;
         },
     },
     'font-size': {
         regexp: notWS,
         replace(classNames: { fontSize: string }, size: string): HTMLElement {
-            return createElement('SPAN', {
+            const span = createElement('SPAN', {
                 class: classNames.fontSize,
-                style: 'font-size:' + size,
             });
+            span.style.fontSize = size;
+            return span;
         },
     },
     'text-decoration': {
@@ -153,16 +155,16 @@ const stylesRewriters: Record<string, StyleRewriter> = {
         if (face) {
             fontSpan = createElement('SPAN', {
                 class: classNames.fontFamily,
-                style: 'font-family:' + face,
             });
+            fontSpan.style.fontFamily = face;
             newTreeTop = fontSpan;
             newTreeBottom = fontSpan;
         }
         if (size) {
             sizeSpan = createElement('SPAN', {
                 class: classNames.fontSize,
-                style: 'font-size:' + fontSizes[size] + 'px',
             });
+            sizeSpan.style.fontSize = fontSizes[size] + 'px';
             if (!newTreeTop) {
                 newTreeTop = sizeSpan;
             }
@@ -177,8 +179,8 @@ const stylesRewriters: Record<string, StyleRewriter> = {
             }
             colorSpan = createElement('SPAN', {
                 class: classNames.color,
-                style: 'color:' + color,
             });
+            colorSpan.style.color = color;
             if (!newTreeTop) {
                 newTreeTop = colorSpan;
             }
