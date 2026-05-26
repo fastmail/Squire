@@ -665,19 +665,21 @@
     "font-family": {
       regexp: notWS,
       replace(classNames, family) {
-        return createElement("SPAN", {
-          class: classNames.fontFamily,
-          style: "font-family:" + family
+        const span = createElement("SPAN", {
+          class: classNames.fontFamily
         });
+        span.style.fontFamily = family;
+        return span;
       }
     },
     "font-size": {
       regexp: notWS,
       replace(classNames, size) {
-        return createElement("SPAN", {
-          class: classNames.fontSize,
-          style: "font-size:" + size
+        const span = createElement("SPAN", {
+          class: classNames.fontSize
         });
+        span.style.fontSize = size;
+        return span;
       }
     },
     "text-decoration": {
@@ -760,17 +762,17 @@
       let newTreeTop;
       if (face) {
         fontSpan = createElement("SPAN", {
-          class: classNames.fontFamily,
-          style: "font-family:" + face
+          class: classNames.fontFamily
         });
+        fontSpan.style.fontFamily = face;
         newTreeTop = fontSpan;
         newTreeBottom = fontSpan;
       }
       if (size) {
         sizeSpan = createElement("SPAN", {
-          class: classNames.fontSize,
-          style: "font-size:" + fontSizes[size] + "px"
+          class: classNames.fontSize
         });
+        sizeSpan.style.fontSize = fontSizes[size] + "px";
         if (!newTreeTop) {
           newTreeTop = sizeSpan;
         }
@@ -784,9 +786,9 @@
           color = "#" + color;
         }
         colorSpan = createElement("SPAN", {
-          class: classNames.color,
-          style: "color:" + color
+          class: classNames.color
         });
+        colorSpan.style.color = color;
         if (!newTreeTop) {
           newTreeTop = colorSpan;
         }
@@ -2804,9 +2806,11 @@
     }
     _getRangeAndRemoveBookmark(range) {
       const root = this._root;
-      const start = root.querySelector("#" + this.startSelectionId);
-      const end = root.querySelector("#" + this.endSelectionId);
-      if (start && end) {
+      const starts = root.querySelectorAll("#" + this.startSelectionId);
+      const ends = root.querySelectorAll("#" + this.endSelectionId);
+      const start = starts[0];
+      const end = ends[0];
+      if (start && end && !!(start.compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING)) {
         let startContainer = start.parentNode;
         let endContainer = end.parentNode;
         const startOffset = Array.from(startContainer.childNodes).indexOf(
@@ -2840,6 +2844,12 @@
             }
           }
         }
+      }
+      for (let i = 0; i < starts.length; i += 1) {
+        starts[i].remove();
+      }
+      for (let i = 0; i < ends.length; i += 1) {
+        ends[i].remove();
       }
       return range || null;
     }

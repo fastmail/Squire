@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.6] - 2026-05-26
+
+### Fixed
+
+- Fix `IndexSizeError` when pressing Delete after a stale
+  `squire-selection-start`/`squire-selection-end` bookmark marker was
+  left in the DOM (e.g. via `setHTML`, pasted HTML, or an unpaired
+  save/restore cycle). Any straggler markers are now swept on each
+  bookmark read, and the range is only reconstructed when the start
+  marker actually precedes the end marker in document order.
+
+### Changed
+
+- `styleToSemantic` now sets `font-family`, `font-size` and `color`
+  via the element `style` property rather than serialising them into a
+  `style` attribute string, avoiding the security risks of CSS parsing.
+
 ## [2.4.5] - 2026-05-21
 
 ### Fixed
