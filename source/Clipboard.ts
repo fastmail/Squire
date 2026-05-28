@@ -5,25 +5,19 @@ import { createRange, deleteContentsOfRange } from './range/InsertDelete';
 
 import type { Squire } from './Editor';
 import { getTextContentsOfRange } from './range/Contents';
+import { resetNodeCategoryCache } from './node/Category';
 
 // ---
 
 const indexOf = Array.prototype.indexOf;
 
-const extractRangeToClipboard = (
-    event: ClipboardEvent,
+const extractRange = (
     range: Range,
     root: HTMLElement,
     removeRangeFromDocument: boolean,
     toCleanHTML: null | ((html: string) => string),
     toPlainText: null | ((html: string) => string),
-    plainTextOnly: boolean,
-): boolean => {
-    // Edge only seems to support setting plain text as of 2016-03-11.
-    const clipboardData = event.clipboardData;
-    if (isLegacyEdge || !clipboardData) {
-        return false;
-    }
+): [string, string | undefined] => {
     // First get the plain text version from the range (unless we have a custom
     // HTML -> Text conversion fn)
     let text = toPlainText ? '' : getTextContentsOfRange(range);
@@ -32,14 +26,12 @@ const extractRangeToClipboard = (
     // parents up to root if selection across blocks
     const startBlock = getStartBlockOfRange(range, root);
     const endBlock = getEndBlockOfRange(range, root);
+    let parent = range.commonAncestorContainer;
     let copyRoot = root;
 
     // If the content is not in well-formed blocks, the start and end block
     // may be the same, but actually the range goes outside it. Must check!
-    if (
-        startBlock === endBlock &&
-        startBlock?.contains(range.commonAncestorContainer)
-    ) {
+    if (startBlock === endBlock && startBlock?.contains(parent)) {
         copyRoot = startBlock;
     }
 
@@ -52,7 +44,6 @@ const extractRangeToClipboard = (
     }
 
     // Add any other parents not in extracted content, up to copy root
-    let parent = range.commonAncestorContainer;
     if (parent instanceof Text) {
         parent = parent.parentNode!;
     }
@@ -72,7 +63,7 @@ const extractRangeToClipboard = (
         // Replace nbsp with regular space;
         // eslint-disable-next-line no-irregular-whitespace
         text = contents.childNodes[0].data.replace(/ /g, ' ');
-        plainTextOnly = true;
+        html = undefined;
     } else {
         const node = createElement('DIV') as HTMLDivElement;
         node.appendChild(contents);
@@ -87,6 +78,11 @@ const extractRangeToClipboard = (
         text = toPlainText(html);
     }
 
+    // If Text and HTML versions are the same, we only have plain text
+    if (text === html) {
+        html = undefined;
+    }
+
     // Firefox (and others?) returns unix line endings (\n) even on Windows.
     // If on Windows, normalise to \r\n, since Notepad and some other crappy
     // apps do not understand just \n.
@@ -94,9 +90,38 @@ const extractRangeToClipboard = (
         text = text.replace(/\r?\n/g, '\r\n');
     }
 
-    // Set clipboard data
-    if (!plainTextOnly && html && text !== html) {
+    // Mark that this HTML came internally so we preserve fonts etc.
+    if (html) {
         html = '<!-- squire -->' + html;
+    }
+
+    return [text, html];
+};
+
+const extractRangeToClipboard = (
+    event: ClipboardEvent,
+    range: Range,
+    root: HTMLElement,
+    removeRangeFromDocument: boolean,
+    toCleanHTML: null | ((html: string) => string),
+    toPlainText: null | ((html: string) => string),
+    plainTextOnly: boolean,
+): boolean => {
+    // Edge only seems to support setting plain text as of 2016-03-11.
+    const clipboardData = event.clipboardData;
+    if (isLegacyEdge || !clipboardData) {
+        return false;
+    }
+    let [text, html] = extractRange(
+        range,
+        root,
+        removeRangeFromDocument,
+        toCleanHTML,
+        toPlainText,
+    );
+
+    // Set clipboard data
+    if (!plainTextOnly && html) {
         clipboardData.setData('text/html', html);
     }
     clipboardData.setData('text/plain', text);
@@ -350,32 +375,154 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     }, 0);
 };
 
-// On Windows you can drag an drop text. We can't handle this ourselves, because
-// as far as I can see, there's no way to get the drop insertion point. So just
-// save an undo state and hope for the best.
+// Record the selection when a drag starts inside the editor so that on drop
+// we can move (rather than copy) the dragged content explicitly, rather than
+// relying on the browser's default move-on-drop behaviour (which we
+// preventDefault to take control of the insertion point).
+const _onDragStart = function (this: Squire): void {
+    const range = this.getSelection();
+    if (
+        range &&
+        !range.collapsed &&
+        this._root.contains(range.commonAncestorContainer)
+    ) {
+        this._dragRange = range.cloneRange();
+    } else {
+        this._dragRange = null;
+    }
+};
+
+const _onDragEnd = function (this: Squire): void {
+    this._dragRange = null;
+};
+
+// Find the caret position at the given client coordinates as a collapsed
+// Range, but only if the position lies inside the editor root. Returns null
+// otherwise (e.g. the drop landed on the editor's padding or outside it
+// entirely).
+const getCaretRangeFromPoint = (
+    x: number,
+    y: number,
+    root: HTMLElement,
+): Range | null => {
+    let range: Range | null = null;
+    const doc = document as Document & {
+        caretPositionFromPoint?: (
+            x: number,
+            y: number,
+        ) => { offsetNode: Node; offset: number } | null;
+        caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+    if (doc.caretPositionFromPoint) {
+        const pos = doc.caretPositionFromPoint(x, y);
+        if (pos) {
+            range = document.createRange();
+            range.setStart(pos.offsetNode, pos.offset);
+            range.collapse(true);
+        }
+    } else if (doc.caretRangeFromPoint) {
+        range = doc.caretRangeFromPoint(x, y);
+    }
+    if (range && !root.contains(range.commonAncestorContainer)) {
+        return null;
+    }
+    return range;
+};
+
+// Whether `point` (a collapsed range) lies within [source.start, source.end],
+// inclusive. We bail in that case rather than try to drop content into the
+// region we're about to delete.
+const pointIsWithinRange = (point: Range, source: Range): boolean => {
+    return (
+        point.compareBoundaryPoints(Range.START_TO_START, source) >= 0 &&
+        point.compareBoundaryPoints(Range.END_TO_END, source) <= 0
+    );
+};
+
 const _onDrop = function (this: Squire, event: DragEvent): void {
-    // it's possible for dataTransfer to be null, let's avoid it.
-    if (!event.dataTransfer) {
+    const dataTransfer = event.dataTransfer;
+    if (!dataTransfer) {
         return;
     }
-    const types = event.dataTransfer.types;
-    let l = types.length;
+
+    const types = dataTransfer.types;
     let hasPlain = false;
     let hasHTML = false;
-    while (l--) {
-        switch (types[l]) {
+    for (let i = 0, l = types.length; i < l; i += 1) {
+        switch (types[i]) {
             case 'text/plain':
                 hasPlain = true;
                 break;
             case 'text/html':
                 hasHTML = true;
                 break;
-            default:
-                return;
         }
     }
-    if (hasHTML || (hasPlain && this.saveUndoState)) {
-        this.saveUndoState();
+    // We only handle text drops here. For files, images, URLs, etc. let any
+    // other listeners (or the browser's default) deal with it.
+    if (!hasPlain && !hasHTML) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const root = this._root;
+    let dropRange = getCaretRangeFromPoint(event.clientX, event.clientY, root);
+    // Capture and clear the source range up front so an early return doesn't
+    // leave it set for a subsequent drop.
+    const dragRange = this._dragRange;
+    this._dragRange = null;
+
+    if (!dropRange) {
+        return;
+    }
+
+    // For internal drags, bail if the drop lands inside the dragged
+    // selection (would be a no-op move at best, content-eating bug at worst),
+    // and skip the source deletion if the user asked for a copy (Ctrl/Alt).
+    let text, html;
+    if (dragRange) {
+        if (pointIsWithinRange(dropRange, dragRange)) {
+            return;
+        }
+        this._recordUndoState(dragRange, this._isInUndoState);
+        const bookmark = document.createComment('');
+        dropRange.insertNode(bookmark);
+        this._getRangeAndRemoveBookmark(dragRange);
+        [text, html] = extractRange(
+            dragRange,
+            root,
+            dataTransfer.dropEffect !== 'copy',
+            this._config.willCutCopy,
+            this._config.toPlainText,
+        );
+        bookmark.replaceWith(
+            createElement('INPUT', {
+                id: this.startSelectionId,
+                type: 'hidden',
+            }),
+            createElement('INPUT', {
+                id: this.endSelectionId,
+                type: 'hidden',
+            }),
+        );
+        this._getRangeAndRemoveBookmark(dropRange);
+        resetNodeCategoryCache();
+    } else {
+        this.saveUndoState(dropRange);
+        if (hasHTML) {
+            html = dataTransfer.getData('text/html');
+        } else {
+            text = dataTransfer.getData('text/plain');
+        }
+    }
+
+    this.setSelection(dropRange);
+
+    if (html !== undefined) {
+        this.insertHTML(html, true);
+    } else if (text !== undefined) {
+        this.insertPlainText(text, true);
     }
 };
 
@@ -388,4 +535,6 @@ export {
     _monitorShiftKey,
     _onPaste,
     _onDrop,
+    _onDragStart,
+    _onDragEnd,
 };

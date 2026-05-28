@@ -53,6 +53,8 @@ import {
     _monitorShiftKey,
     _onCopy,
     _onCut,
+    _onDragEnd,
+    _onDragStart,
     _onDrop,
     _onPaste,
 } from './Clipboard';
@@ -121,6 +123,8 @@ class Squire {
     _isShiftDown: boolean;
     _keyHandlers: Record<string, KeyHandlerFunction | null>;
 
+    _dragRange: Range | null;
+
     _mutation: MutationObserver;
     _imageResizer: ImageResizer;
 
@@ -166,6 +170,13 @@ class Squire {
         this.addEventListener('cut', _onCut as (e: Event) => void);
         this.addEventListener('copy', _onCopy as (e: Event) => void);
         this.addEventListener('paste', _onPaste as (e: Event) => void);
+
+        // Drag and drop. Track the selection at the start of a drag so we can
+        // perform an explicit move on drop (deleting the source ourselves)
+        // rather than relying on the browser's default move handling.
+        this._dragRange = null;
+        this.addEventListener('dragstart', _onDragStart as (e: Event) => void);
+        this.addEventListener('dragend', _onDragEnd as (e: Event) => void);
         this.addEventListener('drop', _onDrop as (e: Event) => void);
         this.addEventListener(
             'keydown',
@@ -1258,6 +1269,7 @@ class Squire {
             }
 
             if (doInsert) {
+                this.saveUndoState(range);
                 textNode.insertData(offset, plainText);
                 range.setStart(textNode, offset + plainText.length);
                 range.collapse(true);

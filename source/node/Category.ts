@@ -1,4 +1,9 @@
-import { ELEMENT_NODE, TEXT_NODE, DOCUMENT_FRAGMENT_NODE } from '../Constants';
+import {
+    ELEMENT_NODE,
+    TEXT_NODE,
+    DOCUMENT_FRAGMENT_NODE,
+    COMMENT_NODE,
+} from '../Constants';
 
 // ---
 
@@ -28,6 +33,7 @@ const isLeaf = (node: Node): boolean => {
 
 const getNodeCategory = (node: Node): number => {
     switch (node.nodeType) {
+        case COMMENT_NODE:
         case TEXT_NODE:
             return INLINE;
         case ELEMENT_NODE:
