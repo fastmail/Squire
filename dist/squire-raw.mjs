@@ -97,6 +97,7 @@ var TreeIterator = class {
 // source/Constants.ts
 var ELEMENT_NODE = 1;
 var TEXT_NODE = 3;
+var COMMENT_NODE = 8;
 var DOCUMENT_FRAGMENT_NODE = 11;
 var ZWS = "\u200B";
 var ua = navigator.userAgent;
@@ -128,6 +129,7 @@ var isLeaf = (node) => {
 };
 var getNodeCategory = (node) => {
   switch (node.nodeType) {
+    case COMMENT_NODE:
     case TEXT_NODE:
       return INLINE;
     case ELEMENT_NODE:
@@ -1387,16 +1389,13 @@ var getTextContentsOfRange = (range) => {
 
 // source/Clipboard.ts
 var indexOf = Array.prototype.indexOf;
-var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCleanHTML, toPlainText, plainTextOnly) => {
-  const clipboardData = event.clipboardData;
-  if (isLegacyEdge || !clipboardData) {
-    return false;
-  }
+var extractRange = (range, root, removeRangeFromDocument, toCleanHTML, toPlainText) => {
   let text = toPlainText ? "" : getTextContentsOfRange(range);
   const startBlock = getStartBlockOfRange(range, root);
   const endBlock = getEndBlockOfRange(range, root);
+  let parent = range.commonAncestorContainer;
   let copyRoot = root;
-  if (startBlock === endBlock && startBlock?.contains(range.commonAncestorContainer)) {
+  if (startBlock === endBlock && startBlock?.contains(parent)) {
     copyRoot = startBlock;
   }
   let contents;
@@ -1405,7 +1404,6 @@ var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCl
   } else {
     contents = range.cloneContents();
   }
-  let parent = range.commonAncestorContainer;
   if (parent instanceof Text) {
     parent = parent.parentNode;
   }
@@ -1418,7 +1416,7 @@ var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCl
   let html;
   if (contents.childNodes.length === 1 && contents.childNodes[0] instanceof Text) {
     text = contents.childNodes[0].data.replace(/ /g, " ");
-    plainTextOnly = true;
+    html = void 0;
   } else {
     const node = createElement("DIV");
     node.appendChild(contents);
@@ -1430,11 +1428,30 @@ var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCl
   if (toPlainText && html !== void 0) {
     text = toPlainText(html);
   }
+  if (text === html) {
+    html = void 0;
+  }
   if (isWin) {
     text = text.replace(/\r?\n/g, "\r\n");
   }
-  if (!plainTextOnly && html && text !== html) {
+  if (html) {
     html = "<!-- squire -->" + html;
+  }
+  return [text, html];
+};
+var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCleanHTML, toPlainText, plainTextOnly) => {
+  const clipboardData = event.clipboardData;
+  if (isLegacyEdge || !clipboardData) {
+    return false;
+  }
+  let [text, html] = extractRange(
+    range,
+    root,
+    removeRangeFromDocument,
+    toCleanHTML,
+    toPlainText
+  );
+  if (!plainTextOnly && html) {
     clipboardData.setData("text/html", html);
   }
   clipboardData.setData("text/plain", text);
@@ -1591,28 +1608,108 @@ var _onPaste = function(event) {
     }
   }, 0);
 };
+var _onDragStart = function() {
+  const range = this.getSelection();
+  if (range && !range.collapsed && this._root.contains(range.commonAncestorContainer)) {
+    this._dragRange = range.cloneRange();
+  } else {
+    this._dragRange = null;
+  }
+};
+var _onDragEnd = function() {
+  this._dragRange = null;
+};
+var getCaretRangeFromPoint = (x, y, root) => {
+  let range = null;
+  const doc = document;
+  if (doc.caretPositionFromPoint) {
+    const pos = doc.caretPositionFromPoint(x, y);
+    if (pos) {
+      range = document.createRange();
+      range.setStart(pos.offsetNode, pos.offset);
+      range.collapse(true);
+    }
+  } else if (doc.caretRangeFromPoint) {
+    range = doc.caretRangeFromPoint(x, y);
+  }
+  if (range && !root.contains(range.commonAncestorContainer)) {
+    return null;
+  }
+  return range;
+};
+var pointIsWithinRange = (point, source) => {
+  return point.compareBoundaryPoints(Range.START_TO_START, source) >= 0 && point.compareBoundaryPoints(Range.END_TO_END, source) <= 0;
+};
 var _onDrop = function(event) {
-  if (!event.dataTransfer) {
+  const dataTransfer = event.dataTransfer;
+  if (!dataTransfer) {
     return;
   }
-  const types = event.dataTransfer.types;
-  let l = types.length;
+  const types = dataTransfer.types;
   let hasPlain = false;
   let hasHTML = false;
-  while (l--) {
-    switch (types[l]) {
+  for (let i = 0, l = types.length; i < l; i += 1) {
+    switch (types[i]) {
       case "text/plain":
         hasPlain = true;
         break;
       case "text/html":
         hasHTML = true;
         break;
-      default:
-        return;
     }
   }
-  if (hasHTML || hasPlain && this.saveUndoState) {
-    this.saveUndoState();
+  if (!hasPlain && !hasHTML) {
+    return;
+  }
+  event.preventDefault();
+  const root = this._root;
+  let dropRange = getCaretRangeFromPoint(event.clientX, event.clientY, root);
+  const dragRange = this._dragRange;
+  this._dragRange = null;
+  if (!dropRange) {
+    return;
+  }
+  let text, html;
+  if (dragRange) {
+    if (pointIsWithinRange(dropRange, dragRange)) {
+      return;
+    }
+    this._recordUndoState(dragRange, this._isInUndoState);
+    const bookmark = document.createComment("");
+    dropRange.insertNode(bookmark);
+    this._getRangeAndRemoveBookmark(dragRange);
+    [text, html] = extractRange(
+      dragRange,
+      root,
+      dataTransfer.dropEffect !== "copy",
+      this._config.willCutCopy,
+      this._config.toPlainText
+    );
+    bookmark.replaceWith(
+      createElement("INPUT", {
+        id: this.startSelectionId,
+        type: "hidden"
+      }),
+      createElement("INPUT", {
+        id: this.endSelectionId,
+        type: "hidden"
+      })
+    );
+    this._getRangeAndRemoveBookmark(dropRange);
+    resetNodeCategoryCache();
+  } else {
+    this.saveUndoState(dropRange);
+    if (hasHTML) {
+      html = dataTransfer.getData("text/html");
+    } else {
+      text = dataTransfer.getData("text/plain");
+    }
+  }
+  this.setSelection(dropRange);
+  if (html !== void 0) {
+    this.insertHTML(html, true);
+  } else if (text !== void 0) {
+    this.insertPlainText(text, true);
   }
 };
 
@@ -2503,6 +2600,9 @@ var Squire = class {
     this.addEventListener("cut", _onCut);
     this.addEventListener("copy", _onCopy);
     this.addEventListener("paste", _onPaste);
+    this._dragRange = null;
+    this.addEventListener("dragstart", _onDragStart);
+    this.addEventListener("dragend", _onDragEnd);
     this.addEventListener("drop", _onDrop);
     this.addEventListener(
       "keydown",
@@ -3351,6 +3451,7 @@ var Squire = class {
         doInsert = !event.defaultPrevented;
       }
       if (doInsert) {
+        this.saveUndoState(range);
         textNode.insertData(offset, plainText);
         range.setStart(textNode, offset + plainText.length);
         range.collapse(true);

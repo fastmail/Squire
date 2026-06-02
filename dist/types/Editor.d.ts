@@ -47,6 +47,7 @@ declare class Squire {
     _ignoreAllChanges: boolean;
     _isShiftDown: boolean;
     _keyHandlers: Record<string, KeyHandlerFunction | null>;
+    _dragRange: Range | null;
     _mutation: MutationObserver;
     _imageResizer: ImageResizer;
     constructor(root: HTMLElement, config?: Partial<SquireConfig>);

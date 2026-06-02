@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.7] - 2026-06-02
+
+### Changed
+
+- Drag and drop of text/html is now handled by Squire rather than letting the
+  browser do it. This gives consistency with cut/paste operations in terms of
+  cleaning and sanitising HTML.
+
 ## [2.4.6] - 2026-05-26
 
 ### Fixed
