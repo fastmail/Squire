@@ -1403,6 +1403,9 @@
     let contents;
     if (removeRangeFromDocument) {
       contents = deleteContentsOfRange(range, root);
+      if (!parent.isConnected) {
+        parent = range.commonAncestorContainer;
+      }
     } else {
       contents = range.cloneContents();
     }
@@ -1453,11 +1456,11 @@
       toCleanHTML,
       toPlainText
     );
+    event.preventDefault();
     if (!plainTextOnly && html) {
       clipboardData.setData("text/html", html);
     }
     clipboardData.setData("text/plain", text);
-    event.preventDefault();
     return true;
   };
   var _onCut = function(event) {

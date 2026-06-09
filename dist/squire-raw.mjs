@@ -1401,6 +1401,9 @@ var extractRange = (range, root, removeRangeFromDocument, toCleanHTML, toPlainTe
   let contents;
   if (removeRangeFromDocument) {
     contents = deleteContentsOfRange(range, root);
+    if (!parent.isConnected) {
+      parent = range.commonAncestorContainer;
+    }
   } else {
     contents = range.cloneContents();
   }
@@ -1451,11 +1454,11 @@ var extractRangeToClipboard = (event, range, root, removeRangeFromDocument, toCl
     toCleanHTML,
     toPlainText
   );
+  event.preventDefault();
   if (!plainTextOnly && html) {
     clipboardData.setData("text/html", html);
   }
   clipboardData.setData("text/plain", text);
-  event.preventDefault();
   return true;
 };
 var _onCut = function(event) {
