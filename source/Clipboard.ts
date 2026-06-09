@@ -124,11 +124,11 @@ const extractRangeToClipboard = (
     );
 
     // Set clipboard data
+    event.preventDefault();
     if (!plainTextOnly && html) {
         clipboardData.setData('text/html', html);
     }
     clipboardData.setData('text/plain', text);
-    event.preventDefault();
 
     return true;
 };
