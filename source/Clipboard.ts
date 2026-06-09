@@ -39,6 +39,9 @@ const extractRange = (
     let contents: Node;
     if (removeRangeFromDocument) {
         contents = deleteContentsOfRange(range, root);
+        if (!parent.isConnected) {
+            parent = range.commonAncestorContainer;
+        }
     } else {
         contents = range.cloneContents();
     }
