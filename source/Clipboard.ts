@@ -250,6 +250,10 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
                 });
             } else if (plainItem) {
                 plainItem.getAsString((text) => {
+                    if (choosePlain) {
+                        this.insertPlainText(text, true, false);
+                        return;
+                    }
                     // If we have a selection and text is solely a URL,
                     // just make the text a link.
                     const range = this.getSelection();
@@ -308,7 +312,7 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
             (data = clipboardData.getData('text/plain')) ||
             (data = clipboardData.getData('text/uri-list'))
         ) {
-            this.insertPlainText(data, true);
+            this.insertPlainText(data, true, !choosePlain);
         }
         return;
     }

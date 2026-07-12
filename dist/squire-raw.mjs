@@ -1541,6 +1541,10 @@ var _onPaste = function(event) {
         });
       } else if (plainItem) {
         plainItem.getAsString((text) => {
+          if (choosePlain) {
+            this.insertPlainText(text, true, false);
+            return;
+          }
           const range2 = this.getSelection();
           if (!range2.collapsed && notWS.test(range2.toString())) {
             const match = this.linkRegExp.exec(text);
@@ -1564,7 +1568,7 @@ var _onPaste = function(event) {
     if (!choosePlain && (data = clipboardData.getData("text/html"))) {
       this.insertHTML(data, true);
     } else if ((data = clipboardData.getData("text/plain")) || (data = clipboardData.getData("text/uri-list"))) {
-      this.insertPlainText(data, true);
+      this.insertPlainText(data, true, !choosePlain);
     }
     return;
   }
@@ -3321,14 +3325,14 @@ var Squire = class {
    * insertTreeFragmentIntoRange will delete the selection so that it is
    * replaced by the html being inserted.
    */
-  insertHTML(html, isPaste) {
+  insertHTML(html, isPaste, addLinks = true) {
     const config = this._config;
     let frag = config.sanitizeToDOMFragment(html, this);
     const range = this.getSelection();
     this.saveUndoState(range);
     try {
       const root = this._root;
-      if (config.addLinks) {
+      if (config.addLinks && addLinks) {
         this.addDetectedLinks(frag, frag);
       }
       cleanTree(frag, this._config);
@@ -3424,7 +3428,7 @@ var Squire = class {
     this.insertElement(img);
     return img;
   }
-  insertPlainText(plainText, isPaste) {
+  insertPlainText(plainText, isPaste, addLinks = true) {
     const range = this.getSelection();
     if (range.collapsed && getNearest(range.startContainer, this._root, "PRE")) {
       const startContainer = range.startContainer;
@@ -3480,7 +3484,7 @@ var Squire = class {
       }
       lines[i] = line;
     }
-    return this.insertHTML(lines.join(""), isPaste);
+    return this.insertHTML(lines.join(""), isPaste, addLinks);
   }
   getSelectedText(range) {
     return getTextContentsOfRange(range || this.getSelection());

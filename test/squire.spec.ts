@@ -817,6 +817,122 @@ describe('Squire RTE', () => {
         });
     });
 
+    describe('plain-text paste', () => {
+        const pasteText = (
+            text: string,
+            choosePlain: boolean,
+            html?: string,
+        ): void => {
+            editor.fireEvent(
+                'keydown',
+                new KeyboardEvent('keydown', { shiftKey: choosePlain }),
+            );
+
+            const event = new Event('paste', {
+                cancelable: true,
+            }) as ClipboardEvent;
+            Object.defineProperty(event, 'clipboardData', {
+                value: {
+                    items: [
+                        {
+                            type: 'text/plain',
+                            getAsString(callback: (value: string) => void) {
+                                callback(text);
+                            },
+                        },
+                        ...(html
+                            ? [
+                                  {
+                                      type: 'text/html',
+                                      getAsString(
+                                          callback: (value: string) => void,
+                                      ) {
+                                          callback(html);
+                                      },
+                                  },
+                              ]
+                            : []),
+                    ],
+                },
+            });
+            editor.fireEvent('paste', event);
+        };
+
+        beforeEach(() => {
+            editor.setHTML('<div><br></div>');
+            const range = document.createRange();
+            range.setStart(squireContainer.firstElementChild!, 0);
+            range.collapse(true);
+            editor.setSelection(range);
+        });
+
+        it('keeps URLs and email addresses literal when explicitly requested', () => {
+            pasteText(
+                'https://example.com and user@example.com',
+                true,
+                '<a href="https://example.com">https://example.com</a> and ' +
+                    '<a href="mailto:user@example.com">user@example.com</a>',
+            );
+
+            expect(squireContainer.textContent).toBe(
+                'https://example.com and user@example.com',
+            );
+            expect(squireContainer.querySelectorAll('a')).toHaveLength(0);
+        });
+
+        it('continues detecting links during an ordinary plain-only paste', () => {
+            pasteText('https://example.com and user@example.com', false);
+
+            expect(squireContainer.querySelectorAll('a')).toHaveLength(2);
+        });
+
+        it('replaces selected text instead of linking it during explicit plain paste', () => {
+            editor.setHTML('<div>replace me</div>');
+            selectAll(editor, squireContainer);
+
+            pasteText('https://example.com', true);
+
+            expect(squireContainer.textContent).toBe('https://example.com');
+            expect(squireContainer.querySelector('a')).toBeNull();
+        });
+
+        it('continues linking selected text during an ordinary URL paste', () => {
+            editor.setHTML('<div>keep this label</div>');
+            selectAll(editor, squireContainer);
+
+            pasteText('https://example.com', false);
+
+            const link = squireContainer.querySelector('a');
+            expect(link?.textContent).toBe('keep this label');
+            expect(link?.href).toBe('https://example.com/');
+        });
+
+        it('keeps legacy clipboard text literal when explicitly requested', () => {
+            editor.fireEvent(
+                'keydown',
+                new KeyboardEvent('keydown', { shiftKey: true }),
+            );
+            const event = new Event('paste', {
+                cancelable: true,
+            }) as ClipboardEvent;
+            Object.defineProperty(event, 'clipboardData', {
+                value: {
+                    types: ['text/plain'],
+                    getData(type: string) {
+                        return type === 'text/plain'
+                            ? 'https://example.com'
+                            : '';
+                    },
+                },
+            });
+
+            editor.fireEvent('paste', event);
+
+            expect(squireContainer.textContent).toBe('https://example.com');
+            expect(squireContainer.querySelector('a')).toBeNull();
+        });
+    });
+
     afterEach(() => {
         editor = null as any;
         document.body.innerHTML = `<div id="squire">`;

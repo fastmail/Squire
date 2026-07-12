@@ -104,10 +104,10 @@ declare class Squire {
      * insertTreeFragmentIntoRange will delete the selection so that it is
      * replaced by the html being inserted.
      */
-    insertHTML(html: string, isPaste?: boolean): Squire;
+    insertHTML(html: string, isPaste?: boolean, addLinks?: boolean): Squire;
     insertElement(el: Element, range?: Range): Squire;
     insertImage(src: string, attributes: Record<string, string>): HTMLImageElement;
-    insertPlainText(plainText: string, isPaste: boolean): Squire;
+    insertPlainText(plainText: string, isPaste: boolean, addLinks?: boolean): Squire;
     getSelectedText(range?: Range): string;
     /**
      * Extracts the font-family and font-size (if any) of the element

@@ -1098,7 +1098,7 @@ class Squire {
      * insertTreeFragmentIntoRange will delete the selection so that it is
      * replaced by the html being inserted.
      */
-    insertHTML(html: string, isPaste?: boolean): Squire {
+    insertHTML(html: string, isPaste?: boolean, addLinks = true): Squire {
         // Parse
         const config = this._config;
         let frag = config.sanitizeToDOMFragment(html, this);
@@ -1110,7 +1110,7 @@ class Squire {
         try {
             const root = this._root;
 
-            if (config.addLinks) {
+            if (config.addLinks && addLinks) {
                 this.addDetectedLinks(frag, frag);
             }
             cleanTree(frag, this._config);
@@ -1235,7 +1235,11 @@ class Squire {
         return img;
     }
 
-    insertPlainText(plainText: string, isPaste: boolean): Squire {
+    insertPlainText(
+        plainText: string,
+        isPaste: boolean,
+        addLinks = true,
+    ): Squire {
         const range = this.getSelection();
         if (
             range.collapsed &&
@@ -1300,7 +1304,7 @@ class Squire {
             }
             lines[i] = line;
         }
-        return this.insertHTML(lines.join(''), isPaste);
+        return this.insertHTML(lines.join(''), isPaste, addLinks);
     }
 
     getSelectedText(range?: Range): string {
