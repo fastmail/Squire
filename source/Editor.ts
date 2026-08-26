@@ -738,7 +738,24 @@ class Squire {
 
     _updatePathOnEvent(): void {
         if (this._isFocused) {
-            this._updatePath(this.getSelection());
+            const lastSelection = this._lastSelection;
+            const selection = this.getSelection();
+            // Check the selection is actually different; Firefox as of v154
+            // seems to have started firing selectionchange events sometimes on
+            // scroll, causing massive performance degredation as it gets stuck
+            // in a loop with scrollIntoView!
+            if (
+                selection.compareBoundaryPoints(
+                    0, // Range.START_TO_START,
+                    lastSelection,
+                ) !== 0 ||
+                selection.compareBoundaryPoints(
+                    2, //Range.END_TO_END
+                    lastSelection,
+                ) !== 0
+            ) {
+                this._updatePath(selection);
+            }
         }
     }
 
