@@ -1826,7 +1826,7 @@ class Squire {
         // Only look on boundaries
         '\\b(?:' +
         // Capture group 1: URLs
-        '(' +
+        '(?<url>' +
             // Add links to URLS
             // Starts with:
             '(?:' +
@@ -1860,7 +1860,7 @@ class Squire {
                 '\\([^\\s()<>]+\\)' +
             ')' +
         // Capture group 2: Emails
-        ')|(' +
+        ')|(?<email>' +
             // Add links to emails
             '[\\w\\-.%+]+@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
             // Allow query parameters in the mailto: style
@@ -1873,8 +1873,12 @@ class Squire {
     );
     */
     linkRegExp =
-        /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
-
+        /\b(?:(?<url>(?:(?:[a-z+]+:)?\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|(?<email>[\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
+    linkRegExpHandlers = {
+        'url': (m) => {return /^(?:[a-z+]+:)?\/\//i.test(m)
+                                ? m : 'https://' + m},
+        'email': (m) => {return 'mailto:' + m},
+        'default': (m) => {return m}};
     addDetectedLinks(
         searchInNode: DocumentFragment | Node,
         root?: DocumentFragment | HTMLElement,
@@ -1900,15 +1904,14 @@ class Squire {
                         node,
                     );
                 }
+                let handler = Object.keys(this.linkRegExpHandlers).filter(
+                    key => Object.keys(match.groups).includes(key) && match.groups[key])[0]
+                    || 'default';
                 const child = createElement(
                     'A',
                     Object.assign(
                         {
-                            href: match[1]
-                                ? /^(?:ht|f)tps?:/i.test(match[1])
-                                    ? match[1]
-                                    : 'http://' + match[1]
-                                : 'mailto:' + match[0],
+                            href: this.linkRegExpHandlers[handler](match[0])
                         },
                         defaultAttributes,
                     ),
