@@ -1259,20 +1259,6 @@ class Squire {
             range.collapsed &&
             getNearest(range.startContainer, this._root, 'PRE')
         ) {
-            const startContainer: Node = range.startContainer;
-            let offset = range.startOffset;
-            let textNode: Text;
-            if (!startContainer || !(startContainer instanceof Text)) {
-                const text = document.createTextNode('');
-                startContainer.insertBefore(
-                    text,
-                    startContainer.childNodes[offset],
-                );
-                textNode = text;
-                offset = 0;
-            } else {
-                textNode = startContainer;
-            }
             let doInsert = true;
             if (isPaste) {
                 const event = new CustomEvent('willPaste', {
@@ -1288,6 +1274,28 @@ class Squire {
 
             if (doInsert) {
                 this.saveUndoState(range);
+                const startContainer: Node = range.startContainer;
+                let offset = range.startOffset;
+                let textNode: Text;
+                if (startContainer instanceof Text) {
+                    textNode = startContainer;
+                } else {
+                    let nodeBeforeCursor = offset
+                        ? startContainer.childNodes[offset - 1]
+                        : null;
+                    if (nodeBeforeCursor instanceof Text) {
+                        textNode = nodeBeforeCursor;
+                        offset = textNode.length;
+                    } else {
+                        const text = document.createTextNode('');
+                        startContainer.insertBefore(
+                            text,
+                            startContainer.childNodes[offset],
+                        );
+                        textNode = text;
+                        offset = 0;
+                    }
+                }
                 textNode.insertData(offset, plainText);
                 range.setStart(textNode, offset + plainText.length);
                 range.collapse(true);
