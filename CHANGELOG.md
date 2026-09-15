@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.9] - 2026-09-15
+
+### Changed
+
+- Pasting inside a pre now automatically pastes as plain text.
+
+### Fixed
+
+- Pasting inside a pre could fail to work if the cursor was at the end of the
+  block.
+- Selection events were firing too frequently in Firefox.
+
 ## [2.4.8] - 2026-06-09
 
 ### Fixed

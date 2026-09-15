@@ -1506,7 +1506,11 @@ var _monitorShiftKey = function(event) {
 var _onPaste = function(event) {
   const clipboardData = event.clipboardData;
   const items = clipboardData?.items;
-  const choosePlain = this._isShiftDown;
+  const choosePlain = this._isShiftDown || !!getNearest(
+    this.getSelection().commonAncestorContainer,
+    this._root,
+    "PRE"
+  );
   let hasRTF = false;
   let hasImage = false;
   let plainItem = null;
@@ -2585,6 +2589,7 @@ var Squire = class {
     this._mayHaveZWS = false;
     this._lastAnchorNode = null;
     this._lastFocusNode = null;
+    this._lastPathRange = null;
     this._path = "";
     this._events = /* @__PURE__ */ new Map();
     this._undoIndex = -1;
@@ -3039,10 +3044,23 @@ var Squire = class {
   }
   _updatePathOnEvent() {
     if (this._isFocused) {
-      this._updatePath(this.getSelection());
+      const lastPathRange = this._lastPathRange;
+      const selection = this.getSelection();
+      if (!lastPathRange || !lastPathRange.commonAncestorContainer.isConnected || selection.compareBoundaryPoints(
+        0,
+        // Range.START_TO_START,
+        lastPathRange
+      ) !== 0 || selection.compareBoundaryPoints(
+        2,
+        //Range.END_TO_END
+        lastPathRange
+      ) !== 0) {
+        this._updatePath(selection);
+      }
     }
   }
   _updatePath(range, force) {
+    this._lastPathRange = range.cloneRange();
     const anchor = range.startContainer;
     const focus = range.endContainer;
     let newPath;
@@ -3427,20 +3445,6 @@ var Squire = class {
   insertPlainText(plainText, isPaste) {
     const range = this.getSelection();
     if (range.collapsed && getNearest(range.startContainer, this._root, "PRE")) {
-      const startContainer = range.startContainer;
-      let offset = range.startOffset;
-      let textNode;
-      if (!startContainer || !(startContainer instanceof Text)) {
-        const text = document.createTextNode("");
-        startContainer.insertBefore(
-          text,
-          startContainer.childNodes[offset]
-        );
-        textNode = text;
-        offset = 0;
-      } else {
-        textNode = startContainer;
-      }
       let doInsert = true;
       if (isPaste) {
         const event = new CustomEvent("willPaste", {
@@ -3455,6 +3459,26 @@ var Squire = class {
       }
       if (doInsert) {
         this.saveUndoState(range);
+        const startContainer = range.startContainer;
+        let offset = range.startOffset;
+        let textNode;
+        if (startContainer instanceof Text) {
+          textNode = startContainer;
+        } else {
+          let nodeBeforeCursor = offset ? startContainer.childNodes[offset - 1] : null;
+          if (nodeBeforeCursor instanceof Text) {
+            textNode = nodeBeforeCursor;
+            offset = textNode.length;
+          } else {
+            const text = document.createTextNode("");
+            startContainer.insertBefore(
+              text,
+              startContainer.childNodes[offset]
+            );
+            textNode = text;
+            offset = 0;
+          }
+        }
         textNode.insertData(offset, plainText);
         range.setStart(textNode, offset + plainText.length);
         range.collapse(true);

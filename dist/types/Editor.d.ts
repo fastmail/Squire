@@ -37,6 +37,7 @@ declare class Squire {
     _mayHaveZWS: boolean;
     _lastAnchorNode: Node | null;
     _lastFocusNode: Node | null;
+    _lastPathRange: Range | null;
     _path: string;
     _events: Map<string, Array<EventHandler>>;
     _undoIndex: number;
