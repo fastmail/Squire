@@ -1,5 +1,5 @@
 import { isWin, isGecko, isLegacyEdge, notWS } from './Constants';
-import { createElement, detach } from './node/Node';
+import { createElement, detach, getNearest } from './node/Node';
 import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
 import { createRange, deleteContentsOfRange } from './range/InsertDelete';
 
@@ -192,7 +192,13 @@ const _monitorShiftKey = function (this: Squire, event: KeyboardEvent): void {
 const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     const clipboardData = event.clipboardData;
     const items = clipboardData?.items;
-    const choosePlain: boolean | undefined = this._isShiftDown;
+    const choosePlain: boolean | undefined =
+        this._isShiftDown ||
+        !!getNearest(
+            this.getSelection().commonAncestorContainer,
+            this._root,
+            'PRE',
+        );
     let hasRTF = false;
     let hasImage = false;
     let plainItem: null | DataTransferItem = null;
