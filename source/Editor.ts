@@ -109,6 +109,7 @@ class Squire {
 
     _lastAnchorNode: Node | null;
     _lastFocusNode: Node | null;
+    _lastPathRange: Range | null;
     _path: string;
 
     _events: Map<string, Array<EventHandler>>;
@@ -140,6 +141,7 @@ class Squire {
 
         this._lastAnchorNode = null;
         this._lastFocusNode = null;
+        this._lastPathRange = null;
         this._path = '';
 
         this._events = new Map();
@@ -738,21 +740,24 @@ class Squire {
 
     _updatePathOnEvent(): void {
         if (this._isFocused) {
-            const lastSelection = this._lastSelection;
+            const lastPathRange = this._lastPathRange;
             const selection = this.getSelection();
-            // Check the selection is actually different; Firefox as of v154
-            // seems to have started firing selectionchange events sometimes on
-            // scroll, causing massive performance degredation as it gets stuck
-            // in a loop with scrollIntoView!
+            // Check the selection is actually different from the one we last
+            // processed; Firefox as of v154 seems to have started firing
+            // selectionchange events sometimes on scroll, causing massive
+            // performance degredation as it gets stuck in a loop with
+            // scrollIntoView! We can't compare against _lastSelection as
+            // setSelection updates that before the selectionchange event fires.
             if (
-                !lastSelection.commonAncestorContainer.isConnected ||
+                !lastPathRange ||
+                !lastPathRange.commonAncestorContainer.isConnected ||
                 selection.compareBoundaryPoints(
                     0, // Range.START_TO_START,
-                    lastSelection,
+                    lastPathRange,
                 ) !== 0 ||
                 selection.compareBoundaryPoints(
                     2, //Range.END_TO_END
-                    lastSelection,
+                    lastPathRange,
                 ) !== 0
             ) {
                 this._updatePath(selection);
@@ -761,6 +766,7 @@ class Squire {
     }
 
     _updatePath(range: Range, force?: boolean): void {
+        this._lastPathRange = range.cloneRange();
         const anchor = range.startContainer;
         const focus = range.endContainer;
         let newPath: string;
