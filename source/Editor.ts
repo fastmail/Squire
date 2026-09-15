@@ -745,6 +745,7 @@ class Squire {
             // scroll, causing massive performance degredation as it gets stuck
             // in a loop with scrollIntoView!
             if (
+                !lastSelection.commonAncestorContainer.isConnected ||
                 selection.compareBoundaryPoints(
                     0, // Range.START_TO_START,
                     lastSelection,
