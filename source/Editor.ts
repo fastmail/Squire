@@ -2020,12 +2020,11 @@ class Squire {
 
     _ensureBottomLine(): void {
         const root = this._root;
-        const last = root.lastElementChild;
-        if (
-            !last ||
-            last.nodeName !== this._config.blockTag ||
-            !isBlock(last)
-        ) {
+        let last: Element | null = root;
+        do {
+            last = last.lastElementChild;
+        } while (last && isContainer(last));
+        if (!last || !isBlock(last)) {
             root.appendChild(this.createDefaultBlock());
         }
     }
