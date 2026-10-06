@@ -47,7 +47,7 @@ const extractRange = (
     }
 
     // Add any other parents not in extracted content, up to copy root
-    if (parent instanceof Text) {
+    while (parent && !(parent instanceof Element)) {
         parent = parent.parentNode!;
     }
     while (parent && parent !== copyRoot) {

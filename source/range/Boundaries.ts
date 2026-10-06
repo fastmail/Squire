@@ -1,7 +1,7 @@
 import { isLeaf } from '../node/Category';
 import { getLength, getNearest } from '../node/Node';
 import { isLineBreak } from '../node/Whitespace';
-import { TEXT_NODE } from '../Constants';
+import { ELEMENT_NODE, TEXT_NODE } from '../Constants';
 
 // ---
 
@@ -36,6 +36,11 @@ const isNodeContainedInRange = (
     }
 };
 
+// Treat comments and other non-element, non-text nodes as leaves: a range
+// boundary inside one breaks code expecting a Text or Element container.
+const canDescendInto = (node: Node): boolean =>
+    node instanceof Text || (node.nodeType === ELEMENT_NODE && !isLeaf(node));
+
 /**
  * Moves the range to an equivalent position with the start/end as deep in
  * the tree as possible.
@@ -45,7 +50,7 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
 
     while (!(startContainer instanceof Text)) {
         let child: ChildNode | null = startContainer.childNodes[startOffset];
-        if (!child || isLeaf(child)) {
+        if (!child || !canDescendInto(child)) {
             if (startOffset) {
                 child = startContainer.childNodes[startOffset - 1];
                 if (child instanceof Text) {
@@ -75,7 +80,7 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
     if (endOffset) {
         while (!(endContainer instanceof Text)) {
             const child = endContainer.childNodes[endOffset - 1];
-            if (!child || isLeaf(child)) {
+            if (!child || !canDescendInto(child)) {
                 if (
                     child &&
                     child.nodeName === 'BR' &&
@@ -92,7 +97,7 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
     } else {
         while (!(endContainer instanceof Text)) {
             const child = endContainer.firstChild!;
-            if (!child || isLeaf(child)) {
+            if (!child || !canDescendInto(child)) {
                 break;
             }
             endContainer = child;

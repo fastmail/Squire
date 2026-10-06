@@ -817,6 +817,64 @@ describe('Squire RTE', () => {
         });
     });
 
+    describe('drag and drop', () => {
+        const doc = document as Document & {
+            caretRangeFromPoint?: (x: number, y: number) => Range | null;
+        };
+
+        afterEach(() => {
+            delete doc.caretRangeFromPoint;
+        });
+
+        // Squire catches handler errors and passes them to didError.
+        function dragAndDrop(dragRange: Range, dropRange: Range): unknown[] {
+            const errors: unknown[] = [];
+            (editor as any)._config.didError = (error: unknown) =>
+                errors.push(error);
+            editor.setSelection(dragRange);
+            squireContainer.dispatchEvent(
+                new Event('dragstart', { bubbles: true }),
+            );
+            doc.caretRangeFromPoint = () => dropRange;
+            const drop = new Event('drop', {
+                bubbles: true,
+                cancelable: true,
+            });
+            Object.defineProperty(drop, 'dataTransfer', {
+                value: {
+                    types: ['text/plain', 'text/html'],
+                    dropEffect: 'move',
+                    getData: () => '',
+                },
+            });
+            squireContainer.dispatchEvent(drop);
+            return errors;
+        }
+
+        it('moves a whole inline element dropped right after itself', () => {
+            editor.setHTML(
+                '<div>one <span style="background-color:yellow">two</span>' +
+                    ' three</div>',
+            );
+            const block = squireContainer.firstChild!;
+            const span = squireContainer.querySelector('span')!;
+            const dragRange = document.createRange();
+            dragRange.selectNodeContents(span.firstChild!);
+            const dropRange = document.createRange();
+            dropRange.setStartAfter(span);
+            dropRange.collapse(true);
+            expect(dropRange.startContainer).toBe(block);
+
+            expect(dragAndDrop(dragRange, dropRange)).toEqual([]);
+            expect(squireContainer.textContent!.replace(/\u00a0/g, ' ')).toBe(
+                'one two three',
+            );
+            expect(squireContainer.querySelector('span')!.textContent).toBe(
+                'two',
+            );
+        });
+    });
+
     afterEach(() => {
         editor = null as any;
         document.body.innerHTML = `<div id="squire">`;
