@@ -210,7 +210,7 @@ const stylesRewriters: Record<string, StyleRewriter> = {
 const allowedBlock =
     /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)?|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|IGCAPTION|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|COL(?:GROUP)?|UL)$/;
 
-const blacklist = /^(?:HEAD|META|STYLE)/;
+const blacklist = /^(?:HEAD|META|STYLE)$/;
 
 /*
     Two purposes:
