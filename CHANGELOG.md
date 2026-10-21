@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.10] - 2026-10-21
+
+### Fixed
+
+- An empty line was added at the bottom of the document more often than
+  needed; it's now only added if the document doesn't end with a block.
+- Links used as block-level elements were stripped when cleaning HTML.
+- Dragging text next to its own position could crash and lose the text.
+- `<header>` elements were stripped when cleaning HTML.
+- Link detection could hang on a URL followed by a long run of punctuation.
+
 ## [2.4.9] - 2026-09-15
 
 ### Changed

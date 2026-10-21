@@ -333,11 +333,12 @@
       return nodeStartAfterStart && nodeEndBeforeEnd;
     }
   };
+  var canDescendInto = (node) => node instanceof Text || node.nodeType === ELEMENT_NODE && !isLeaf(node);
   var moveRangeBoundariesDownTree = (range) => {
     let { startContainer, startOffset, endContainer, endOffset } = range;
     while (!(startContainer instanceof Text)) {
       let child = startContainer.childNodes[startOffset];
-      if (!child || isLeaf(child)) {
+      if (!child || !canDescendInto(child)) {
         if (startOffset) {
           child = startContainer.childNodes[startOffset - 1];
           if (child instanceof Text) {
@@ -359,7 +360,7 @@
     if (endOffset) {
       while (!(endContainer instanceof Text)) {
         const child = endContainer.childNodes[endOffset - 1];
-        if (!child || isLeaf(child)) {
+        if (!child || !canDescendInto(child)) {
           if (child && child.nodeName === "BR" && !isLineBreak(child, false)) {
             endOffset -= 1;
             continue;
@@ -372,7 +373,7 @@
     } else {
       while (!(endContainer instanceof Text)) {
         const child = endContainer.firstChild;
-        if (!child || isLeaf(child)) {
+        if (!child || !canDescendInto(child)) {
           break;
         }
         endContainer = child;
@@ -816,8 +817,8 @@
       return el;
     }
   };
-  var allowedBlock = /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|IGCAPTION|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|COL(?:GROUP)?|UL)$/;
-  var blacklist = /^(?:HEAD|META|STYLE)/;
+  var allowedBlock = /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)?|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|IGCAPTION|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|COL(?:GROUP)?|UL)$/;
+  var blacklist = /^(?:HEAD|META|STYLE)$/;
   var cleanTree = (node, config, preserveWS) => {
     const children = node.childNodes;
     let nonInlineParent = node;
@@ -1409,7 +1410,7 @@
     } else {
       contents = range.cloneContents();
     }
-    if (parent instanceof Text) {
+    while (parent && !(parent instanceof Element)) {
       parent = parent.parentNode;
     }
     while (parent && parent !== copyRoot) {
@@ -2548,8 +2549,8 @@
               ')' +
               // Then we get one or more:
               '(?:' +
-                  // Run of non-spaces, non ()<>
-                  '[^\\s()<>]+' +
+                  // Non-space, non ()<>
+                  '[^\\s()<>]' +
                   // or
                   '|' +
                   // balanced parentheses (one level deep only)
@@ -2577,7 +2578,7 @@
           'i'
       );
       */
-      this.linkRegExp = /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
+      this.linkRegExp = /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
       this.tagAfterSplit = {
         DT: "DD",
         DD: "DT",
@@ -3958,8 +3959,11 @@
     // --- Block formatting
     _ensureBottomLine() {
       const root = this._root;
-      const last = root.lastElementChild;
-      if (!last || last.nodeName !== this._config.blockTag || !isBlock(last)) {
+      let last = root;
+      do {
+        last = last.lastElementChild;
+      } while (last && isContainer(last));
+      if (!last || !isBlock(last)) {
         root.appendChild(this.createDefaultBlock());
       }
     }
