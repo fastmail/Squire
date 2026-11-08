@@ -1853,8 +1853,10 @@ class Squire {
                 'www\\d{0,3}[.]' +
                 // or
                 '|' +
-                // foo90.com/
-                '[a-z0-9][a-z0-9.\\-]*[.][a-z]{2,}\\/' +
+                // foo90.com/ (bounded by the 253-character limit on
+                // domain names, so a long dotted run can't make every
+                // boundary in it rescan the rest)
+                '[a-z0-9][a-z0-9.\\-]{0,252}[.][a-z]{2,}\\/' +
             ')' +
             // Then we get one or more:
             '(?:' +
@@ -1876,8 +1878,9 @@ class Squire {
             ')' +
         // Capture group 2: Emails
         ')|(' +
-            // Add links to emails
-            '[\\w\\-.%+]+@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
+            // Add links to emails (local part bounded by the 64-character
+            // limit, for the same reason as the domain above)
+            '[\\w\\-.%+]{1,64}@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
             // Allow query parameters in the mailto: style
             '(?:' +
                 '[?][^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+' +
@@ -1888,7 +1891,7 @@ class Squire {
     );
     */
     linkRegExp =
-        /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
+        /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]{0,252}[.][a-z]{2,}\/)(?:[^\s()<>]|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]{1,64}@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
 
     addDetectedLinks(
         searchInNode: DocumentFragment | Node,
