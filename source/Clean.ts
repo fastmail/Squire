@@ -212,6 +212,63 @@ const allowedBlock =
 
 const blacklist = /^(?:HEAD|META|STYLE)$/;
 
+type WSCache = {
+    before: WeakMap<Node, boolean>;
+    after: WeakMap<Node, boolean>;
+};
+
+/*
+    Is there text or an image between this text node and the edge of its
+    block, in the given direction? Every inline node the walk passes over
+    has the same answer, so we record it for them; a later walk that
+    reaches one of them can stop there, keeping a run of whitespace-only
+    inline nodes linear rather than quadratic.
+
+    Nodes ahead of us haven't been cleaned yet. Text and images stay
+    content, but a block we stop at may yet be removed or unwrapped, so
+    only cache a forwards result if that block is one we keep.
+*/
+const hasInlineContent = (
+    walker: TreeIterator<Element | Text>,
+    start: Text,
+    forwards: boolean,
+    cache: WeakMap<Node, boolean>,
+): boolean => {
+    const visited: Node[] = [];
+    let result = false;
+    let cacheable = true;
+    let node: Element | Text | null;
+    walker.currentNode = start;
+    while ((node = forwards ? walker.nextNode() : walker.previousPONode())) {
+        const cached = cache.get(node);
+        if (cached !== undefined) {
+            result = cached;
+            break;
+        }
+        if (
+            node.nodeName === 'IMG' ||
+            (node instanceof Text && notWS.test(node.data))
+        ) {
+            result = true;
+            break;
+        }
+        if (!isInline(node)) {
+            cacheable =
+                !forwards ||
+                (allowedBlock.test(node.nodeName) &&
+                    !stylesRewriters[node.nodeName]);
+            break;
+        }
+        visited.push(node);
+    }
+    if (cacheable) {
+        for (const visitedNode of visited) {
+            cache.set(visitedNode, result);
+        }
+    }
+    return result;
+};
+
 /*
     Two purposes:
 
@@ -223,6 +280,7 @@ const cleanTree = (
     node: Node,
     config: SquireConfig,
     preserveWS?: boolean,
+    wsCache: WSCache = { before: new WeakMap(), after: new WeakMap() },
 ): Node => {
     const children = node.childNodes;
 
@@ -255,7 +313,12 @@ const cleanTree = (
                 continue;
             }
             if (childLength) {
-                cleanTree(child, config, preserveWS || nodeName === 'PRE');
+                cleanTree(
+                    child,
+                    config,
+                    preserveWS || nodeName === 'PRE',
+                    wsCache,
+                );
             }
         } else {
             if (child instanceof Text) {
@@ -265,43 +328,21 @@ const cleanTree = (
                 if (preserveWS || (!startsWithWS && !endsWithWS)) {
                     continue;
                 }
-                // Iterate through the nodes; if we hit some other content
-                // before the start of a new block we don't trim
                 if (startsWithWS) {
-                    walker.currentNode = child;
-                    let sibling;
-                    while ((sibling = walker.previousPONode())) {
-                        if (
-                            sibling.nodeName === 'IMG' ||
-                            (sibling instanceof Text &&
-                                notWS.test(sibling.data))
-                        ) {
-                            break;
-                        }
-                        if (!isInline(sibling)) {
-                            sibling = null;
-                            break;
-                        }
-                    }
-                    data = data.replace(/^[ \t\r\n]+/g, sibling ? ' ' : '');
+                    data = data.replace(
+                        /^[ \t\r\n]+/g,
+                        hasInlineContent(walker, child, false, wsCache.before)
+                            ? ' '
+                            : '',
+                    );
                 }
-                if (endsWithWS) {
-                    walker.currentNode = child;
-                    let sibling;
-                    while ((sibling = walker.nextNode())) {
-                        if (
-                            sibling.nodeName === 'IMG' ||
-                            (sibling instanceof Text &&
-                                notWS.test(sibling.data))
-                        ) {
-                            break;
-                        }
-                        if (!isInline(sibling)) {
-                            sibling = null;
-                            break;
-                        }
-                    }
-                    data = data.replace(/[ \t\r\n]+$/g, sibling ? ' ' : '');
+                if (endsWithWS && data) {
+                    data = data.replace(
+                        /[ \t\r\n]+$/g,
+                        hasInlineContent(walker, child, true, wsCache.after)
+                            ? ' '
+                            : '',
+                    );
                 }
                 if (data) {
                     child.data = data;
